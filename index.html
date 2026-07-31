@@ -144,7 +144,7 @@ footer.site .fine{margin-left:auto}
   </section>
 
   <section class="block" id="sec-sub" hidden>
-    <div class="section-head"><h2>SUB LIST</h2><span class="count" id="count-sub"></span></div>
+    <div class="section-head"><h2>SUBS</h2><span class="count" id="count-sub"></span></div>
     <div class="chips" id="chips-sub"></div>
   </section>
 
@@ -154,7 +154,7 @@ footer.site .fine{margin-left:auto}
   </section>
 
   <section class="block" id="sec-out" hidden>
-    <div class="section-head"><h2>SITTING THIS ONE OUT</h2><span class="count" id="count-out"></span></div>
+    <div class="section-head"><h2>SITTING OUT</h2><span class="count" id="count-out"></span></div>
     <div class="chips" id="chips-out"></div>
   </section>
 
@@ -334,7 +334,7 @@ async function load(){
     if(!res.ok) throw new Error("HTTP "+res.status);
     allRows=parseCSV(await res.text());
     render();
-    state.textContent="Live from the team sheet";
+    state.textContent="";
     document.getElementById("updated").textContent="Updated "+new Date().toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   }catch(e){
     state.classList.add("err");
