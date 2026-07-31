@@ -93,7 +93,7 @@ section.block{padding-top:var(--space-8)}
 .player{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);transition:transform var(--dur-med) var(--ease-out)}
 .player:hover{transform:translateY(-2px)}
 .p-stack{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
-.p-first{font-family:var(--font-display);font-weight:700;font-size:19px;line-height:1.1;color:var(--text-strong);text-transform:uppercase}
+.p-first{font-family:var(--font-display);font-weight:700;font-size:23px;line-height:1.1;color:var(--text-strong);text-transform:uppercase}
 .p-last{font-family:var(--font-condensed);font-weight:600;font-size:12px;letter-spacing:.08em;line-height:1.2;color:var(--ink-500);text-transform:uppercase}
 .p-num{font-family:var(--font-numeral);font-weight:800;font-size:38px;line-height:1;color:var(--burgundy-600);flex:none}
 .badge{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-sm)}
@@ -160,17 +160,17 @@ footer.site .fine{margin-left:auto}
 
   <section class="block" id="sec-sub" hidden>
     <div class="section-head"><h2>SUBS</h2><span class="count" id="count-sub"></span></div>
-    <div class="chips" id="chips-sub"></div>
+    <div class="grid" id="chips-sub"></div>
   </section>
 
   <section class="block" id="sec-unsure" hidden>
     <div class="section-head"><h2>UNSURE</h2><span class="count" id="count-unsure"></span></div>
-    <div class="chips" id="chips-unsure"></div>
+    <div class="grid" id="chips-unsure"></div>
   </section>
 
   <section class="block" id="sec-out" hidden>
     <div class="section-head"><h2>SITTING OUT</h2><span class="count" id="count-out"></span></div>
-    <div class="chips" id="chips-out"></div>
+    <div class="grid" id="chips-out"></div>
   </section>
 
   <div class="meta-strip">
@@ -237,12 +237,6 @@ function playerCard(p){
   card.appendChild(stack);
   if(p.jersey) card.appendChild(el("div","p-num",p.jersey));
   return card;
-}
-
-function chip(p, extraCls){
-  const c=el("div","chip"+(extraCls?" "+extraCls:""));
-  c.appendChild(el("span","name",p.name));
-  return c;
 }
 
 // "Winter, 26-27" → "Winter 2026-27"; "Spring, 27" → "Spring 2027"
@@ -317,20 +311,20 @@ function render(){
 
   // Subs
   const cSub=document.getElementById("chips-sub");
-  cSub.replaceChildren(...subs.map(p=>chip(p)));
+  cSub.replaceChildren(...subs.map(playerCard));
   document.getElementById("count-sub").textContent=subs.length+(subs.length===1?" player":" players");
   document.getElementById("sec-sub").hidden=!subs.length;
 
   // Unsure + no response
   const cUn=document.getElementById("chips-unsure");
-  cUn.replaceChildren(...unsure.map(p=>chip(p,"unsure")));
+  cUn.replaceChildren(...unsure.map(playerCard));
   const nUn=unsure.length;
   document.getElementById("count-unsure").textContent=nUn+(nUn===1?" player":" players");
   document.getElementById("sec-unsure").hidden=!nUn;
 
   // Out
   const cOut=document.getElementById("chips-out");
-  cOut.replaceChildren(...outs.map(p=>chip(p,"out")));
+  cOut.replaceChildren(...outs.map(playerCard));
   document.getElementById("count-out").textContent=outs.length+(outs.length===1?" player":" players");
   document.getElementById("sec-out").hidden=!outs.length;
 }
