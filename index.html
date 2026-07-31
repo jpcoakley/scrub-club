@@ -92,7 +92,7 @@ section.block{padding-top:var(--space-8)}
 .player{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);transition:transform var(--dur-med) var(--ease-out)}
 .player:hover{transform:translateY(-2px)}
 .p-stack{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
-.p-first{font-family:var(--font-display);font-size:19px;line-height:1.1;color:var(--text-strong);text-transform:uppercase}
+.p-first{font-family:var(--font-display);font-weight:700;font-size:19px;line-height:1.1;color:var(--text-strong);text-transform:uppercase}
 .p-last{font-family:var(--font-condensed);font-weight:600;font-size:12px;letter-spacing:.08em;line-height:1.2;color:var(--ink-500);text-transform:uppercase}
 .p-num{font-family:var(--font-numeral);font-weight:800;font-size:38px;line-height:1;color:var(--burgundy-600);flex:none}
 .player .badge{font-size:10px;padding:1px 6px;letter-spacing:.08em;margin-top:2px}
@@ -300,9 +300,9 @@ function render(){
   const outs=players.filter(p=>p.statusKey==="out");
   const unsure=players.filter(p=>!["in","paid","goalie","sub","out"].includes(p.statusKey));
 
-  // Goalies lead the committed grid, then jersey number (no number → last, alphabetical)
+  // Committed grid ordered by jersey number (no number → last, alphabetical)
   const numVal=p=>p.jersey?parseInt(p.jersey,10):Infinity;
-  committed.sort((a,b)=>(b.goalie?1:0)-(a.goalie?1:0)||numVal(a)-numVal(b)||a.last.localeCompare(b.last));
+  committed.sort((a,b)=>numVal(a)-numVal(b)||a.last.localeCompare(b.last));
 
   // Stats
   const stats=document.getElementById("stats");
