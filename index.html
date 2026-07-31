@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scrub Club — Who's In</title>
+<meta name="description" content="Scrub Club season commitments — who's in, who's out, who's subbing.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%237A2842'/><text x='50' y='72' font-size='60' font-family='Georgia' font-weight='bold' text-anchor='middle' fill='%23F1E9D2'>S</text></svg>">
+<style>
+/* ============ Scrub Club Design System tokens ============ */
+@import url("https://fonts.googleapis.com/css2?family=Graduate&family=Big+Shoulders+Display:wght@600;700;800&family=Archivo:ital,wght@0,400..700;1,400..600&family=Barlow+Condensed:wght@500;600;700&display=swap");
+:root{
+  --burgundy-900:#3F1523;--burgundy-800:#571C2E;--burgundy-700:#68223A;--burgundy-600:#7A2842;
+  --burgundy-500:#8F3A54;--burgundy-400:#A85A71;--burgundy-300:#C68C9C;--burgundy-200:#E2C3CD;--burgundy-100:#F4E5EA;
+  --oatmeal-600:#C9BE9F;--oatmeal-500:#DED3B4;--oatmeal-400:#E9E0C4;--oatmeal-300:#F1E9D2;--oatmeal-200:#F6F1E1;--oatmeal-100:#FAF7EE;
+  --ink-900:#191413;--ink-700:#3A302E;--ink-500:#645853;--ink-300:#9C918B;--ink-100:#D9D2CA;--white:#FFFFFF;
+  --ice-500:#8FB6C4;--ice-300:#CFE2E8;--whistle-500:#E0A22C;--penalty-500:#B3341F;--turf-500:#3F6B4A;
+
+  --surface-page:var(--oatmeal-300);--surface-card:var(--oatmeal-100);--surface-raised:var(--white);
+  --surface-inverse:var(--burgundy-600);--surface-inverse-deep:var(--burgundy-900);--surface-muted:var(--oatmeal-400);
+  --text-body:var(--ink-700);--text-strong:var(--burgundy-900);--text-muted:var(--ink-500);
+  --text-on-inverse:var(--oatmeal-300);--text-on-inverse-muted:var(--burgundy-300);
+  --border-hairline:var(--oatmeal-600);--border-strong:var(--burgundy-600);
+  --status-win:var(--turf-500);--status-loss:var(--penalty-500);--status-warning:var(--whistle-500);
+  --focus-ring:var(--whistle-500);
+
+  --font-display:"Graduate","Archivo",Georgia,serif;
+  --font-body:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --font-numeral:"Big Shoulders Display","Graduate",Impact,sans-serif;
+  --font-condensed:"Barlow Condensed","Archivo Narrow",Arial,sans-serif;
+  --text-display-2:clamp(40px,5vw,68px);--text-display-3:34px;--text-heading:20px;
+  --tracking-eyebrow:0.18em;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;
+  --space-10:40px;--space-12:48px;--space-16:64px;--space-24:96px;
+  --gutter-inline:24px;--container-max:1200px;
+  --radius-sm:2px;--radius-md:4px;
+  --clip-patch:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+  --clip-patch-sm:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);
+  --shadow-card:0 1px 0 var(--oatmeal-600);
+  --shadow-raised:0 2px 0 var(--oatmeal-600),0 8px 24px rgba(63,21,35,.08);
+  --texture-hairline:repeating-linear-gradient(90deg,var(--oatmeal-600) 0 1px,transparent 1px 6px);
+  --ease-out:cubic-bezier(.16,1,.3,1);--dur-med:200ms;
+}
+
+/* ============ Base ============ */
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--surface-page);color:var(--text-body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.container{max-width:var(--container-max);margin:0 auto;padding-inline:var(--gutter-inline)}
+:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+
+.eyebrow{font-family:var(--font-condensed);font-size:13px;font-weight:600;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--text-muted)}
+
+/* ============ Header ============ */
+header.site{background:var(--surface-inverse);border-bottom:3px solid var(--burgundy-900);position:sticky;top:0;z-index:20}
+header.site .container{display:flex;align-items:center;gap:var(--space-4);padding-block:var(--space-4)}
+.crest{width:40px;height:40px;flex:none;background:var(--burgundy-900);clip-path:var(--clip-patch-sm);display:grid;place-items:center;border:2px solid var(--oatmeal-300)}
+.crest span{font-family:var(--font-display);font-size:15px;color:var(--oatmeal-300);letter-spacing:.02em;transform:translateY(1px)}
+.wordmark{font-family:var(--font-display);font-size:20px;color:var(--oatmeal-300);letter-spacing:.03em;text-decoration:none}
+.season-tag{margin-left:auto;font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-on-inverse-muted)}
+.season-tag b{color:var(--oatmeal-300);font-weight:700}
+
+/* ============ Hero ============ */
+.hero{background:var(--surface-inverse);color:var(--text-on-inverse);padding:var(--space-12) 0 var(--space-16);border-bottom:3px solid var(--burgundy-900)}
+.hero .eyebrow{color:var(--text-on-inverse-muted)}
+.hero h1{font-family:var(--font-display);font-size:var(--text-display-2);line-height:.94;letter-spacing:.02em;color:var(--oatmeal-300);margin:var(--space-2) 0 var(--space-3)}
+.hero p.sub{max-width:520px;color:var(--burgundy-200);font-size:15px}
+.stat-row{display:flex;gap:var(--space-4);margin-top:var(--space-8);flex-wrap:wrap}
+.stat{background:var(--burgundy-800);clip-path:var(--clip-patch);padding:var(--space-4) var(--space-6);min-width:132px}
+.stat .num{font-family:var(--font-numeral);font-weight:800;font-size:44px;line-height:1;color:var(--oatmeal-300)}
+.stat .lbl{font-family:var(--font-condensed);font-weight:600;font-size:13px;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--text-on-inverse-muted);margin-top:var(--space-1)}
+
+/* ============ Sections ============ */
+section.block{padding-top:var(--space-12)}
+.section-head{display:flex;align-items:baseline;gap:var(--space-4);border-bottom:2px solid var(--burgundy-600);padding-bottom:var(--space-2)}
+.section-head h2{font-family:var(--font-display);font-size:26px;letter-spacing:.02em;color:var(--text-strong)}
+.section-head .count{font-family:var(--font-condensed);font-weight:700;font-size:16px;color:var(--text-muted);letter-spacing:.06em}
+
+/* Player cards (committed) */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:var(--space-4);margin-top:var(--space-6)}
+.player{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3);transition:transform var(--dur-med) var(--ease-out)}
+.player:hover{transform:translateY(-2px)}
+.patch{width:56px;height:56px;background:var(--burgundy-600);clip-path:var(--clip-patch-sm);display:grid;place-items:center}
+.patch span{font-family:var(--font-numeral);font-weight:800;font-size:30px;color:var(--oatmeal-300);transform:translateY(-1px)}
+.patch.blank span{font-size:20px;color:var(--burgundy-300)}
+.player .name{font-family:var(--font-display);font-size:16px;line-height:1.2;color:var(--text-strong);text-transform:uppercase}
+.player .row-top{display:flex;justify-content:space-between;align-items:flex-start}
+.badge{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-sm)}
+.badge.ice{background:var(--ice-300);color:var(--ink-700)}
+.badge.win{background:var(--status-win);color:var(--oatmeal-100)}
+
+/* Sub list */
+.chips{display:flex;flex-wrap:wrap;gap:var(--space-3);margin-top:var(--space-6)}
+.chip{background:var(--surface-card);box-shadow:var(--shadow-card);border-radius:var(--radius-sm);padding:var(--space-3) var(--space-4);display:flex;align-items:center;gap:var(--space-3)}
+.chip .name{font-weight:600;font-size:15px;color:var(--text-strong)}
+.chip .badge{background:var(--whistle-500);color:var(--ink-900)}
+.chip.out .badge{background:var(--oatmeal-400);color:var(--text-muted)}
+.chip.out .name{color:var(--text-muted);font-weight:500}
+.chip.unsure .badge{background:var(--burgundy-200);color:var(--burgundy-800)}
+
+/* Status strip */
+.meta-strip{margin-top:var(--space-16);padding:var(--space-4) 0;background-image:var(--texture-hairline);background-size:auto 1px;background-repeat:repeat-x;background-position:top}
+.meta-strip .inner{display:flex;gap:var(--space-6);flex-wrap:wrap;align-items:center;font-family:var(--font-condensed);font-size:14px;letter-spacing:.06em;color:var(--text-muted)}
+.meta-strip a{color:var(--burgundy-600)}
+#state{font-weight:600}
+#state.err{color:var(--penalty-500)}
+
+/* Footer */
+footer.site{background:var(--surface-inverse-deep);color:var(--text-on-inverse-muted);margin-top:var(--space-10)}
+footer.site .container{padding-block:var(--space-6);display:flex;gap:var(--space-6);align-items:center;flex-wrap:wrap;font-size:12px}
+footer.site .slogan{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:var(--oatmeal-300)}
+footer.site .fine{margin-left:auto}
+
+@media (max-width:560px){
+  .season-tag span.long{display:none}
+  .stat{min-width:104px;padding:var(--space-3) var(--space-4)}
+  .stat .num{font-size:36px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="crest" aria-hidden="true"><span>SC</span></div>
+    <a class="wordmark" href="#">SCRUB CLUB</a>
+    <div class="season-tag"><span class="long">Season:&nbsp;</span><b id="season-tag">—</b></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="container">
+    <div class="eyebrow" id="hero-eyebrow">Season commitments</div>
+    <h1>WHO'S IN.</h1>
+    <p class="sub">Live from the team sheet. If your name's in the wrong column, you know who to Venmo.</p>
+    <div class="stat-row" id="stats" aria-live="polite"></div>
+  </div>
+</div>
+
+<main class="container">
+  <section class="block" id="sec-in" hidden>
+    <div class="section-head"><h2>COMMITTED</h2><span class="count" id="count-in"></span></div>
+    <div class="grid" id="grid-in"></div>
+  </section>
+
+  <section class="block" id="sec-sub" hidden>
+    <div class="section-head"><h2>SUB LIST</h2><span class="count" id="count-sub"></span></div>
+    <div class="chips" id="chips-sub"></div>
+  </section>
+
+  <section class="block" id="sec-unsure" hidden>
+    <div class="section-head"><h2>ON THE FENCE</h2><span class="count" id="count-unsure"></span></div>
+    <div class="chips" id="chips-unsure"></div>
+  </section>
+
+  <section class="block" id="sec-out" hidden>
+    <div class="section-head"><h2>SITTING THIS ONE OUT</h2><span class="count" id="count-out"></span></div>
+    <div class="chips" id="chips-out"></div>
+  </section>
+
+  <div class="meta-strip">
+    <div class="inner">
+      <span id="state">Loading the sheet…</span>
+      <span id="updated"></span>
+      <a href="#" id="refresh">Refresh</a>
+    </div>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="container">
+    <span class="slogan">Inscrubutable Hockey</span>
+    <span class="fine">© 2026 Scrub Club · No trophies, no refunds.</span>
+  </div>
+</footer>
+
+<script>
+/* ================= CONFIG =================
+   Update these if the sheet layout changes.  */
+const SHEET_ID   = "1nRKRkEoHEBUjb4c0mI8GQVk8riIwmDT_XBENtXcTwjg";
+const GID        = "901229563";
+const HEADER_ROW = 7;   // 1-based row holding "First / Last / <season>" headers
+const DATA_START = 8;   // 1-based first player row
+const COL_FIRST  = "O";
+const COL_LAST   = "P";
+const COL_STATUS = "U"; // current season column
+const COL_JERSEY = "L";
+/* ========================================== */
+
+const colIdx = c => c.toUpperCase().charCodeAt(0) - 65; // A=0 … Z=25
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
+
+// Minimal RFC-4180 CSV parser (handles quoted fields, embedded commas/newlines)
+function parseCSV(text){
+  const rows=[[]]; let field="", inQ=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(inQ){
+      if(ch==='"'){ if(text[i+1]==='"'){field+='"';i++;} else inQ=false; }
+      else field+=ch;
+    }else if(ch==='"') inQ=true;
+    else if(ch===','){ rows[rows.length-1].push(field); field=""; }
+    else if(ch==='\n'){ rows[rows.length-1].push(field); field=""; rows.push([]); }
+    else if(ch!=='\r') field+=ch;
+  }
+  rows[rows.length-1].push(field);
+  if(rows[rows.length-1].length===1 && rows[rows.length-1][0]==="") rows.pop();
+  return rows;
+}
+
+function el(tag, cls, text){
+  const n=document.createElement(tag);
+  if(cls) n.className=cls;
+  if(text!=null) n.textContent=text;
+  return n;
+}
+
+function playerCard(p){
+  const card=el("div","player");
+  const top=el("div","row-top");
+  const patch=el("div","patch"+(p.jersey?"":" blank"));
+  patch.appendChild(el("span",null,p.jersey||"–"));
+  top.appendChild(patch);
+  if(p.goalie){ const b=el("span","badge ice","Goalie"); top.appendChild(b); }
+  card.appendChild(top);
+  card.appendChild(el("div","name",p.name));
+  return card;
+}
+
+function chip(p, extraCls, badgeText){
+  const c=el("div","chip"+(extraCls?" "+extraCls:""));
+  c.appendChild(el("span","name",p.name));
+  c.appendChild(el("span","badge",badgeText));
+  return c;
+}
+
+function render(rows){
+  const iF=colIdx(COL_FIRST), iL=colIdx(COL_LAST), iS=colIdx(COL_STATUS), iJ=colIdx(COL_JERSEY);
+
+  // Season label from the header row of the status column
+  const header=rows[HEADER_ROW-1]||[];
+  const season=(header[iS]||"").replace(/,\s*/," ").trim();
+  document.getElementById("season-tag").textContent = season||"This season";
+  document.getElementById("hero-eyebrow").textContent = (season?season+" · ":"")+"Season commitments";
+  document.title = `Scrub Club — Who's In${season?" · "+season:""}`;
+
+  const players=[];
+  for(let r=DATA_START-1;r<rows.length;r++){
+    const row=rows[r]||[];
+    const first=(row[iF]||"").trim(), last=(row[iL]||"").trim();
+    if(!first && !last) continue;
+    const status=(row[iS]||"").trim();
+    players.push({
+      name:(first+" "+last).trim(),
+      last, status, statusKey:status.toLowerCase(),
+      jersey:(row[iJ]||"").trim(),
+      goalie:status.toLowerCase()==="goalie"
+    });
+  }
+  players.sort((a,b)=>a.last.localeCompare(b.last)||a.name.localeCompare(b.name));
+
+  const committed=players.filter(p=>p.statusKey==="in"||p.goalie);
+  const subs=players.filter(p=>p.statusKey==="sub");
+  const outs=players.filter(p=>p.statusKey==="out");
+  const unsure=players.filter(p=>p.statusKey && !["in","goalie","sub","out"].includes(p.statusKey));
+  const silent=players.filter(p=>!p.statusKey);
+
+  // Goalies lead the committed grid
+  committed.sort((a,b)=>(b.goalie?1:0)-(a.goalie?1:0)||a.last.localeCompare(b.last));
+
+  // Stats
+  const stats=document.getElementById("stats");
+  stats.replaceChildren();
+  const skaters=committed.filter(p=>!p.goalie).length;
+  const goalies=committed.filter(p=>p.goalie).length;
+  [[skaters,"Skaters in"],[goalies,goalies===1?"Goalie":"Goalies"],[subs.length,"Subs ready"]].forEach(([n,l])=>{
+    const s=el("div","stat");
+    s.appendChild(el("div","num",String(n)));
+    s.appendChild(el("div","lbl",l));
+    stats.appendChild(s);
+  });
+
+  // Committed grid
+  const gIn=document.getElementById("grid-in");
+  gIn.replaceChildren(...committed.map(playerCard));
+  document.getElementById("count-in").textContent=committed.length+" players";
+  document.getElementById("sec-in").hidden=!committed.length;
+
+  // Subs
+  const cSub=document.getElementById("chips-sub");
+  cSub.replaceChildren(...subs.map(p=>chip(p,null,"Sub")));
+  document.getElementById("count-sub").textContent=subs.length+(subs.length===1?" player":" players");
+  document.getElementById("sec-sub").hidden=!subs.length;
+
+  // Unsure + no response
+  const cUn=document.getElementById("chips-unsure");
+  cUn.replaceChildren(
+    ...unsure.map(p=>chip(p,"unsure",p.status)),
+    ...silent.map(p=>chip(p,"unsure","No word"))
+  );
+  const nUn=unsure.length+silent.length;
+  document.getElementById("count-unsure").textContent=nUn+(nUn===1?" player":" players");
+  document.getElementById("sec-unsure").hidden=!nUn;
+
+  // Out
+  const cOut=document.getElementById("chips-out");
+  cOut.replaceChildren(...outs.map(p=>chip(p,"out","Out")));
+  document.getElementById("count-out").textContent=outs.length+(outs.length===1?" player":" players");
+  document.getElementById("sec-out").hidden=!outs.length;
+}
+
+async function load(){
+  const state=document.getElementById("state");
+  state.classList.remove("err");
+  state.textContent="Loading the sheet…";
+  try{
+    const res=await fetch(CSV_URL,{cache:"no-store"});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    render(parseCSV(await res.text()));
+    state.textContent="Live from the team sheet";
+    document.getElementById("updated").textContent="Updated "+new Date().toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+  }catch(e){
+    state.classList.add("err");
+    state.textContent="Couldn't reach the sheet — check that it's shared as “anyone with the link can view.”";
+  }
+}
+document.getElementById("refresh").addEventListener("click",e=>{e.preventDefault();load();});
+load();
+</script>
+</body>
+</html>
