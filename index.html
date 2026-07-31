@@ -89,11 +89,13 @@ section.block{padding-top:var(--space-8)}
 
 /* Player cards (committed) */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--space-3);margin-top:var(--space-6)}
-.player{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);padding:var(--space-3);min-height:72px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;transition:transform var(--dur-med) var(--ease-out)}
+.player{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);transition:transform var(--dur-med) var(--ease-out)}
 .player:hover{transform:translateY(-2px)}
-.player .name{font-family:var(--font-display);font-size:16px;line-height:1.25;color:var(--text-strong);text-transform:uppercase}
-.player .name .num{font-family:var(--font-numeral);font-weight:800;font-size:15px;color:var(--burgundy-600)}
-.player .badge{font-size:11px;padding:2px 6px;letter-spacing:.08em}
+.p-stack{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
+.p-first{font-family:var(--font-display);font-size:19px;line-height:1.1;color:var(--text-strong);text-transform:uppercase}
+.p-last{font-family:var(--font-condensed);font-weight:600;font-size:12px;letter-spacing:.08em;line-height:1.2;color:var(--ink-500);text-transform:uppercase}
+.p-num{font-family:var(--font-numeral);font-weight:800;font-size:38px;line-height:1;color:var(--burgundy-600);flex:none}
+.player .badge{font-size:10px;padding:1px 6px;letter-spacing:.08em;margin-top:2px}
 .badge.captain{background:var(--burgundy-600);color:var(--oatmeal-100)}
 .badge{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-sm)}
 .badge.ice{background:var(--ice-300);color:var(--ink-700)}
@@ -232,14 +234,13 @@ function el(tag, cls, text){
 
 function playerCard(p){
   const card=el("div","player");
-  const name=el("div","name",p.name);
-  if(p.jersey){
-    name.appendChild(document.createTextNode(", "));
-    name.appendChild(el("span","num",p.jersey));
-  }
-  card.appendChild(name);
-  if(p.goalie) card.appendChild(el("span","badge ice","Goalie"));
-  else if(ROLES[p.name]) card.appendChild(el("span","badge captain",ROLES[p.name]));
+  const stack=el("div","p-stack");
+  stack.appendChild(el("div","p-first",p.first));
+  if(p.last) stack.appendChild(el("div","p-last",p.last));
+  if(p.goalie) stack.appendChild(el("span","badge ice","Goalie"));
+  else if(ROLES[p.name]) stack.appendChild(el("span","badge captain",ROLES[p.name]));
+  card.appendChild(stack);
+  if(p.jersey) card.appendChild(el("div","p-num",p.jersey));
   return card;
 }
 
@@ -286,7 +287,7 @@ function render(){
     if(!status) continue; // no status for this season → not shown on the site
     players.push({
       name:(first+" "+last).trim(),
-      last, status, statusKey:status.toLowerCase(),
+      first, last, status, statusKey:status.toLowerCase(),
       jersey:(row[iJ]||"").trim(),
       goalie:status.toLowerCase()==="goalie"
     });
