@@ -77,6 +77,14 @@ header.site .container{display:flex;align-items:center;gap:var(--space-4);paddin
 .hero{background:var(--surface-inverse);color:var(--text-on-inverse);padding:var(--space-4) 0 var(--space-8);border-bottom:3px solid var(--burgundy-900)}
 .hero h1{font-family:var(--font-display);font-size:clamp(36px,6vw,56px);line-height:.94;letter-spacing:.02em;color:var(--oatmeal-300);margin:var(--space-2) 0 0}
 .hero-row{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap}
+.tabs{display:flex;gap:var(--space-2);margin-top:var(--space-4);overflow-x:auto}
+.tab{white-space:nowrap}
+.tab{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-on-inverse-muted);background:transparent;border:none;border-bottom:3px solid transparent;padding:6px 10px 8px;cursor:pointer}
+.tab:hover{color:var(--oatmeal-300)}
+.tab.active{color:var(--oatmeal-300);border-bottom-color:var(--whistle-500,#E8B93E)}
+.league{background:#f2f0eb}
+.league iframe{display:block;width:100%;min-height:calc(100vh - var(--freeze-h,220px));border:none}
+.league-note{padding:var(--space-8) var(--gutter-inline);font-size:16px;color:var(--ink-500);text-align:center}
 .stat-row{display:flex;gap:var(--space-3);flex-wrap:wrap}
 .stat{background:var(--burgundy-800);clip-path:var(--clip-patch);padding:10px 18px;min-width:0}
 .stat .num{font-family:var(--font-numeral);font-weight:800;font-size:28px;line-height:1;color:var(--oatmeal-300)}
@@ -149,6 +157,13 @@ footer.site .fine{margin-left:auto}
     <select id="season-select" class="season-select" aria-label="Season"></select>
     <div class="stat-row" id="stats" aria-live="polite"></div>
   </div>
+  <nav class="container tabs">
+    <button class="tab active" data-view="roster" type="button">Roster</button>
+    <button class="tab" data-view="schedule" type="button">Schedule</button>
+    <button class="tab" data-view="stats" type="button">Stats</button>
+    <button class="tab" data-view="swag" type="button">Swag</button>
+    <button class="tab" data-view="join" type="button">Join</button>
+  </nav>
 </div>
 </div>
 
@@ -182,6 +197,21 @@ footer.site .fine{margin-left:auto}
   </div>
 </main>
 
+<div class="league" id="view-schedule" hidden>
+  <p class="league-note" hidden></p>
+  <iframe title="Ice Pack Hockey — league schedule"></iframe>
+</div>
+<div class="league" id="view-stats" hidden>
+  <p class="league-note" hidden></p>
+  <iframe title="Ice Pack Hockey — Scrub Club team stats"></iframe>
+</div>
+<div class="league" id="view-swag" hidden>
+  <p class="league-note">Scrub Club swag is coming soon. 🧼</p>
+</div>
+<div class="league" id="view-join" hidden>
+  <p class="league-note">Want in? Talk to a Scrub Club player about joining or subbing.</p>
+</div>
+
 <footer class="site">
   <div class="container">
     <span class="slogan">Inscrubutable Hockey</span>
@@ -198,6 +228,9 @@ const DATA_START = 8;   // 1-based first player row
 const COL_FIRST  = "O";
 const COL_LAST   = "P";
 const SEASON_COLS = ["U","T"]; // season columns offered in the dropdown; first = current/default
+// GameSheet (league stats) season/team ids, keyed by sheet season column.
+// Add a new entry when the league posts a new season.
+const GAMESHEET = { "T": { season: 15132, team: 519988 } };
 const COL_JERSEY = "L";
 /* ========================================== */
 
@@ -264,7 +297,10 @@ function render(){
       sel.appendChild(o);
     });
     sel.value=seasonCol;
-    sel.addEventListener("change",()=>{seasonCol=sel.value;render();});
+    sel.addEventListener("change",()=>{
+      seasonCol=sel.value;render();
+      if(activeView==="schedule"||activeView==="stats") updateFrame(activeView);
+    });
   }
 
   const players=[];
@@ -345,6 +381,42 @@ async function load(){
     state.textContent="Couldn't reach the sheet — check that it's shared as “anyone with the link can view.”";
   }
 }
+// Tabs: Roster (sheet data), Schedule / Stats (GameSheet embeds), Swag, Join
+const VIEWS=["schedule","stats","swag","join"];
+let activeView="roster";
+function gamesheetSrc(view){
+  const gs=GAMESHEET[seasonCol];
+  if(!gs) return null;
+  return view==="schedule"
+    ? `https://gamesheetstats.com/seasons/${gs.season}/schedule?configuration%5Blogo%5D=false`
+    : `https://gamesheetstats.com/seasons/${gs.season}/teams/${gs.team}?configuration%5Blogo%5D=false`;
+}
+function updateFrame(view){
+  const box=document.getElementById("view-"+view);
+  const frame=box.querySelector("iframe");
+  if(!frame) return;
+  const note=box.querySelector(".league-note");
+  const src=gamesheetSrc(view);
+  if(src){
+    if(frame.dataset.src!==src){ frame.src=src; frame.dataset.src=src; }
+    frame.hidden=false; note.hidden=true;
+  }else{
+    const sel=document.getElementById("season-select");
+    const label=sel.options[sel.selectedIndex]?.textContent||"this season";
+    note.textContent=`The league hasn't posted ${label} yet. Check back once games are scheduled.`;
+    frame.hidden=true; note.hidden=false;
+  }
+}
+function showTab(which){
+  activeView=which;
+  document.querySelector("main").hidden=which!=="roster";
+  VIEWS.forEach(v=>{ document.getElementById("view-"+v).hidden=v!==which; });
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===which));
+  if(which==="schedule"||which==="stats") updateFrame(which);
+  window.scrollTo(0,0);
+}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.view)));
+
 // Sticky section headers pin just below the frozen burgundy block
 function setFreezeH(){
   const f=document.querySelector(".freeze");
