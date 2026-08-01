@@ -89,6 +89,8 @@ header.site .container{display:flex;align-items:center;gap:var(--space-4);paddin
 .p-num.win{color:var(--turf-500)}
 .p-num.loss{color:var(--penalty-500)}
 .p-num.tie{color:var(--ink-500)}
+.swag-link{text-decoration:none;color:inherit;border:none}
+.swag-icon{flex:none;display:flex}
 .sched-foot{padding:var(--space-6) 0 var(--space-4);font-family:var(--font-condensed);font-size:13px;color:var(--ink-300)}
 .sched-foot a{color:var(--burgundy-600)}
 .stat-row{display:flex;gap:var(--space-3);flex-wrap:wrap}
@@ -224,8 +226,21 @@ footer.site .fine{margin-left:auto}
   <p class="league-note" hidden></p>
   <iframe title="Ice Pack Hockey — Scrub Club team stats"></iframe>
 </div>
-<div class="league" id="view-swag" hidden>
-  <p class="league-note">Scrub Club swag is coming soon. 🧼</p>
+<div id="view-swag" hidden>
+  <div class="container">
+    <section class="block">
+      <div class="section-head"><h2>SWAG</h2></div>
+      <div class="grid">
+        <a class="player swag-link" href="beer-checklist.pdf" target="_blank" rel="noopener">
+          <div class="p-stack">
+            <div class="p-first">Beer Checklist</div>
+            <div class="p-last">Print it · Rate the cooler</div>
+          </div>
+          <span class="swag-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30"><path fill="#7A2842" d="M6 9h9v11a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 6 20V9Z"/><path fill="#7A2842" d="M15 10.5h1.75A2.25 2.25 0 0 1 19 12.75v3a2.25 2.25 0 0 1-2.25 2.25H15V16.5h1.75a.75.75 0 0 0 .75-.75v-3a.75.75 0 0 0-.75-.75H15v-1.5Z"/><circle cx="7.5" cy="7.5" r="2.2" fill="#7A2842"/><circle cx="10.8" cy="6.2" r="2.6" fill="#7A2842"/><circle cx="14" cy="7.5" r="2.1" fill="#7A2842"/></svg></span>
+        </a>
+      </div>
+    </section>
+  </div>
 </div>
 <div class="league" id="view-join" hidden>
   <p class="league-note">Want in? Talk to a Scrub Club player about joining or subbing.</p>
