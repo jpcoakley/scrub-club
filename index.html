@@ -158,7 +158,7 @@ footer.site .fine{margin-left:auto}
     <div class="stat-row" id="stats" aria-live="polite"></div>
   </div>
   <nav class="container tabs">
-    <button class="tab active" data-view="roster" type="button">Roster</button>
+    <button class="tab active" data-view="roster" type="button">Team</button>
     <button class="tab" data-view="schedule" type="button">Schedule</button>
     <button class="tab" data-view="stats" type="button">Stats</button>
     <button class="tab" data-view="swag" type="button">Swag</button>
@@ -169,7 +169,7 @@ footer.site .fine{margin-left:auto}
 
 <main class="container">
   <section class="block" id="sec-in" hidden>
-    <div class="section-head"><h2>COMMITTED</h2><span class="count" id="count-in"></span></div>
+    <div class="section-head"><h2>TEAM</h2><span class="count" id="count-in"></span></div>
     <div class="grid" id="grid-in"></div>
   </section>
 
@@ -272,9 +272,9 @@ function playerCard(p){
   return card;
 }
 
-// "Winter, 26-27" → "Winter 2026-27"; "Spring, 27" → "Spring 2027"
+// "Winter, 26-27" → "Winter, 2026-27"; "Spring, 27" → "Spring, 2027"
 function seasonLabel(raw){
-  let s=(raw||"").replace(/,\s*/," ").trim();
+  let s=(raw||"").trim().replace(/,\s*/,", ");
   return s.replace(/\b(\d{2})(-\d{2})?\b/,(m,y,r)=>"20"+y+(r||""));
 }
 
