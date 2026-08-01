@@ -85,6 +85,12 @@ header.site .container{display:flex;align-items:center;gap:var(--space-4);paddin
 .league{background:#f2f0eb}
 .league iframe{display:block;width:100%;min-height:calc(100vh - var(--freeze-h,220px));border:none}
 .league-note{padding:var(--space-8) var(--gutter-inline);font-size:16px;color:var(--ink-500);text-align:center}
+.p-num.score{font-size:19px}
+.p-num.win{color:var(--turf-500)}
+.p-num.loss{color:var(--penalty-500)}
+.p-num.tie{color:var(--ink-500)}
+.sched-foot{padding:var(--space-6) 0 var(--space-4);font-family:var(--font-condensed);font-size:13px;color:var(--ink-300)}
+.sched-foot a{color:var(--burgundy-600)}
 .stat-row{display:flex;gap:var(--space-3);flex-wrap:wrap}
 .stat{background:var(--burgundy-800);border-radius:28px/24px;padding:14px 34px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transform:rotate(-3deg)}
 .stat>*{transform:rotate(3deg)}
@@ -199,9 +205,9 @@ footer.site .fine{margin-left:auto}
   </div>
 </main>
 
-<div class="league" id="view-schedule" hidden>
+<div id="view-schedule" hidden>
   <p class="league-note" hidden></p>
-  <iframe title="Ice Pack Hockey — league schedule"></iframe>
+  <div class="container" id="sched"></div>
 </div>
 <div class="league" id="view-stats" hidden>
   <p class="league-note" hidden></p>
@@ -301,7 +307,8 @@ function render(){
     sel.value=seasonCol;
     sel.addEventListener("change",()=>{
       seasonCol=sel.value;render();
-      if(activeView==="schedule"||activeView==="stats") updateFrame(activeView);
+      if(activeView==="stats") updateFrame("stats");
+      if(activeView==="schedule") renderSchedule();
     });
   }
 
@@ -386,27 +393,73 @@ async function load(){
 // Tabs: Roster (sheet data), Schedule / Stats (GameSheet embeds), Swag, Join
 const VIEWS=["schedule","stats","swag","join"];
 let activeView="roster";
-function gamesheetSrc(view){
+function gamesheetSrc(){
   const gs=GAMESHEET[seasonCol];
   if(!gs) return null;
-  return view==="schedule"
-    ? `https://gamesheetstats.com/seasons/${gs.season}/schedule?configuration%5Blogo%5D=false`
-    : `https://gamesheetstats.com/seasons/${gs.season}/teams/${gs.team}?configuration%5Blogo%5D=false`;
+  return `https://gamesheetstats.com/seasons/${gs.season}/teams/${gs.team}?configuration%5Blogo%5D=false`;
+}
+
+// Branded schedule, rendered from schedule.json (snapshotted weekly from GameSheet)
+let schedData=null;
+function noSeasonNote(noteEl){
+  const sel=document.getElementById("season-select");
+  const label=sel.options[sel.selectedIndex]?.textContent||"this season";
+  noteEl.textContent=`The league hasn't posted ${label} yet. Check back once games are scheduled.`;
+  noteEl.hidden=false;
+}
+function gameCard(g){
+  const c=el("div","player");
+  const st=el("div","p-stack");
+  st.appendChild(el("div","p-first",g.opponent));
+  st.appendChild(el("div","p-last",`${g.date} · ${g.time} · ${g.rink}`));
+  c.appendChild(st);
+  if(g.us!=null){
+    const res=g.us>g.them?"W":g.us<g.them?"L":"T";
+    c.appendChild(el("div","p-num score "+(res==="W"?"win":res==="L"?"loss":"tie"),`${res} ${g.us}–${g.them}`));
+  }
+  return c;
+}
+function schedSection(title,games){
+  const sec=el("section","block");
+  const head=el("div","section-head");
+  const h=document.createElement("h2"); h.textContent=title; head.appendChild(h);
+  head.appendChild(el("span","count",games.length+(games.length===1?" game":" games")));
+  sec.appendChild(head);
+  const grid=el("div","grid");
+  games.forEach(g=>grid.appendChild(gameCard(g)));
+  sec.appendChild(grid);
+  return sec;
+}
+async function renderSchedule(){
+  const box=document.getElementById("sched"), note=document.querySelector("#view-schedule .league-note");
+  if(!schedData){
+    try{ schedData=await (await fetch("schedule.json",{cache:"no-store"})).json(); }
+    catch(e){ note.textContent="Couldn't load the schedule. Try refreshing."; note.hidden=false; return; }
+  }
+  const season=schedData.seasons[seasonCol];
+  box.replaceChildren();
+  if(!season){ noSeasonNote(note); return; }
+  note.hidden=true;
+  const upcoming=season.games.filter(g=>g.us==null);
+  const played=season.games.filter(g=>g.us!=null).slice().reverse();
+  if(upcoming.length) box.appendChild(schedSection("UPCOMING",upcoming));
+  if(played.length) box.appendChild(schedSection("RESULTS",played));
+  const foot=el("div","sched-foot");
+  foot.innerHTML=`Scores from Ice Pack Hockey · Updated ${schedData.updated} · <a href="${gamesheetSrc()||"#"}" target="_blank" rel="noopener">Full league site ↗</a>`;
+  box.appendChild(foot);
+  setFreezeH();
 }
 function updateFrame(view){
   const box=document.getElementById("view-"+view);
   const frame=box.querySelector("iframe");
   if(!frame) return;
   const note=box.querySelector(".league-note");
-  const src=gamesheetSrc(view);
+  const src=gamesheetSrc();
   if(src){
     if(frame.dataset.src!==src){ frame.src=src; frame.dataset.src=src; }
     frame.hidden=false; note.hidden=true;
   }else{
-    const sel=document.getElementById("season-select");
-    const label=sel.options[sel.selectedIndex]?.textContent||"this season";
-    note.textContent=`The league hasn't posted ${label} yet. Check back once games are scheduled.`;
-    frame.hidden=true; note.hidden=false;
+    frame.hidden=true; noSeasonNote(note);
   }
 }
 function showTab(which){
@@ -414,7 +467,8 @@ function showTab(which){
   document.querySelector("main").hidden=which!=="roster";
   VIEWS.forEach(v=>{ document.getElementById("view-"+v).hidden=v!==which; });
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===which));
-  if(which==="schedule"||which==="stats") updateFrame(which);
+  if(which==="stats") updateFrame(which);
+  if(which==="schedule") renderSchedule();
   window.scrollTo(0,0);
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.view)));
