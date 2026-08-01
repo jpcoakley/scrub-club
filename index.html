@@ -85,10 +85,15 @@ header.site .container{display:flex;align-items:center;gap:var(--space-4);paddin
 .league{background:#f2f0eb}
 .league iframe{display:block;width:100%;min-height:calc(100vh - var(--freeze-h,220px));border:none}
 .league-note{padding:var(--space-8) var(--gutter-inline);font-size:16px;color:var(--ink-500);text-align:center}
-.p-num.score{font-size:19px}
-.p-num.win{color:var(--turf-500)}
-.p-num.loss{color:var(--penalty-500)}
-.p-num.tie{color:var(--ink-500)}
+.sched-list{padding-top:var(--space-6)}
+.sg-row{display:flex;align-items:baseline;gap:var(--space-4);padding:12px 0;border-bottom:1px solid var(--oatmeal-500)}
+.sg-date{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500);width:58px;flex:none}
+.sg-time{font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-300);width:66px;flex:none}
+.sg-opp{font-family:var(--font-display);font-size:16px;color:var(--text-strong);text-transform:uppercase}
+.sg-res{margin-left:auto;font-family:var(--font-numeral);font-weight:800;font-size:16px;flex:none}
+.sg-res.win{color:var(--turf-500)}
+.sg-res.loss{color:var(--penalty-500)}
+.sg-res.tie{color:var(--ink-500)}
 .swag-link{text-decoration:none;color:inherit;border:none}
 .swag-icon{flex:none;display:flex}
 .sched-foot{padding:var(--space-6) 0 var(--space-4);font-family:var(--font-condensed);font-size:13px;color:var(--ink-300)}
@@ -489,28 +494,16 @@ function noSeasonNote(noteEl){
   noteEl.textContent=`The league hasn't posted ${label} yet. Check back once games are scheduled.`;
   noteEl.hidden=false;
 }
-function gameCard(g){
-  const c=el("div","player");
-  const st=el("div","p-stack");
-  st.appendChild(el("div","p-first",g.opponent));
-  st.appendChild(el("div","p-last",`${g.date} · ${g.time} · ${g.rink}`));
-  c.appendChild(st);
+function schedRow(g){
+  const r=el("div","sg-row");
+  r.appendChild(el("span","sg-date",g.date));
+  r.appendChild(el("span","sg-time",g.time));
+  r.appendChild(el("span","sg-opp",g.opponent));
   if(g.us!=null){
     const res=g.us>g.them?"W":g.us<g.them?"L":"T";
-    c.appendChild(el("div","p-num score "+(res==="W"?"win":res==="L"?"loss":"tie"),`${res} ${g.us}–${g.them}`));
+    r.appendChild(el("span","sg-res "+(res==="W"?"win":res==="L"?"loss":"tie"),`${res} ${g.us}–${g.them}`));
   }
-  return c;
-}
-function schedSection(title,games){
-  const sec=el("section","block");
-  const head=el("div","section-head");
-  const h=document.createElement("h2"); h.textContent=title; head.appendChild(h);
-  head.appendChild(el("span","count",games.length+(games.length===1?" game":" games")));
-  sec.appendChild(head);
-  const grid=el("div","grid");
-  games.forEach(g=>grid.appendChild(gameCard(g)));
-  sec.appendChild(grid);
-  return sec;
+  return r;
 }
 async function renderSchedule(){
   const box=document.getElementById("sched"), note=document.querySelector("#view-schedule .league-note");
@@ -522,10 +515,9 @@ async function renderSchedule(){
   box.replaceChildren();
   if(!season){ noSeasonNote(note); return; }
   note.hidden=true;
-  const upcoming=season.games.filter(g=>g.us==null);
-  const played=season.games.filter(g=>g.us!=null).slice().reverse();
-  if(upcoming.length) box.appendChild(schedSection("UPCOMING",upcoming));
-  if(played.length) box.appendChild(schedSection("RESULTS",played));
+  const list=el("div","sched-list");
+  season.games.forEach(g=>list.appendChild(schedRow(g)));
+  box.appendChild(list);
   const foot=el("div","sched-foot");
   foot.innerHTML=`Scores from Ice Pack Hockey · Updated ${schedData.updated} · <a href="${gamesheetSrc()||"#"}" target="_blank" rel="noopener">Full league site ↗</a>`;
   box.appendChild(foot);
