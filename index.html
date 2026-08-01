@@ -111,6 +111,16 @@ section.block{padding-top:var(--space-8)}
 .p-first{font-family:var(--font-display);font-weight:700;font-size:23px;line-height:1.1;color:var(--text-strong);text-transform:uppercase}
 .p-last{font-family:var(--font-condensed);font-weight:600;font-size:12px;letter-spacing:.08em;line-height:1.2;color:var(--ink-500);text-transform:uppercase}
 .p-num{font-family:var(--font-numeral);font-weight:800;font-size:38px;line-height:1;color:var(--burgundy-600);flex:none}
+/* Flip cards (roster): tap/click to see beer duty on the back */
+.flipcard{background:transparent;box-shadow:none;padding:0;display:block;min-height:72px;height:72px;perspective:700px;cursor:pointer}
+.flipcard .flip{position:relative;height:100%;transform-style:preserve-3d;transition:transform .45s var(--ease-out)}
+.flipcard.flipped .flip{transform:rotateY(180deg)}
+.flipcard .face{position:absolute;inset:0;border-radius:var(--radius-md);box-shadow:var(--shadow-raised);backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:var(--space-3) var(--space-4)}
+.flipcard .face.front{background:var(--surface-raised)}
+.flipcard .face.back{background:var(--burgundy-600);transform:rotateY(180deg);flex-direction:column;align-items:flex-start;justify-content:center;gap:2px}
+.b-label{font-family:var(--font-condensed);font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--burgundy-200)}
+.b-date{font-family:var(--font-display);font-weight:700;font-size:15px;line-height:1.1;color:var(--oatmeal-300);text-transform:uppercase}
+.b-days{font-family:var(--font-condensed);font-weight:600;font-size:12px;color:var(--oatmeal-500)}
 .badge{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-sm)}
 .badge.ice{background:var(--ice-300);color:var(--ink-700)}
 .badge.win{background:var(--status-win);color:var(--oatmeal-100)}
@@ -244,6 +254,7 @@ const COL_JERSEY = "L";
 
 const colIdx = c => c.toUpperCase().charCodeAt(0) - 65; // A=0 … Z=25
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
+const BEER_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Beer`;
 
 // Minimal RFC-4180 CSV parser (handles quoted fields, embedded commas/newlines)
 function parseCSV(text){
@@ -270,14 +281,52 @@ function el(tag, cls, text){
   return n;
 }
 
+// Latest beer run per player, from the sheet's "Beer" tab
+let beerMap={};
+async function loadBeer(){
+  try{
+    const res=await fetch(BEER_CSV_URL,{cache:"no-store"});
+    if(!res.ok) return;
+    const rows=parseCSV(await res.text());
+    const head=rows[0]||[];
+    const iD=head.indexOf("Date"), iB=head.indexOf("Beer Duty");
+    if(iD<0||iB<0) return;
+    const m={};
+    for(let i=1;i<rows.length;i++){
+      const n=(rows[i][iB]||"").trim().toLowerCase();
+      const ds=(rows[i][iD]||"").trim();
+      const t=Date.parse(ds);
+      if(!n||isNaN(t)) continue;
+      if(!m[n]||t>m[n].t) m[n]={t,ds};
+    }
+    beerMap=m;
+  }catch(e){/* beer data is optional — cards just show "no record" */}
+}
+
 function playerCard(p){
-  const card=el("div","player");
+  const shell=el("div","player flipcard");
+  const flip=el("div","flip");
+  const front=el("div","face front");
   const stack=el("div","p-stack");
   stack.appendChild(el("div","p-first",p.first));
   if(p.last) stack.appendChild(el("div","p-last",p.last));
-  card.appendChild(stack);
-  if(p.jersey) card.appendChild(el("div","p-num",p.jersey));
-  return card;
+  front.appendChild(stack);
+  if(p.jersey) front.appendChild(el("div","p-num",p.jersey));
+  const back=el("div","face back");
+  back.appendChild(el("div","b-label","Last brought beer"));
+  const info=beerMap[p.name.toLowerCase()];
+  if(info){
+    const days=Math.floor((Date.now()-info.t)/86400000);
+    back.appendChild(el("div","b-date",info.ds));
+    back.appendChild(el("div","b-days",days<=0?"Today":days===1?"1 day ago":days+" days ago"));
+  }else{
+    back.appendChild(el("div","b-date","No beer on record"));
+    back.appendChild(el("div","b-days","🍺 It's never too late"));
+  }
+  flip.appendChild(front); flip.appendChild(back);
+  shell.appendChild(flip);
+  shell.addEventListener("click",()=>shell.classList.toggle("flipped"));
+  return shell;
 }
 
 // "Winter, 26-27" → "Winter, 2026-27"; "Spring, 27" → "Spring, 2027"
@@ -379,9 +428,11 @@ async function load(){
   state.classList.remove("err");
   state.textContent="Loading the sheet…";
   try{
+    const beerReady=loadBeer();
     const res=await fetch(CSV_URL,{cache:"no-store"});
     if(!res.ok) throw new Error("HTTP "+res.status);
     allRows=parseCSV(await res.text());
+    await beerReady;
     render();
     state.textContent="";
     document.getElementById("updated").textContent="Updated "+new Date().toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
