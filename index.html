@@ -117,8 +117,9 @@ section.block{padding-top:var(--space-8)}
 .flipcard.flipped .flip{transform:rotateY(180deg)}
 .flipcard .face{position:absolute;inset:0;border-radius:var(--radius-md);box-shadow:var(--shadow-raised);backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:var(--space-3) var(--space-4)}
 .flipcard .face.front{background:var(--surface-raised)}
-.flipcard .face.back{background:var(--burgundy-600);transform:rotateY(180deg);flex-direction:column;align-items:flex-start;justify-content:center;gap:2px}
-.b-label{font-family:var(--font-condensed);font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--burgundy-200)}
+.flipcard .face.back{background:var(--burgundy-600);transform:rotateY(180deg);justify-content:flex-start}
+.b-icon{flex:none;display:flex}
+.b-stack{display:flex;flex-direction:column;gap:2px}
 .b-date{font-family:var(--font-display);font-weight:700;font-size:15px;line-height:1.1;color:var(--oatmeal-300);text-transform:uppercase}
 .b-days{font-family:var(--font-condensed);font-weight:600;font-size:12px;color:var(--oatmeal-500)}
 .badge{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-sm)}
@@ -313,16 +314,20 @@ function playerCard(p){
   front.appendChild(stack);
   if(p.jersey) front.appendChild(el("div","p-num",p.jersey));
   const back=el("div","face back");
-  back.appendChild(el("div","b-label","Last brought beer"));
+  const icon=el("div","b-icon");
+  icon.innerHTML='<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="#FFF" d="M6 9h9v11a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 6 20V9Z"/><path fill="#FFF" d="M15 10.5h1.75A2.25 2.25 0 0 1 19 12.75v3a2.25 2.25 0 0 1-2.25 2.25H15V16.5h1.75a.75.75 0 0 0 .75-.75v-3a.75.75 0 0 0-.75-.75H15v-1.5Z"/><circle cx="7.5" cy="7.5" r="2.2" fill="#FFF"/><circle cx="10.8" cy="6.2" r="2.6" fill="#FFF"/><circle cx="14" cy="7.5" r="2.1" fill="#FFF"/></svg>';
+  back.appendChild(icon);
+  const bstack=el("div","b-stack");
   const info=beerMap[p.name.toLowerCase()];
   if(info){
     const days=Math.floor((Date.now()-info.t)/86400000);
-    back.appendChild(el("div","b-date",info.ds));
-    back.appendChild(el("div","b-days",days<=0?"Today":days===1?"1 day ago":days+" days ago"));
+    bstack.appendChild(el("div","b-date",info.ds));
+    bstack.appendChild(el("div","b-days",days<=0?"Today":days===1?"1 day ago":days+" days ago"));
   }else{
-    back.appendChild(el("div","b-date","No beer on record"));
-    back.appendChild(el("div","b-days","🍺 It's never too late"));
+    bstack.appendChild(el("div","b-date","No beer on record"));
+    bstack.appendChild(el("div","b-days","It's never too late"));
   }
+  back.appendChild(bstack);
   flip.appendChild(front); flip.appendChild(back);
   shell.appendChild(flip);
   shell.addEventListener("click",()=>shell.classList.toggle("flipped"));
