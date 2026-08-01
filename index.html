@@ -77,7 +77,7 @@ header.site .container{display:flex;align-items:center;gap:var(--space-4);paddin
 .hero{background:var(--surface-inverse);color:var(--text-on-inverse);padding:var(--space-4) 0 var(--space-8);border-bottom:3px solid var(--burgundy-900)}
 .hero h1{font-family:var(--font-display);font-size:clamp(36px,6vw,56px);line-height:.94;letter-spacing:.02em;color:var(--oatmeal-300);margin:var(--space-2) 0 0}
 .hero-row{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap}
-.tabs{display:flex;gap:var(--space-2);margin-top:var(--space-4);overflow-x:auto}
+.tabs{display:flex;gap:var(--space-2);margin-bottom:var(--space-5);overflow-x:auto}
 .tab{white-space:nowrap}
 .tab{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-on-inverse-muted);background:transparent;border:none;border-bottom:3px solid transparent;padding:6px 10px 8px;cursor:pointer}
 .tab:hover{color:var(--oatmeal-300)}
@@ -161,10 +161,6 @@ footer.site .fine{margin-left:auto}
 </header>
 
 <div class="hero">
-  <div class="container hero-row">
-    <select id="season-select" class="season-select" aria-label="Season"></select>
-    <div class="stat-row" id="stats" aria-live="polite"></div>
-  </div>
   <nav class="container tabs">
     <button class="tab active" data-view="roster" type="button">Team</button>
     <button class="tab" data-view="schedule" type="button">Schedule</button>
@@ -172,6 +168,10 @@ footer.site .fine{margin-left:auto}
     <button class="tab" data-view="swag" type="button">Swag</button>
     <button class="tab" data-view="join" type="button">Join</button>
   </nav>
+  <div class="container hero-row">
+    <select id="season-select" class="season-select" aria-label="Season"></select>
+    <div class="stat-row" id="stats" aria-live="polite"></div>
+  </div>
 </div>
 </div>
 
