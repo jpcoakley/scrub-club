@@ -2,7 +2,7 @@
   "updated": "Jul 31, 2026",
   "teamAliases": ["Washington Hockey Team", "Scrub Club"],
   "seasons": {
-    "T": {
+    "V": {
       "games": [
         { "gm": 1,  "date": "Jun 9",  "time": "9:50 PM", "rink": "Rink 3", "opponent": "Blowholes",         "us": 7, "them": 4 },
         { "gm": 5,  "date": "Jun 16", "time": "8:50 PM", "rink": "Rink 2", "opponent": "Collision Experts", "us": 3, "them": 3 },

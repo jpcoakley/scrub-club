@@ -246,11 +246,12 @@ const HEADER_ROW = 7;   // 1-based row holding "First / Last / <season>" headers
 const DATA_START = 8;   // 1-based first player row
 const COL_FIRST  = "O";
 const COL_LAST   = "P";
-const SEASON_COLS = ["U","T","S"]; // season columns offered in the dropdown; first = current/default
+const SEASON_COLS = ["W","V","U"]; // season columns offered in the dropdown; first = current/default
 // GameSheet (league stats) season/team ids, keyed by sheet season column.
 // Add a new entry when the league posts a new season.
-const GAMESHEET = { "T": { season: 15132, team: 519988 } };
+const GAMESHEET = { "V": { season: 15132, team: 519988 } };
 const COL_JERSEY = "L";
+const COL_DRINKS = "R"; // checkbox: unchecked = doesn't drink → beer card shows N/A
 /* ========================================== */
 
 const colIdx = c => c.toUpperCase().charCodeAt(0) - 65; // A=0 … Z=25
@@ -319,7 +320,9 @@ function playerCard(p){
   back.appendChild(icon);
   const bstack=el("div","b-stack");
   const info=beerMap[p.name.toLowerCase()];
-  if(info){
+  if(!p.drinks){
+    bstack.appendChild(el("div","b-date","N/A"));
+  }else if(info){
     const days=Math.floor((Date.now()-info.t)/86400000);
     bstack.appendChild(el("div","b-date",info.ds));
     bstack.appendChild(el("div","b-days",days<=0?"Today":days===1?"1 day ago":days+" days ago"));
@@ -344,7 +347,7 @@ let allRows=null, seasonCol=SEASON_COLS[0];
 
 function render(){
   const rows=allRows;
-  const iF=colIdx(COL_FIRST), iL=colIdx(COL_LAST), iS=colIdx(seasonCol), iJ=colIdx(COL_JERSEY);
+  const iF=colIdx(COL_FIRST), iL=colIdx(COL_LAST), iS=colIdx(seasonCol), iJ=colIdx(COL_JERSEY), iDr=colIdx(COL_DRINKS);
 
   const header=rows[HEADER_ROW-1]||[];
   const season=seasonLabel(header[iS]);
@@ -377,6 +380,7 @@ function render(){
       name:(first+" "+last).trim(),
       first, last, status, statusKey:status.toLowerCase(),
       jersey:(row[iJ]||"").trim(),
+      drinks:(row[iDr]||"").trim().toUpperCase()!=="FALSE",
       goalie:status.toLowerCase()==="goalie"
     });
   }
