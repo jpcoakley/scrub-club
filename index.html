@@ -211,6 +211,7 @@ footer.site .fine{margin-left:auto}
 </div>
 
 <main class="container">
+  <p class="league-note" id="roster-note" hidden></p>
   <section class="block" id="sec-in" hidden>
     <div class="section-head"><h2>TEAM</h2><span class="count" id="count-in"></span></div>
     <div class="grid" id="grid-in"></div>
@@ -302,13 +303,19 @@ const HEADER_ROW = 7;   // 1-based row holding "First / Last / <season>" headers
 const DATA_START = 8;   // 1-based first player row
 const COL_FIRST  = "O";
 const COL_LAST   = "P";
-const SEASON_COLS = ["W","V","U"]; // season columns offered in the dropdown; first = current/default
-// GameSheet (league stats) season/team ids, keyed by sheet season column.
-// Add a new entry when the league posts a new season.
-const GAMESHEET = {
-  "V": { season: 15132, team: 519988 }, // Summer 2026
-  "U": { season: 14606, team: 498925 }  // Spring 2026
-};
+// Seasons in the dropdown, newest first (first = default).
+// `col` = roster status column on the sheet; archive seasons (no col) show Schedule/Stats only.
+// `gs` = GameSheet {season, team} ids for the Schedule snapshot key + Stats embed.
+const SEASONS = [
+  { key:"W", col:"W" },                                                    // Winter, 2026-27
+  { key:"V", col:"V", gs:{season:15132, team:519988} },                    // Summer, 2026
+  { key:"U", col:"U", gs:{season:14606, team:498925} },                    // Spring, 2026
+  { key:"w2526", label:"Winter, 2025-26", gs:{season:11378, team:407904} },
+  { key:"s25",   label:"Summer, 2025",    gs:{season:10363, team:369945} },
+  { key:"sp25",  label:"Spring, 2025",    gs:{season:9767,  team:352088} },
+  { key:"w2425", label:"Winter, 2024-25", gs:{season:7100,  team:271299} },
+  { key:"s24",   label:"Summer, 2024",    gs:{season:6444,  team:239486} }
+];
 const COL_JERSEY = "L";
 const COL_DRINKS = "R"; // checkbox: unchecked = doesn't drink → beer card shows N/A
 /* ========================================== */
@@ -402,22 +409,23 @@ function seasonLabel(raw){
   return s.replace(/\b(\d{2})(-\d{2})?\b/,(m,y,r)=>"20"+y+(r||""));
 }
 
-let allRows=null, seasonCol=SEASON_COLS[0];
+let allRows=null, seasonCol=SEASONS[0].key;
+function seasonEntry(){ return SEASONS.find(s=>s.key===seasonCol)||SEASONS[0]; }
+function entryLabel(s,header){ return s.col ? (seasonLabel(header[colIdx(s.col)])||("Column "+s.col)) : s.label; }
 
 function render(){
   const rows=allRows;
-  const iF=colIdx(COL_FIRST), iL=colIdx(COL_LAST), iS=colIdx(seasonCol), iJ=colIdx(COL_JERSEY), iDr=colIdx(COL_DRINKS);
-
+  const entry=seasonEntry();
   const header=rows[HEADER_ROW-1]||[];
-  const season=seasonLabel(header[iS]);
+  const season=entryLabel(entry,header);
   document.title = `Scrub Club — Who's In${season?" · "+season:""}`;
 
   // Season dropdown (populated once)
   const sel=document.getElementById("season-select");
   if(!sel.options.length){
-    SEASON_COLS.forEach(c=>{
+    SEASONS.forEach(s=>{
       const o=document.createElement("option");
-      o.value=c; o.textContent=seasonLabel(header[colIdx(c)])||("Column "+c);
+      o.value=s.key; o.textContent=entryLabel(s,header);
       sel.appendChild(o);
     });
     sel.value=seasonCol;
@@ -428,6 +436,18 @@ function render(){
     });
   }
 
+  const rosterNote=document.getElementById("roster-note");
+  if(!entry.col){
+    // Archive season: the sheet has no roster column — Team view points to Schedule & Stats
+    ["sec-in","sec-sub","sec-unsure","sec-out"].forEach(id=>{const e=document.getElementById(id); if(e) e.hidden=true;});
+    document.getElementById("stats").replaceChildren();
+    rosterNote.textContent=`The team sheet doesn't go back to ${season}. Game results are under Schedule, and full stats under Stats.`;
+    rosterNote.hidden=false;
+    return;
+  }
+  rosterNote.hidden=true;
+
+  const iF=colIdx(COL_FIRST), iL=colIdx(COL_LAST), iS=colIdx(entry.col), iJ=colIdx(COL_JERSEY), iDr=colIdx(COL_DRINKS);
   const players=[];
   for(let r=DATA_START-1;r<rows.length;r++){
     const row=rows[r]||[];
@@ -513,7 +533,7 @@ async function load(){
 const VIEWS=["about","schedule","stats","swag","join"];
 let activeView="about";
 function gamesheetSrc(){
-  const gs=GAMESHEET[seasonCol];
+  const gs=seasonEntry().gs;
   if(!gs) return null;
   return `https://gamesheetstats.com/seasons/${gs.season}/teams/${gs.team}?configuration%5Blogo%5D=false`;
 }
