@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scrub Club — Beer Review Card</title>
+<link rel="icon" type="image/png" href="soap-icon.png">
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Graduate&family=Big+Shoulders+Display:wght@600;700;800&family=Archivo:ital,wght@0,400..700;1,400..600&family=Barlow+Condensed:wght@500;600;700&display=swap");
+
+:root{
+  --burgundy-900:#3F1523; --burgundy-800:#571C2E; --burgundy-600:#7A2842; --burgundy-300:#C68C9C; --burgundy-200:#E2C3CD;
+  --oatmeal-600:#C9BE9F; --oatmeal-500:#DED3B4; --oatmeal-400:#E9E0C4; --oatmeal-300:#F1E9D2; --oatmeal-100:#FAF7EE;
+  --ink-500:#645853; --ink-300:#9C918B; --white:#FFFFFF;
+  --text-muted:#645853; --border-hairline:#C9BE9F;
+  --font-display:'Graduate',serif; --font-condensed:'Barlow Condensed',sans-serif;
+  --font-body:'Archivo',sans-serif; --font-numeral:'Big Shoulders Display',sans-serif;
+  --clip-patch:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+  --clip-patch-sm:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);
+  --shadow-raised:0 2px 0 var(--oatmeal-600), 0 8px 24px rgba(63,21,35,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--oatmeal-400);font-family:var(--font-body);color:var(--ink-500)}
+
+.chrome{background:var(--burgundy-600);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.chrome a{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--oatmeal-300);text-decoration:none}
+.chrome button{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-900);background:var(--oatmeal-300);border:none;padding:8px 14px;clip-path:var(--clip-patch-sm);cursor:pointer}
+.chrome button:hover{background:var(--oatmeal-100)}
+
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 64px;display:flex;flex-direction:column;gap:44px}
+.scalebox{width:100%}
+.sheet{width:1120px;height:800px;background:var(--white);border:1px solid var(--border-hairline);box-shadow:var(--shadow-raised);padding:44px 52px;display:flex;flex-direction:column;gap:24px;transform-origin:top left}
+
+.card-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:3px solid var(--burgundy-600);padding-bottom:8px}
+.card-head.back{padding-bottom:20px}
+.card-head img{height:170px;width:auto;display:block}
+.card-title{font-family:var(--font-display);font-size:48px;line-height:.94;letter-spacing:.02em;color:var(--burgundy-900);text-align:right;text-transform:uppercase}
+
+.fields{display:flex;align-items:stretch;gap:20px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field .lbl{font-family:var(--font-condensed);text-transform:uppercase;letter-spacing:.18em;font-size:12px;color:var(--ink-500)}
+.well{height:38px;border:2px solid var(--oatmeal-600);background:var(--white)}
+.final-wells{height:38px;display:flex;align-items:stretch;gap:8px}
+.final-wells .well{flex:1;height:auto}
+.final-dash{width:14px;display:flex;align-items:center;justify-content:center;font-family:var(--font-numeral);font-size:22px;color:var(--ink-300)}
+
+.checklist{flex:1;min-height:0;padding:4px 0;display:grid;grid-template-columns:1fr 1fr;grid-auto-flow:column;grid-template-rows:repeat(5,auto);gap:0 44px;align-content:center}
+.check-row{display:flex;align-items:flex-start;gap:16px;padding:11px 0;border-bottom:1px solid var(--oatmeal-500);cursor:pointer}
+.box{width:26px;height:26px;margin-top:1px;flex:none;border:2px solid var(--burgundy-600);background:var(--white);clip-path:var(--clip-patch-sm);padding:3px}
+.box .fill{width:100%;height:100%;background:var(--burgundy-600);clip-path:var(--clip-patch-sm);display:none}
+.check-row.on .box .fill{display:block}
+.check-row .t{font-family:var(--font-display);font-size:20px;letter-spacing:.02em;color:var(--burgundy-900);line-height:1;text-transform:uppercase}
+.check-row .h{font-size:14px;color:var(--text-muted);margin-top:3px}
+
+.bottom{display:flex;align-items:stretch;gap:20px}
+.adam{width:50%;background:var(--burgundy-600);clip-path:var(--clip-patch);padding:18px 28px;display:flex;align-items:center;gap:20px;cursor:pointer}
+.adam:hover{background:var(--burgundy-800)}
+.adam .box{width:32px;height:32px;margin:0;border-color:var(--oatmeal-300);padding:4px}
+.adam .box .fill{background:var(--oatmeal-300)}
+.adam.on .box .fill{display:block}
+.adam .name{font-family:var(--font-display);font-size:26px;letter-spacing:.02em;color:var(--oatmeal-300);line-height:1;white-space:nowrap;text-transform:uppercase}
+.adam .q{font-size:15px;color:var(--burgundy-200)}
+.scorebox{flex:1;display:flex;align-items:center;justify-content:flex-end;gap:18px}
+.scorebox .lbl{font-family:var(--font-condensed);text-transform:uppercase;letter-spacing:.18em;font-size:14px;color:var(--ink-500)}
+.score-well{width:96px;height:68px;border:2px solid var(--burgundy-600);background:var(--white);clip-path:var(--clip-patch-sm)}
+.score-of{font-family:var(--font-numeral);font-size:30px;color:var(--ink-300);font-variant-numeric:tabular-nums}
+
+.lines{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-flow:column;grid-template-rows:repeat(5,auto);align-content:center;gap:34px 48px}
+.line{display:flex;align-items:flex-end;gap:12px;border-bottom:2px solid var(--oatmeal-600);padding-bottom:8px}
+.line .n{font-family:var(--font-numeral);font-size:18px;color:var(--ink-300);font-variant-numeric:tabular-nums}
+.line .blank{flex:1;height:28px}
+.beerman{width:50%;background:var(--burgundy-600);clip-path:var(--clip-patch);padding:18px 28px;display:flex;align-items:center;gap:18px}
+.beerman .lbl{font-family:var(--font-condensed);text-transform:uppercase;letter-spacing:.16em;font-size:14px;color:var(--oatmeal-300)}
+.beerman .rule{flex:1;border-bottom:2px solid var(--burgundy-300);height:26px}
+
+@media print{
+  @page{size:7in 5in;margin:0}
+  body{background:var(--white)}
+  .chrome{display:none}
+  .wrap{max-width:none;padding:0;gap:0}
+  .scalebox{height:auto !important}
+  .sheet{transform:scale(0.6);box-shadow:none;border:none}
+  .scalebox+.scalebox{page-break-before:always}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <a href="index.html">← Scrub Club</a>
+  <button type="button" onclick="window.print()">Print / Save PDF</button>
+</div>
+
+<div class="wrap">
+
+  <div class="scalebox">
+    <div class="sheet" id="front">
+      <div class="card-head">
+        <img src="soap-logo.png" alt="Scrub Club">
+        <div class="card-title">Beer Review</div>
+      </div>
+      <div class="fields">
+        <div class="field" style="flex:1"><span class="lbl">Date</span><div class="well"></div></div>
+        <div class="field" style="flex:2"><span class="lbl">Opponent</span><div class="well"></div></div>
+        <div class="field" style="flex:none;width:200px"><span class="lbl">Final · W–L–T</span>
+          <div class="final-wells"><div class="well"></div><div class="final-dash">–</div><div class="well"></div></div>
+        </div>
+      </div>
+      <div class="checklist" id="checklist"></div>
+      <div class="bottom">
+        <div class="adam" id="adam">
+          <div class="box"><div class="fill"></div></div>
+          <div style="display:flex;align-items:baseline;gap:16px">
+            <div class="name">Adam Davis</div>
+            <div class="q">Are you Adam Davis?</div>
+          </div>
+        </div>
+        <div class="scorebox">
+          <span class="lbl">Beer score</span>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="score-well"></div>
+            <span class="score-of">/ 11</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scalebox">
+    <div class="sheet" id="back">
+      <div class="card-head back">
+        <img src="soap-logo.png" alt="Scrub Club">
+        <div class="card-title">Suds and Buds</div>
+      </div>
+      <div class="lines" id="lines"></div>
+      <div class="bottom">
+        <div class="beerman">
+          <span class="lbl">Beer man</span>
+          <div class="rule"></div>
+        </div>
+        <div class="scorebox">
+          <span class="lbl">Head count</span>
+          <div class="score-well"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ITEMS=[
+  ["Quantity","Is there enough?"],
+  ["Temperature","Is it cold?"],
+  ["Variety","Good mix?"],
+  ["Selection Quality","Decent stuff?"],
+  ["Presentation","Any effort put into serving?"],
+  ["Timeliness","Did beer arrive on time?"],
+  ["Surprise Factor","Any unexpected or fun choices?"],
+  ["Effort","Was this a last-minute grab?"],
+  ["Snack","Did they bring anything else?"],
+  ["Consistency","Have they delivered well before?"]
+];
+const cl=document.getElementById("checklist");
+ITEMS.forEach(([t,h])=>{
+  const row=document.createElement("div"); row.className="check-row";
+  row.innerHTML='<div class="box"><div class="fill"></div></div><div><div class="t">'+t+'</div><div class="h">'+h+'</div></div>';
+  row.addEventListener("click",()=>row.classList.toggle("on"));
+  cl.appendChild(row);
+});
+document.getElementById("adam").addEventListener("click",e=>e.currentTarget.classList.toggle("on"));
+
+const lines=document.getElementById("lines");
+for(let i=1;i<=15;i++){
+  const l=document.createElement("div"); l.className="line";
+  l.innerHTML='<span class="n">'+i+'</span><span class="blank"></span>';
+  lines.appendChild(l);
+}
+
+// Fixed 1120x800 artboards scale down proportionally on narrow screens
+function fit(){
+  document.querySelectorAll(".scalebox").forEach(b=>{
+    const s=Math.min(1,b.clientWidth/1120);
+    const sheet=b.querySelector(".sheet");
+    sheet.style.transform="scale("+s+")";
+    b.style.height=(800*s)+"px";
+  });
+}
+window.addEventListener("resize",fit);
+fit();
+</script>
+</body>
+</html>
