@@ -92,6 +92,7 @@ header.site{position:relative}
 .league iframe{display:block;width:100%;min-height:calc(100vh - var(--freeze-h,220px));border:none}
 .league-note{padding:var(--space-8) var(--gutter-inline);font-size:16px;color:var(--ink-500);text-align:center}
 .about{padding-top:var(--space-8);padding-bottom:var(--space-8)}
+.about-photo{display:block;width:100%;aspect-ratio:16/7;object-fit:cover;border-radius:var(--radius-md);box-shadow:var(--shadow-raised)}
 .wf-hero{aspect-ratio:16/7;border:2px dashed var(--ink-300);background:
   linear-gradient(to top right,transparent calc(50% - 1px),var(--ink-100) calc(50% - 1px),var(--ink-100) calc(50% + 1px),transparent calc(50% + 1px)),
   linear-gradient(to bottom right,transparent calc(50% - 1px),var(--ink-100) calc(50% - 1px),var(--ink-100) calc(50% + 1px),transparent calc(50% + 1px));
@@ -243,9 +244,7 @@ footer.site .fine{margin-left:auto}
 
 <div id="view-about" hidden>
   <div class="container about">
-    <div class="wf-hero" role="img" aria-label="Team photo placeholder">
-      <span class="wf-label">Team photo</span>
-    </div>
+    <img class="about-photo" src="photos/team-hero.jpg" alt="Scrub Club">
     <h1 class="about-title">SCRUB CLUB</h1>
     <p class="about-blurb">A Washington, DC beer-league hockey team skating in the Ice Pack Hockey league.
     Part team, part club, all soap. We show up, we compete, someone brings the beer, and the details stay
