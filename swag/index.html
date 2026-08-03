@@ -125,7 +125,16 @@ header.site{position:relative}
 .sg-date{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500);width:58px;flex:none}
 .sg-time{font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-300);width:66px;flex:none}
 .sg-opp{font-family:var(--font-display);font-size:16px;color:var(--text-strong);text-transform:uppercase;width:230px;flex:none}
-.sg-res{font-family:var(--font-numeral);font-weight:800;font-size:16px;flex:none;white-space:nowrap}
+.sg-res{font-family:var(--font-numeral);font-weight:800;font-size:16px;flex:none;white-space:nowrap;width:64px}
+.sg-beer{width:130px;flex:none;font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg-head{border-bottom:2px solid var(--burgundy-600)}
+.sg-head span{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-300)}
+@media (max-width:640px){
+  .sg-time{display:none}
+  .sg-opp{width:auto;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sg-beer{width:96px}
+  .sched-list{width:100%}
+}
 .sg-res.win{color:var(--turf-500)}
 .sg-res.loss{color:var(--penalty-500)}
 .sg-res.tie{color:var(--ink-500)}
@@ -335,14 +344,14 @@ const COL_LAST   = "P";
 // `col` = roster status column on the sheet; archive seasons (no col) show Schedule/Stats only.
 // `gs` = GameSheet {season, team} ids for the Schedule snapshot key + Stats embed.
 const SEASONS = [
-  { key:"W", col:"W" },                                                    // Winter, 2026-27
-  { key:"V", col:"V", gs:{season:15132, team:519988} },                    // Summer, 2026
-  { key:"U", col:"U", gs:{season:14606, team:498925} },                    // Spring, 2026
-  { key:"w2526", label:"Winter, 2025-26", gs:{season:11378, team:407904} },
-  { key:"s25",   label:"Summer, 2025",    gs:{season:10363, team:369945} },
-  { key:"sp25",  label:"Spring, 2025",    gs:{season:9767,  team:352088} },
-  { key:"w2425", label:"Winter, 2024-25", gs:{season:7100,  team:271299} },
-  { key:"s24",   label:"Summer, 2024",    gs:{season:6444,  team:239486} }
+  { key:"W", col:"W", years:[2026,2027] },                                                    // Winter, 2026-27
+  { key:"V", col:"V", years:[2026], gs:{season:15132, team:519988} },                         // Summer, 2026
+  { key:"U", col:"U", years:[2026], gs:{season:14606, team:498925} },                         // Spring, 2026
+  { key:"w2526", label:"Winter, 2025-26", years:[2025,2026], gs:{season:11378, team:407904} },
+  { key:"s25",   label:"Summer, 2025",    years:[2025],      gs:{season:10363, team:369945} },
+  { key:"sp25",  label:"Spring, 2025",    years:[2025],      gs:{season:9767,  team:352088} },
+  { key:"w2425", label:"Winter, 2024-25", years:[2024,2025], gs:{season:7100,  team:271299} },
+  { key:"s24",   label:"Summer, 2024",    years:[2024],      gs:{season:6444,  team:239486} }
 ];
 const COL_JERSEY = "L";
 const COL_DRINKS = "R"; // checkbox: unchecked = doesn't drink → beer card shows N/A
@@ -378,7 +387,7 @@ function el(tag, cls, text){
 }
 
 // Beer log from the sheet's "Beer" tab: latest run per player + the full log for Beer Stats
-let beerMap={}, beerLog=[];
+let beerMap={}, beerLog=[], beerByDate={};
 async function loadBeer(){
   try{
     const res=await fetch(BEER_CSV_URL,{cache:"no-store"});
@@ -398,6 +407,8 @@ async function loadBeer(){
       if(!m[n]||t>m[n].t) m[n]={t,ds};
     }
     beerMap=m; beerLog=log;
+    beerByDate={};
+    log.forEach(r=>{ beerByDate[r.ds]=r.name; });
   }catch(e){/* beer data is optional — cards just show "no record" */}
 }
 
@@ -580,6 +591,7 @@ async function load(){
     await beerReady;
     render();
     renderBeerStats();
+    if(activeView==="schedule") renderSchedule();
     state.textContent="";
     document.getElementById("updated").textContent="Updated "+new Date().toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   }catch(e){
@@ -604,7 +616,22 @@ function noSeasonNote(noteEl){
   noteEl.textContent=`The league hasn't posted ${label} yet. Check back once games are scheduled.`;
   noteEl.hidden=false;
 }
-function schedRow(g){
+// Winter seasons span two calendar years: Aug–Dec belong to the first, Jan–Jul to the second
+function gameYear(entry,dateStr){
+  const ys=entry.years||[];
+  if(ys.length<2) return ys[0];
+  return ["Aug","Sep","Oct","Nov","Dec"].includes(dateStr.split(" ")[0]) ? ys[0] : ys[1];
+}
+function schedHeadRow(){
+  const r=el("div","sg-row sg-head");
+  r.appendChild(el("span","sg-date","Date"));
+  r.appendChild(el("span","sg-time","Time"));
+  r.appendChild(el("span","sg-opp","Opponent"));
+  r.appendChild(el("span","sg-res","W/L"));
+  r.appendChild(el("span","sg-beer","Beer Man"));
+  return r;
+}
+function schedRow(g,entry){
   const r=el("div","sg-row");
   r.appendChild(el("span","sg-date",g.date));
   r.appendChild(el("span","sg-time",g.time));
@@ -612,7 +639,11 @@ function schedRow(g){
   if(g.us!=null){
     const res=g.us>g.them?"W":g.us<g.them?"L":"T";
     r.appendChild(el("span","sg-res "+(res==="W"?"win":res==="L"?"loss":"tie"),`${res} ${g.us}–${g.them}`));
+  }else{
+    r.appendChild(el("span","sg-res",""));
   }
+  const year=gameYear(entry,g.date);
+  r.appendChild(el("span","sg-beer",(year&&beerByDate[`${g.date}, ${year}`])||""));
   return r;
 }
 async function renderSchedule(){
@@ -626,7 +657,9 @@ async function renderSchedule(){
   if(!season){ noSeasonNote(note); return; }
   note.hidden=true;
   const list=el("div","sched-list");
-  season.games.forEach(g=>list.appendChild(schedRow(g)));
+  const entry=seasonEntry();
+  list.appendChild(schedHeadRow());
+  season.games.forEach(g=>list.appendChild(schedRow(g,entry)));
   box.appendChild(list);
   const foot=el("div","sched-foot");
   foot.innerHTML=`Scores from Ice Pack Hockey · Updated ${schedData.updated} · <a href="${gamesheetSrc()||"#"}" target="_blank" rel="noopener">Full league site ↗</a>`;
