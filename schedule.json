@@ -694,7 +694,9 @@
      "date": "Jun 5",
      "time": "8:40 PM",
      "rink": "Rink 2",
-     "opponent": "Growlers"
+     "opponent": "Growlers",
+     "us": 2,
+     "them": 6
     }
    ]
   },
