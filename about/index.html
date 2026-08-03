@@ -97,6 +97,18 @@ header.site{position:relative}
 .tab.active{color:var(--oatmeal-300);border-bottom-color:var(--whistle-500,#E8B93E)}
 .league{background:#f2f0eb}
 .league iframe{display:block;width:100%;min-height:calc(100vh - var(--freeze-h,220px));border:none}
+#view-stats iframe{min-height:0;height:760px}
+.bs-head{display:flex;align-items:baseline;gap:var(--space-3);padding:14px 0 6px;font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-300)}
+.bs-row{display:flex;align-items:baseline;gap:var(--space-3);padding:10px 0;border-bottom:1px solid var(--oatmeal-500)}
+.bs-rank{width:26px;flex:none;font-family:var(--font-numeral);font-weight:700;font-size:14px;color:var(--ink-300);font-variant-numeric:tabular-nums}
+.bs-name{flex:1;min-width:0;font-family:var(--font-display);font-size:16px;color:var(--text-strong);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bs-every{width:110px;flex:none;font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-500)}
+.bs-last{width:86px;flex:none;font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-300)}
+.bs-runs{width:44px;flex:none;text-align:right;font-family:var(--font-numeral);font-weight:800;font-size:22px;color:var(--burgundy-600);font-variant-numeric:tabular-nums}
+@media (max-width:560px){
+  .bs-last,.bs-head .bs-last{display:none}
+  .bs-every{width:92px}
+}
 .league-note{padding:var(--space-8) var(--gutter-inline);font-size:16px;color:var(--ink-500);text-align:center}
 .about{padding-top:0;padding-bottom:var(--space-8)}
 .about-intro{padding:var(--space-8) 0}
@@ -264,8 +276,27 @@ footer.site .fine{margin-left:auto}
   <div class="container" id="sched"></div>
 </div>
 <div class="league" id="view-stats" hidden>
+  <div class="container">
+    <section class="block">
+      <div class="section-head"><h2>HOCKEY STATS</h2></div>
+    </section>
+  </div>
   <p class="league-note" hidden></p>
   <iframe title="Ice Pack Hockey — Scrub Club team stats"></iframe>
+  <div class="container" style="padding-bottom:var(--space-8)">
+    <section class="block">
+      <div class="section-head"><h2>BEER STATS</h2><span class="count" id="beer-total"></span></div>
+      <div class="bs-head">
+        <span class="bs-rank"></span>
+        <span class="bs-name">Player</span>
+        <span class="bs-every">How often</span>
+        <span class="bs-last">Last brought</span>
+        <span class="bs-runs">Runs</span>
+      </div>
+      <div id="beer-stats"></div>
+      <div class="sched-foot">All-time, from the team sheet's Beer log</div>
+    </section>
+  </div>
 </div>
 <div id="view-swag" hidden>
   <div class="container">
@@ -346,8 +377,8 @@ function el(tag, cls, text){
   return n;
 }
 
-// Latest beer run per player, from the sheet's "Beer" tab
-let beerMap={};
+// Beer log from the sheet's "Beer" tab: latest run per player + the full log for Beer Stats
+let beerMap={}, beerLog=[];
 async function loadBeer(){
   try{
     const res=await fetch(BEER_CSV_URL,{cache:"no-store"});
@@ -356,16 +387,45 @@ async function loadBeer(){
     const head=rows[0]||[];
     const iD=head.indexOf("Date"), iB=head.indexOf("Beer Duty");
     if(iD<0||iB<0) return;
-    const m={};
+    const m={}, log=[];
     for(let i=1;i<rows.length;i++){
-      const n=(rows[i][iB]||"").trim().toLowerCase();
+      const name=(rows[i][iB]||"").trim();
       const ds=(rows[i][iD]||"").trim();
       const t=Date.parse(ds);
-      if(!n||isNaN(t)) continue;
+      if(!name||isNaN(t)) continue;
+      log.push({name,ds,t});
+      const n=name.toLowerCase();
       if(!m[n]||t>m[n].t) m[n]={t,ds};
     }
-    beerMap=m;
+    beerMap=m; beerLog=log;
   }catch(e){/* beer data is optional — cards just show "no record" */}
+}
+
+// All-time beer leaderboard: runs, cadence, most recent
+function renderBeerStats(){
+  const box=document.getElementById("beer-stats");
+  if(!box) return;
+  const total=beerLog.length;
+  if(!total){ document.getElementById("beer-total").textContent=""; box.replaceChildren(); return; }
+  const per={};
+  beerLog.forEach(r=>{
+    const p=per[r.name]||(per[r.name]={name:r.name,count:0,t:0,ds:""});
+    p.count++;
+    if(r.t>p.t){ p.t=r.t; p.ds=r.ds; }
+  });
+  const list=Object.values(per).sort((a,b)=>b.count-a.count||a.t-b.t);
+  const shortDate=ds=>ds.replace(/, \d{4}$/,"");
+  box.replaceChildren(...list.map((p,i)=>{
+    const row=el("div","bs-row");
+    row.appendChild(el("span","bs-rank",String(i+1)));
+    row.appendChild(el("span","bs-name",p.name));
+    const cadence=total/p.count;
+    row.appendChild(el("span","bs-every","every "+(cadence>=10?Math.round(cadence):cadence.toFixed(1)).toString().replace(/\.0$/,"")+" games"));
+    row.appendChild(el("span","bs-last",shortDate(p.ds)));
+    row.appendChild(el("span","bs-runs",String(p.count)));
+    return row;
+  }));
+  document.getElementById("beer-total").textContent=total+" runs logged";
 }
 
 function playerCard(p){
@@ -519,6 +579,7 @@ async function load(){
     allRows=parseCSV(await res.text());
     await beerReady;
     render();
+    renderBeerStats();
     state.textContent="";
     document.getElementById("updated").textContent="Updated "+new Date().toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   }catch(e){
@@ -612,7 +673,7 @@ function showTab(which,push=true){
   document.getElementById("season-select").hidden=!showSeason;
   document.getElementById("stats").hidden=!showCounts;
   document.querySelector(".hero-row").hidden=!showSeason&&!showCounts;
-  if(which==="stats") updateFrame(which);
+  if(which==="stats"){ updateFrame(which); renderBeerStats(); }
   if(which==="schedule") renderSchedule();
   window.scrollTo(0,0);
 }
