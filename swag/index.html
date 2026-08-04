@@ -359,7 +359,7 @@ const COL_DRINKS = "R"; // checkbox: unchecked = doesn't drink → beer card sho
 
 const colIdx = c => c.toUpperCase().charCodeAt(0) - 65; // A=0 … Z=25
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
-const BEER_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Beer`;
+const BEER_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Schedule`; // sheet tab renamed from "Beer" 2026-08-04
 
 // Minimal RFC-4180 CSV parser (handles quoted fields, embedded commas/newlines)
 function parseCSV(text){
