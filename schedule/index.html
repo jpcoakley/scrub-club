@@ -344,7 +344,7 @@ const COL_LAST   = "P";
 // `col` = roster status column on the sheet; archive seasons (no col) show Schedule/Stats only.
 // `gs` = GameSheet {season, team} ids for the Schedule snapshot key + Stats embed.
 const SEASONS = [
-  // { key:"W", col:"W", years:[2026,2027] },  // Winter, 2026-27 — re-enable when the league posts the season
+  { key:"W", col:"W", years:[2026,2027], rosterOnly:true },  // Winter, 2026-27 — Team only; drop rosterOnly when the league posts the season
   { key:"V", col:"V", years:[2026], gs:{season:15132, team:519988} },                         // Summer, 2026
   { key:"U", col:"U", years:[2026], gs:{season:14606, team:498925} },                         // Spring, 2026
   { key:"w2526", label:"Winter, 2025-26", years:[2025,2026], gs:{season:11378, team:407904} },
@@ -477,13 +477,30 @@ function seasonLabel(raw){
   return s.replace(/\b(\d{2})(-\d{2})?\b/,(m,y,r)=>"20"+y+(r||""));
 }
 
-let allRows=null, seasonCol=SEASONS[0].key, userPickedSeason=false;
+let allRows=null, seasonCol=SEASONS.find(s=>!s.rosterOnly).key, userPickedSeason=false;
+// The Team view can browse every season (incl. next season's roster-only entry);
+// Schedule/Stats only list seasons the league has posted. Each scope remembers its pick.
+let sheetHeader=[], rosterSeason="W", leagueSeason=SEASONS.find(s=>!s.rosterOnly).key;
+function seasonsForView(view){ return view==="roster" ? SEASONS : SEASONS.filter(s=>!s.rosterOnly); }
+function rebuildSeasonOptions(view){
+  const sel=document.getElementById("season-select");
+  if(!sheetHeader.length) return;
+  const list=seasonsForView(view);
+  const memo=view==="roster"?rosterSeason:leagueSeason;
+  seasonCol=list.some(s=>s.key===memo)?memo:list[0].key;
+  sel.replaceChildren(...list.map(s=>{
+    const o=document.createElement("option");
+    o.value=s.key; o.textContent=entryLabel(s,sheetHeader);
+    return o;
+  }));
+  sel.value=seasonCol;
+}
 // When the default season has no league data yet (e.g. Winter before the league posts it),
 // Schedule/Stats fall back to the newest season that has data — unless the user picked one.
 function fallbackSeason(pred){
-  const hit=SEASONS.find(pred);
+  const hit=SEASONS.find(s=>!s.rosterOnly && pred(s));
   if(hit && hit.key!==seasonCol){
-    seasonCol=hit.key;
+    seasonCol=hit.key; leagueSeason=hit.key;
     const sel=document.getElementById("season-select");
     if(sel.options.length) sel.value=seasonCol;
     render();
@@ -496,27 +513,26 @@ function entryLabel(s,header){ return s.col ? (seasonLabel(header[colIdx(s.col)]
 
 function render(){
   const rows=allRows;
-  const entry=seasonEntry();
   const header=rows[HEADER_ROW-1]||[];
-  const season=entryLabel(entry,header);
-  document.title = `Scrub Club — Who's In${season?" · "+season:""}`;
+  sheetHeader=header;
 
-  // Season dropdown (populated once)
+  // Season dropdown (options depend on the active view; listener attached once)
   const sel=document.getElementById("season-select");
   if(!sel.options.length){
-    SEASONS.forEach(s=>{
-      const o=document.createElement("option");
-      o.value=s.key; o.textContent=entryLabel(s,header);
-      sel.appendChild(o);
-    });
-    sel.value=seasonCol;
+    rebuildSeasonOptions(activeView==="schedule"||activeView==="stats"?activeView:"roster");
     sel.addEventListener("change",()=>{
       userPickedSeason=true;
-      seasonCol=sel.value;render();
+      seasonCol=sel.value;
+      if(activeView==="schedule"||activeView==="stats") leagueSeason=seasonCol; else rosterSeason=seasonCol;
+      render();
       if(activeView==="stats") updateFrame("stats");
       if(activeView==="schedule") renderSchedule();
     });
   }
+
+  const entry=seasonEntry();
+  const season=entryLabel(entry,header);
+  document.title = `Scrub Club — Who's In${season?" · "+season:""}`;
 
   const rosterNote=document.getElementById("roster-note");
   if(!entry.col){
@@ -722,6 +738,12 @@ function showTab(which,push=true){
   document.getElementById("season-select").hidden=!showSeason;
   document.getElementById("stats").hidden=!showCounts;
   document.querySelector(".hero-row").hidden=!showSeason&&!showCounts;
+  // Swap the season list to this view's scope (Team sees roster-only seasons; Schedule/Stats don't)
+  if(which==="roster"||which==="schedule"||which==="stats"){
+    const prev=seasonCol;
+    rebuildSeasonOptions(which);
+    if(seasonCol!==prev && allRows) render();
+  }
   if(which==="stats"){ updateFrame(which); renderBeerStats(); }
   if(which==="schedule") renderSchedule();
   window.scrollTo(0,0);
