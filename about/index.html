@@ -678,9 +678,6 @@ async function renderSchedule(){
   list.appendChild(schedHeadRow());
   season.games.forEach(g=>list.appendChild(schedRow(g,entry)));
   box.appendChild(list);
-  const foot=el("div","sched-foot");
-  foot.innerHTML=`Scores from Ice Pack Hockey · Updated ${schedData.updated} · <a href="${gamesheetSrc()||"#"}" target="_blank" rel="noopener">Full league site ↗</a>`;
-  box.appendChild(foot);
   setFreezeH();
 }
 function updateFrame(view){
