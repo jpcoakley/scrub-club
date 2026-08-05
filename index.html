@@ -140,6 +140,22 @@ header.site{position:relative}
 .sg-res.tie{color:var(--ink-500)}
 .swag-link{text-decoration:none;color:inherit;border:none}
 .swag-icon{flex:none;display:flex}
+/* Swag store */
+.swag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--space-6);margin-top:var(--space-6)}
+.swag-card{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);clip-path:var(--clip-patch);display:flex;flex-direction:column;overflow:hidden;transition:transform var(--dur-med) var(--ease-out)}
+.swag-card:hover{transform:translateY(-2px)}
+.swag-photo{background:var(--oatmeal-200);aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:var(--space-6);border-bottom:1px solid var(--border-hairline)}
+.swag-photo img{max-width:100%;max-height:100%;object-fit:contain}
+.swag-body{padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-2);flex:1}
+.swag-name{font-family:var(--font-display);font-size:19px;line-height:1.15;color:var(--text-strong);text-transform:uppercase}
+.swag-desc{font-family:var(--font-condensed);font-size:15px;letter-spacing:.04em;color:var(--text-muted)}
+.swag-row{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding-top:var(--space-3)}
+.swag-price{font-family:var(--font-numeral);font-weight:800;font-size:24px;color:var(--burgundy-600)}
+.swag-buy{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--oatmeal-300);background:var(--burgundy-600);border:none;border-radius:var(--radius-sm);clip-path:var(--clip-patch-sm);padding:8px 18px;text-decoration:none;cursor:pointer}
+.swag-buy:hover{background:var(--burgundy-700)}
+.swag-soon{font-family:var(--font-condensed);font-weight:700;font-size:13px;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--whistle-500);border:1px solid var(--whistle-500);border-radius:var(--radius-sm);padding:6px 12px}
+.swag-note{margin-top:var(--space-8);font-family:var(--font-condensed);font-size:14px;letter-spacing:.04em;color:var(--ink-300);text-align:center}
+.swag-note a{color:var(--burgundy-600)}
 .sched-foot{padding:var(--space-6) 0 var(--space-4);font-family:var(--font-condensed);font-size:13px;color:var(--ink-300);text-align:center}
 .sched-foot a{color:var(--burgundy-600)}
 .stat-row{display:flex;gap:var(--space-3);flex-wrap:wrap}
@@ -153,6 +169,19 @@ section.block{padding-top:var(--space-8)}
 .section-head{display:flex;align-items:baseline;gap:var(--space-4);border-bottom:2px solid var(--burgundy-600);padding:var(--space-3) var(--gutter-inline) var(--space-2);margin-inline:calc(-1*var(--gutter-inline));position:sticky;top:var(--freeze-h,0px);background:var(--surface-page);z-index:10}
 .section-head h2{font-family:var(--font-display);font-size:26px;letter-spacing:.02em;color:var(--text-strong)}
 .section-head .count{font-family:var(--font-condensed);font-weight:700;font-size:16px;color:var(--text-muted);letter-spacing:.06em}
+
+/* Roster section picker: one group shown at a time */
+.roster-tabs{display:flex;justify-content:center;flex-wrap:wrap;gap:var(--space-2);padding:var(--space-4) var(--gutter-inline) var(--space-3);margin-inline:calc(-1*var(--gutter-inline));position:sticky;top:var(--freeze-h,0px);background:var(--surface-page);z-index:10;border-bottom:2px solid var(--burgundy-600)}
+.roster-tabs[hidden]{display:none}
+.rtab{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);background:var(--surface-card);box-shadow:var(--shadow-card);border:none;border-radius:var(--radius-sm);clip-path:var(--clip-patch-sm);padding:9px 14px;cursor:pointer;display:flex;align-items:baseline;gap:7px}
+.rtab .n{font-family:var(--font-numeral);font-weight:800;font-size:14px;color:var(--burgundy-600);font-variant-numeric:tabular-nums}
+.rtab:hover{color:var(--text-strong)}
+.rtab.active{background:var(--burgundy-600);color:var(--oatmeal-300)}
+.rtab.active .n{color:var(--oatmeal-300)}
+@media (max-width:420px){.rtab{padding:8px 10px;font-size:14px;gap:5px}}
+/* Section titles live in the picker now */
+#sec-in .section-head,#sec-sub .section-head,#sec-unsure .section-head,#sec-out .section-head{display:none}
+#sec-in,#sec-sub,#sec-unsure,#sec-out{padding-top:0}
 
 /* Player cards (committed) */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--space-3);margin-top:var(--space-6)}
@@ -241,6 +270,7 @@ footer.site .fine{margin-left:auto}
 
 <main class="container">
   <p class="league-note" id="roster-note" hidden></p>
+  <div class="roster-tabs" id="roster-tabs" hidden></div>
   <section class="block" id="sec-in" hidden>
     <div class="section-head"><h2>TEAM</h2><span class="count" id="count-in"></span></div>
     <div class="grid" id="grid-in"></div>
@@ -311,6 +341,45 @@ footer.site .fine{margin-left:auto}
   <div class="container">
     <section class="block">
       <div class="section-head"><h2>SWAG</h2></div>
+      <div class="swag-grid">
+        <!-- When a Printful Quick Store product goes live: replace the
+             .swag-soon span with
+             <a class="swag-buy" href="PRINTFUL_PRODUCT_URL" target="_blank" rel="noopener">Buy</a>
+             and set the real price in .swag-price. -->
+        <div class="swag-card">
+          <div class="swag-photo"><img src="swag/assets/soap-card.png" alt="Scrub Club soap bar logo — embroidered dad hat"></div>
+          <div class="swag-body">
+            <div class="swag-name">Soap Bar Dad Hat</div>
+            <div class="swag-desc">Embroidered soap-bar logo. Rink-to-bar approved.</div>
+            <div class="swag-row">
+              <span class="swag-price">TBD</span>
+              <span class="swag-soon">Coming soon</span>
+            </div>
+          </div>
+        </div>
+        <div class="swag-card">
+          <div class="swag-photo"><img src="swag/assets/soap-card.png" alt="Scrub Club soap bar logo — embroidered beanie"></div>
+          <div class="swag-body">
+            <div class="swag-name">Soap Bar Beanie</div>
+            <div class="swag-desc">Cuffed knit beanie, embroidered logo. For 10 PM puck drops.</div>
+            <div class="swag-row">
+              <span class="swag-price">TBD</span>
+              <span class="swag-soon">Coming soon</span>
+            </div>
+          </div>
+        </div>
+        <div class="swag-card">
+          <div class="swag-photo"><img src="swag/assets/scrub-card.png" alt="SCRUB diagonal wordmark — embroidered beanie"></div>
+          <div class="swag-body">
+            <div class="swag-name">Scrub Wordmark Beanie</div>
+            <div class="swag-desc">Jersey-style diagonal SCRUB, stitched on a winter hat.</div>
+            <div class="swag-row">
+              <span class="swag-price">TBD</span>
+              <span class="swag-soon">Coming soon</span>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="grid">
         <a class="player swag-link" href="beer-review.html">
           <div class="p-stack">
@@ -318,6 +387,7 @@ footer.site .fine{margin-left:auto}
           </div>
         </a>
       </div>
+      <p class="swag-note">Checkout is handled by our print shop (Printful). Ships in the US only. Profits go to the beer fund.</p>
     </section>
   </div>
 </div>
@@ -481,6 +551,7 @@ let allRows=null, seasonCol=SEASONS.find(s=>!s.rosterOnly).key, userPickedSeason
 // The Team view can browse every season (incl. next season's roster-only entry);
 // Schedule/Stats only list seasons the league has posted. Each scope remembers its pick.
 let sheetHeader=[], rosterSeason="W", leagueSeason=SEASONS.find(s=>!s.rosterOnly).key;
+let rosterSection="in"; // which roster group the picker is showing
 function seasonsForView(view){ return view==="roster" ? SEASONS : SEASONS.filter(s=>!s.rosterOnly); }
 function rebuildSeasonOptions(view){
   const sel=document.getElementById("season-select");
@@ -538,6 +609,7 @@ function render(){
   if(!entry.col){
     // Archive season: the sheet has no roster column — Team view points to Schedule & Stats
     ["sec-in","sec-sub","sec-unsure","sec-out"].forEach(id=>{const e=document.getElementById(id); if(e) e.hidden=true;});
+    document.getElementById("roster-tabs").hidden=true;
     document.getElementById("stats").replaceChildren();
     rosterNote.textContent=`The team sheet doesn't go back to ${season}. Game results are under Schedule, and full stats under Stats.`;
     rosterNote.hidden=false;
@@ -583,30 +655,32 @@ function render(){
     stats.appendChild(s);
   });
 
-  // Committed grid
-  const gIn=document.getElementById("grid-in");
-  gIn.replaceChildren(...committed.map(playerCard));
-  document.getElementById("count-in").textContent=committed.length+" players";
-  document.getElementById("sec-in").hidden=!committed.length;
+  // Roster groups: the picker shows one at a time
+  const groups=[
+    {id:"in",     sec:"sec-in",     grid:"grid-in",      count:"count-in",     label:"Team",        list:committed},
+    {id:"sub",    sec:"sec-sub",    grid:"chips-sub",    count:"count-sub",    label:"Subs",        list:subs},
+    {id:"unsure", sec:"sec-unsure", grid:"chips-unsure", count:"count-unsure", label:"Unsure",      list:unsure},
+    {id:"out",    sec:"sec-out",    grid:"chips-out",    count:"count-out",    label:"Sitting Out", list:outs}
+  ];
+  const avail=groups.filter(g=>g.list.length);
+  if(!avail.some(g=>g.id===rosterSection)) rosterSection=avail.length?avail[0].id:"in";
 
-  // Subs
-  const cSub=document.getElementById("chips-sub");
-  cSub.replaceChildren(...subs.map(playerCard));
-  document.getElementById("count-sub").textContent=subs.length+(subs.length===1?" player":" players");
-  document.getElementById("sec-sub").hidden=!subs.length;
+  const tabs=document.getElementById("roster-tabs");
+  tabs.replaceChildren(...avail.map(g=>{
+    const b=el("button","rtab"+(g.id===rosterSection?" active":""),g.label);
+    b.type="button";
+    b.setAttribute("aria-pressed",g.id===rosterSection?"true":"false");
+    b.appendChild(el("span","n",String(g.list.length)));
+    b.addEventListener("click",()=>{ rosterSection=g.id; render(); });
+    return b;
+  }));
+  tabs.hidden=!avail.length;
 
-  // Unsure + no response
-  const cUn=document.getElementById("chips-unsure");
-  cUn.replaceChildren(...unsure.map(playerCard));
-  const nUn=unsure.length;
-  document.getElementById("count-unsure").textContent=nUn+(nUn===1?" player":" players");
-  document.getElementById("sec-unsure").hidden=!nUn;
-
-  // Out
-  const cOut=document.getElementById("chips-out");
-  cOut.replaceChildren(...outs.map(playerCard));
-  document.getElementById("count-out").textContent=outs.length+(outs.length===1?" player":" players");
-  document.getElementById("sec-out").hidden=!outs.length;
+  groups.forEach(g=>{
+    document.getElementById(g.grid).replaceChildren(...g.list.map(playerCard));
+    document.getElementById(g.count).textContent=g.list.length+(g.list.length===1?" player":" players");
+    document.getElementById(g.sec).hidden=!(g.list.length && g.id===rosterSection);
+  });
 }
 
 async function load(){
