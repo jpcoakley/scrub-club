@@ -120,11 +120,12 @@ header.site{position:relative}
 .wf-label{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-300);background:var(--surface-page);padding:4px 12px}
 .about-title{font-family:var(--font-display);font-size:clamp(32px,5vw,48px);letter-spacing:.02em;color:var(--text-strong);margin:0 0 var(--space-2)}
 .about-blurb{max-width:640px;font-size:17px;line-height:1.6;color:var(--text-body)}
-.sched-filter{display:flex;justify-content:center;padding-top:var(--space-6)}
-.opp-select{font-family:var(--font-condensed);font-weight:600;font-size:16px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-strong);background:transparent;border:1px solid var(--burgundy-600);border-radius:var(--radius-sm);padding:6px 34px 6px 12px;appearance:none;-webkit-appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237A2842' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
-.opp-select:hover{border-color:var(--burgundy-800)}
-.opp-select option{text-transform:none}
 .sched-list{padding-top:var(--space-6);width:fit-content;margin-inline:auto}
+/* Season group headings when the schedule shows every season at once */
+.sg-season{border-bottom:none;padding:22px 0 2px}
+.sg-season-label{font-family:var(--font-display);font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--burgundy-600)}
+.sg-row:first-child.sg-season{padding-top:8px}
+.sched-empty{padding:var(--space-8) 0;text-align:center;font-family:var(--font-condensed);font-size:15px;letter-spacing:.06em;color:var(--ink-500)}
 .sg-row{display:flex;align-items:baseline;gap:var(--space-4);padding:12px 0;border-bottom:1px solid var(--oatmeal-500)}
 .sg-date{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500);width:58px;flex:none}
 .sg-time{font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-300);width:66px;flex:none}
@@ -264,6 +265,7 @@ footer.site .fine{margin-left:auto}
   <div class="scrim" id="scrim"></div>
   <div class="container hero-row">
     <select id="season-select" class="season-select" aria-label="Season"></select>
+    <select id="opp-select" class="season-select" aria-label="Opponent" hidden></select>
   </div>
 </div>
 </div>
@@ -312,9 +314,6 @@ footer.site .fine{margin-left:auto}
 
 <div id="view-schedule" hidden>
   <p class="league-note" hidden></p>
-  <div class="container sched-filter" id="sched-filter" hidden>
-    <select id="opp-select" class="opp-select" aria-label="Opponent"></select>
-  </div>
   <div class="container" id="sched"></div>
 </div>
 <div class="league" id="view-stats" hidden>
@@ -535,16 +534,23 @@ let allRows=null, seasonCol=SEASONS.find(s=>!s.rosterOnly).key, userPickedSeason
 // Schedule/Stats only list seasons the league has posted. Each scope remembers its pick.
 let sheetHeader=[], rosterSeason="W", leagueSeason=SEASONS.find(s=>!s.rosterOnly).key;
 let rosterSection="in"; // which roster group the picker is showing
+const ALL_SEASONS="ALL"; // Schedule-only season option: every posted season at once
 function seasonsForView(view){ return view==="roster" ? SEASONS : SEASONS.filter(s=>!s.rosterOnly); }
 function rebuildSeasonOptions(view){
   const sel=document.getElementById("season-select");
   if(!sheetHeader.length) return;
   const list=seasonsForView(view);
+  // Only Schedule can show more than one season at once — Team has one roster per season,
+  // and Stats embeds a single GameSheet page per season.
+  const keys=list.map(s=>s.key);
+  if(view==="schedule") keys.unshift(ALL_SEASONS);
   const memo=view==="roster"?rosterSeason:leagueSeason;
-  seasonCol=list.some(s=>s.key===memo)?memo:list[0].key;
-  sel.replaceChildren(...list.map(s=>{
+  seasonCol=keys.includes(memo)?memo:list[0].key;
+  if(view==="roster") rosterSeason=seasonCol; else leagueSeason=seasonCol;
+  sel.replaceChildren(...keys.map(k=>{
     const o=document.createElement("option");
-    o.value=s.key; o.textContent=entryLabel(s,sheetHeader);
+    o.value=k;
+    o.textContent=k===ALL_SEASONS?"All Seasons":entryLabel(list.find(s=>s.key===k),sheetHeader);
     return o;
   }));
   sel.value=seasonCol;
@@ -583,6 +589,8 @@ function render(){
       if(activeView==="schedule") renderSchedule();
     });
   }
+
+  if(seasonCol===ALL_SEASONS){ document.title="Scrub Club — Who's In · All Seasons"; return; }
 
   const entry=seasonEntry();
   const season=entryLabel(entry,header);
@@ -707,6 +715,11 @@ function schedHeadRow(){
   r.appendChild(el("span","sg-beer","Beer Man"));
   return r;
 }
+function seasonHeadRow(label){
+  const r=el("div","sg-row sg-season");
+  r.appendChild(el("span","sg-season-label",label));
+  return r;
+}
 function schedRow(g,entry){
   const r=el("div","sg-row");
   r.appendChild(el("span","sg-date",g.date));
@@ -724,34 +737,45 @@ function schedRow(g,entry){
 }
 async function renderSchedule(){
   const box=document.getElementById("sched"), note=document.querySelector("#view-schedule .league-note");
-  const filt=document.getElementById("sched-filter"), oppSel=document.getElementById("opp-select");
+  const oppSel=document.getElementById("opp-select");
   if(!oppSel.dataset.wired){
     oppSel.dataset.wired="1";
     oppSel.addEventListener("change",()=>{ oppFilter=oppSel.value; renderSchedule(); });
   }
   if(!schedData){
     try{ schedData=await (await fetch("schedule.json",{cache:"no-store"})).json(); }
-    catch(e){ note.textContent="Couldn't load the schedule. Try refreshing."; note.hidden=false; filt.hidden=true; return; }
+    catch(e){ note.textContent="Couldn't load the schedule. Try refreshing."; note.hidden=false; oppSel.hidden=true; return; }
   }
-  const season=schedData.seasons[seasonCol];
+  const played=s=>schedData.seasons[s.key]?.games?.length;
+  const multi=seasonCol===ALL_SEASONS;
   box.replaceChildren();
-  if(!season){
-    if(!userPickedSeason && fallbackSeason(s=>schedData.seasons[s.key]?.games?.length)){ renderSchedule(); return; }
-    filt.hidden=true; noSeasonNote(note); return;
+  if(!multi && !schedData.seasons[seasonCol]){
+    if(!userPickedSeason && fallbackSeason(played)){ renderSchedule(); return; }
+    oppSel.hidden=true; noSeasonNote(note); return;
   }
   note.hidden=true;
-  // Opponent filter: options rebuilt per season; the pick carries over when that opponent is in it
-  const opps=[...new Set(season.games.map(g=>g.opponent))].sort((a,b)=>a.localeCompare(b));
+  // Oldest season first so the combined view reads as a timeline
+  const entries=multi?seasonsForView("schedule").filter(played).reverse():[seasonEntry()];
+
+  // Opponent list spans whatever seasons are showing; the pick carries over when it still applies
+  const opps=[...new Set(entries.flatMap(e=>schedData.seasons[e.key].games.map(g=>g.opponent)))]
+    .sort((a,b)=>a.localeCompare(b));
   if(!opps.includes(oppFilter)) oppFilter="";
-  oppSel.replaceChildren(new Option("All opponents",""),...opps.map(o=>new Option(o,o)));
+  oppSel.replaceChildren(new Option("All Opponents",""),...opps.map(o=>new Option(o,o)));
   oppSel.value=oppFilter;
-  filt.hidden=opps.length<2;
-  const games=oppFilter?season.games.filter(g=>g.opponent===oppFilter):season.games;
+  oppSel.hidden=opps.length<2;
+
   const list=el("div","sched-list");
-  const entry=seasonEntry();
   list.appendChild(schedHeadRow());
-  games.forEach(g=>list.appendChild(schedRow(g,entry)));
+  let shown=0;
+  entries.forEach(e=>{
+    const games=schedData.seasons[e.key].games.filter(g=>!oppFilter||g.opponent===oppFilter);
+    if(!games.length) return;
+    if(multi) list.appendChild(seasonHeadRow(entryLabel(e,sheetHeader)));
+    games.forEach(g=>{ list.appendChild(schedRow(g,e)); shown++; });
+  });
   box.appendChild(list);
+  if(!shown) box.appendChild(el("div","sched-empty","No games against "+oppFilter+" this season."));
   setFreezeH();
 }
 function updateFrame(view){
@@ -790,9 +814,11 @@ function showTab(which,push=true){
   document.querySelector("main").hidden=which!=="roster";
   VIEWS.forEach(v=>{ document.getElementById("view-"+v).hidden=v!==which; });
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===which));
-  // Season dropdown: Team, Schedule and Stats only
+  // Season dropdown: Team, Schedule and Stats. Opponent dropdown: Schedule only (renderSchedule
+  // hides it again when the season has fewer than two opponents).
   const showSeason=which==="roster"||which==="schedule"||which==="stats";
   document.getElementById("season-select").hidden=!showSeason;
+  if(which!=="schedule") document.getElementById("opp-select").hidden=true;
   document.querySelector(".hero-row").hidden=!showSeason;
   // Swap the season list to this view's scope (Team sees roster-only seasons; Schedule/Stats don't)
   if(which==="roster"||which==="schedule"||which==="stats"){
