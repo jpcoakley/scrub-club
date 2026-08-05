@@ -144,8 +144,8 @@ header.site{position:relative}
 .swag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--space-6);margin-top:var(--space-6)}
 .swag-card{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);clip-path:var(--clip-patch);display:flex;flex-direction:column;overflow:hidden;transition:transform var(--dur-med) var(--ease-out)}
 .swag-card:hover{transform:translateY(-2px)}
-.swag-photo{background:var(--oatmeal-200);aspect-ratio:1;position:relative;border-bottom:1px solid var(--border-hairline)}
-.swag-photo img{position:absolute;inset:var(--space-6);width:calc(100% - 2*var(--space-6));height:calc(100% - 2*var(--space-6));object-fit:contain}
+.swag-photo{background:var(--white);aspect-ratio:1;position:relative;border-bottom:1px solid var(--border-hairline)}
+.swag-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .swag-body{padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-2);flex:1}
 .swag-name{font-family:var(--font-display);font-size:19px;line-height:1.15;color:var(--text-strong);text-transform:uppercase}
 .swag-desc{font-family:var(--font-condensed);font-size:15px;letter-spacing:.04em;color:var(--text-muted)}
@@ -154,6 +154,9 @@ header.site{position:relative}
 .swag-buy{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--oatmeal-300);background:var(--burgundy-600);border:none;border-radius:var(--radius-sm);clip-path:var(--clip-patch-sm);padding:8px 18px;text-decoration:none;cursor:pointer}
 .swag-buy:hover{background:var(--burgundy-700)}
 .swag-soon{font-family:var(--font-condensed);font-weight:700;font-size:13px;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--whistle-500);border:1px solid var(--whistle-500);border-radius:var(--radius-sm);padding:6px 12px}
+.swag-shop{margin-top:var(--space-6);font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.08em;text-transform:uppercase}
+.swag-shop a{color:var(--burgundy-600);text-decoration:none}
+.swag-shop a:hover{text-decoration:underline}
 .sched-foot{padding:var(--space-6) 0 var(--space-4);font-family:var(--font-condensed);font-size:13px;color:var(--ink-300);text-align:center}
 .sched-foot a{color:var(--burgundy-600)}
 .stat-row{display:flex;gap:var(--space-3);flex-wrap:wrap}
@@ -339,18 +342,22 @@ footer.site .fine{margin-left:auto}
   <div class="container">
     <section class="block">
       <div class="section-head"><h2>SWAG</h2></div>
-      <!-- Product cards go here once the Printful store is live. Card shape:
-           <div class="swag-card">
-             <div class="swag-photo"><img src="swag/assets/NAME.png" alt="..."></div>
-             <div class="swag-body">
-               <div class="swag-name">Product name</div>
-               <div class="swag-desc">Short description.</div>
-               <div class="swag-row">
-                 <span class="swag-price">$00</span>
-                 <a class="swag-buy" href="PRINTFUL_PRODUCT_URL" target="_blank" rel="noopener">Buy</a>
-               </div>
-             </div>
-           </div> -->
+      <!-- Products live in the Printful Quick Store: https://scrubclubhockeyteam.printful.me
+           Copy a card below for each new product; mockups go in swag/assets/. -->
+      <div class="swag-grid">
+        <div class="swag-card">
+          <div class="swag-photo"><img src="swag/assets/5-panel-cap.webp" alt="Cream and red 5 panel cap with the burgundy SCRUB wordmark embroidered on the front"></div>
+          <div class="swag-body">
+            <div class="swag-name">5 Panel Cap</div>
+            <div class="swag-desc">Embroidered SCRUB wordmark, adjustable snap. One size.</div>
+            <div class="swag-row">
+              <span class="swag-price">$18</span>
+              <a class="swag-buy" href="https://scrubclubhockeyteam.printful.me/product/5-panel-cap" target="_blank" rel="noopener">Buy</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="swag-shop"><a href="https://scrubclubhockeyteam.printful.me" target="_blank" rel="noopener">Shop all Scrub Club gear →</a></p>
       <div class="grid">
         <a class="player swag-link" href="beer-review.html">
           <div class="p-stack">
