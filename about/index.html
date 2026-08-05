@@ -135,9 +135,14 @@ header.site{position:relative}
 .sg-head{border-bottom:2px solid var(--burgundy-600)}
 .sg-head span{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500)}
 @media (max-width:640px){
+  /* Beer Man drops to its own line so the opponent name gets the full width */
+  .sg-row{flex-wrap:wrap;row-gap:3px}
   .sg-time{display:none}
-  .sg-opp{width:auto;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .sg-beer{width:96px}
+  .sg-opp{width:auto;flex:1;min-width:0;white-space:normal}
+  .sg-beer{width:100%;flex:none;padding-left:calc(58px + var(--space-4));font-size:13px}
+  .sg-beer:empty{display:none}
+  .sg-beer::before{content:"Beer · ";color:var(--ink-300)}
+  .sg-head .sg-beer{display:none}
   .sched-list{width:100%}
 }
 .sg-res.win{color:var(--turf-500)}
