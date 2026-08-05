@@ -78,7 +78,7 @@ header.site .container{display:flex;align-items:center;gap:var(--space-4);paddin
 .hero{background:var(--surface-inverse);color:var(--text-on-inverse);padding:0;border-bottom:3px solid var(--burgundy-900)}
 .hero h1{font-family:var(--font-display);font-size:clamp(36px,6vw,56px);line-height:.94;letter-spacing:.02em;color:var(--oatmeal-300);margin:var(--space-2) 0 0}
 .hero-row{display:flex;align-items:center;justify-content:center;gap:var(--space-3);flex-wrap:wrap;padding-block:var(--space-4) var(--space-8)}
-.hero-row[hidden],.stat-row[hidden]{display:none}
+.hero-row[hidden]{display:none}
 .tabs{position:static;display:flex;flex-direction:row;justify-content:center;align-items:stretch;flex-wrap:wrap;gap:var(--space-6);width:auto;background:var(--burgundy-900);padding:var(--space-3) var(--gutter-inline) 0;transform:none;box-shadow:none;border-bottom:none;z-index:auto;overflow:visible}
 .menu-btn{display:none;position:absolute;left:12px;top:14px;background:transparent;border:none;cursor:pointer;padding:8px;z-index:50}
 .menu-btn span{display:block;width:24px;height:3px;background:var(--oatmeal-300);margin:5px 0;border-radius:2px}
@@ -120,6 +120,10 @@ header.site{position:relative}
 .wf-label{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-300);background:var(--surface-page);padding:4px 12px}
 .about-title{font-family:var(--font-display);font-size:clamp(32px,5vw,48px);letter-spacing:.02em;color:var(--text-strong);margin:0 0 var(--space-2)}
 .about-blurb{max-width:640px;font-size:17px;line-height:1.6;color:var(--text-body)}
+.sched-filter{display:flex;justify-content:center;padding-top:var(--space-6)}
+.opp-select{font-family:var(--font-condensed);font-weight:600;font-size:16px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-strong);background:transparent;border:1px solid var(--burgundy-600);border-radius:var(--radius-sm);padding:6px 34px 6px 12px;appearance:none;-webkit-appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237A2842' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.opp-select:hover{border-color:var(--burgundy-800)}
+.opp-select option{text-transform:none}
 .sched-list{padding-top:var(--space-6);width:fit-content;margin-inline:auto}
 .sg-row{display:flex;align-items:baseline;gap:var(--space-4);padding:12px 0;border-bottom:1px solid var(--oatmeal-500)}
 .sg-date{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500);width:58px;flex:none}
@@ -159,11 +163,6 @@ header.site{position:relative}
 .swag-shop a:hover{text-decoration:underline}
 .sched-foot{padding:var(--space-6) 0 var(--space-4);font-family:var(--font-condensed);font-size:13px;color:var(--ink-300);text-align:center}
 .sched-foot a{color:var(--burgundy-600)}
-.stat-row{display:flex;gap:var(--space-3);flex-wrap:wrap}
-.stat{background:var(--burgundy-800);border-radius:28px/24px;padding:14px 34px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transform:rotate(-3deg)}
-.stat>*{transform:rotate(3deg)}
-.stat .num{font-family:var(--font-numeral);font-weight:800;font-size:26px;line-height:1;color:var(--oatmeal-300)}
-.stat .lbl{font-family:var(--font-condensed);font-weight:600;font-size:13px;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--text-on-inverse-muted);margin-top:var(--space-1)}
 
 /* ============ Sections ============ */
 section.block{padding-top:var(--space-8)}
@@ -174,12 +173,12 @@ section.block{padding-top:var(--space-8)}
 /* Roster section picker: one group shown at a time */
 .roster-tabs{display:flex;justify-content:center;flex-wrap:wrap;gap:var(--space-2);padding:var(--space-4) var(--gutter-inline) var(--space-3);margin-inline:calc(-1*var(--gutter-inline));position:sticky;top:var(--freeze-h,0px);background:var(--surface-page);z-index:10;border-bottom:2px solid var(--burgundy-600)}
 .roster-tabs[hidden]{display:none}
-.rtab{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);background:var(--surface-card);box-shadow:var(--shadow-card);border:none;border-radius:var(--radius-sm);clip-path:var(--clip-patch-sm);padding:9px 14px;cursor:pointer;display:flex;align-items:baseline;gap:7px}
-.rtab .n{font-family:var(--font-numeral);font-weight:800;font-size:14px;color:var(--burgundy-600);font-variant-numeric:tabular-nums}
+.rtab{font-family:var(--font-condensed);font-weight:700;font-size:19px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);background:var(--surface-card);box-shadow:var(--shadow-card);border:none;border-radius:var(--radius-sm);clip-path:var(--clip-patch-sm);padding:11px 20px;cursor:pointer;display:flex;align-items:baseline;gap:8px}
+.rtab .n{font-family:var(--font-numeral);font-weight:800;font-size:17px;color:var(--burgundy-600);font-variant-numeric:tabular-nums}
 .rtab:hover{color:var(--text-strong)}
 .rtab.active{background:var(--burgundy-600);color:var(--oatmeal-300)}
 .rtab.active .n{color:var(--oatmeal-300)}
-@media (max-width:420px){.rtab{padding:8px 10px;font-size:14px;gap:5px}}
+@media (max-width:420px){.rtab{padding:9px 13px;font-size:16px;gap:6px}.rtab .n{font-size:15px}}
 /* Section titles live in the picker now */
 #sec-in .section-head,#sec-sub .section-head,#sec-unsure .section-head,#sec-out .section-head{display:none}
 #sec-in,#sec-sub,#sec-unsure,#sec-out{padding-top:0}
@@ -232,9 +231,6 @@ footer.site .fine{margin-left:auto}
 @media (max-width:560px){
   .logo{height:56px}
   .tagline{font-size:12px}
-  .stat{flex:1;padding:12px 14px}
-  .stat .num{font-size:22px}
-  .stat .lbl{font-size:10px;letter-spacing:.1em}
 }
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important}
@@ -264,7 +260,6 @@ footer.site .fine{margin-left:auto}
   <div class="scrim" id="scrim"></div>
   <div class="container hero-row">
     <select id="season-select" class="season-select" aria-label="Season"></select>
-    <div class="stat-row" id="stats" aria-live="polite"></div>
   </div>
 </div>
 </div>
@@ -313,6 +308,9 @@ footer.site .fine{margin-left:auto}
 
 <div id="view-schedule" hidden>
   <p class="league-note" hidden></p>
+  <div class="container sched-filter" id="sched-filter" hidden>
+    <select id="opp-select" class="opp-select" aria-label="Opponent"></select>
+  </div>
   <div class="container" id="sched"></div>
 </div>
 <div class="league" id="view-stats" hidden>
@@ -587,7 +585,6 @@ function render(){
     // Archive season: the sheet has no roster column — Team view points to Schedule & Stats
     ["sec-in","sec-sub","sec-unsure","sec-out"].forEach(id=>{const e=document.getElementById(id); if(e) e.hidden=true;});
     document.getElementById("roster-tabs").hidden=true;
-    document.getElementById("stats").replaceChildren();
     rosterNote.textContent=`The team sheet doesn't go back to ${season}. Game results are under Schedule, and full stats under Stats.`;
     rosterNote.hidden=false;
     return;
@@ -621,16 +618,6 @@ function render(){
   // Committed grid ordered by jersey number (no number → last, alphabetical)
   const numVal=p=>p.jersey?parseInt(p.jersey,10):Infinity;
   committed.sort((a,b)=>numVal(a)-numVal(b)||a.last.localeCompare(b.last));
-
-  // Stats
-  const stats=document.getElementById("stats");
-  stats.replaceChildren();
-  [[committed.length,"Skaters"],[subs.length,"Subs"]].forEach(([n,l])=>{
-    const s=el("div","stat");
-    s.appendChild(el("div","num",String(n)));
-    s.appendChild(el("div","lbl",l));
-    stats.appendChild(s);
-  });
 
   // Roster groups: the picker shows one at a time
   const groups=[
@@ -690,7 +677,7 @@ function gamesheetSrc(){
 }
 
 // Branded schedule, rendered from schedule.json (snapshotted weekly from GameSheet)
-let schedData=null;
+let schedData=null, oppFilter="";
 function noSeasonNote(noteEl){
   const sel=document.getElementById("season-select");
   const label=sel.options[sel.selectedIndex]?.textContent||"this season";
@@ -729,21 +716,33 @@ function schedRow(g,entry){
 }
 async function renderSchedule(){
   const box=document.getElementById("sched"), note=document.querySelector("#view-schedule .league-note");
+  const filt=document.getElementById("sched-filter"), oppSel=document.getElementById("opp-select");
+  if(!oppSel.dataset.wired){
+    oppSel.dataset.wired="1";
+    oppSel.addEventListener("change",()=>{ oppFilter=oppSel.value; renderSchedule(); });
+  }
   if(!schedData){
     try{ schedData=await (await fetch("schedule.json",{cache:"no-store"})).json(); }
-    catch(e){ note.textContent="Couldn't load the schedule. Try refreshing."; note.hidden=false; return; }
+    catch(e){ note.textContent="Couldn't load the schedule. Try refreshing."; note.hidden=false; filt.hidden=true; return; }
   }
   const season=schedData.seasons[seasonCol];
   box.replaceChildren();
   if(!season){
     if(!userPickedSeason && fallbackSeason(s=>schedData.seasons[s.key]?.games?.length)){ renderSchedule(); return; }
-    noSeasonNote(note); return;
+    filt.hidden=true; noSeasonNote(note); return;
   }
   note.hidden=true;
+  // Opponent filter: options rebuilt per season; the pick carries over when that opponent is in it
+  const opps=[...new Set(season.games.map(g=>g.opponent))].sort((a,b)=>a.localeCompare(b));
+  if(!opps.includes(oppFilter)) oppFilter="";
+  oppSel.replaceChildren(new Option("All opponents",""),...opps.map(o=>new Option(o,o)));
+  oppSel.value=oppFilter;
+  filt.hidden=opps.length<2;
+  const games=oppFilter?season.games.filter(g=>g.opponent===oppFilter):season.games;
   const list=el("div","sched-list");
   const entry=seasonEntry();
   list.appendChild(schedHeadRow());
-  season.games.forEach(g=>list.appendChild(schedRow(g,entry)));
+  games.forEach(g=>list.appendChild(schedRow(g,entry)));
   box.appendChild(list);
   setFreezeH();
 }
@@ -783,12 +782,10 @@ function showTab(which,push=true){
   document.querySelector("main").hidden=which!=="roster";
   VIEWS.forEach(v=>{ document.getElementById("view-"+v).hidden=v!==which; });
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===which));
-  // Season dropdown: Team, Schedule and Stats only. Skater/sub counts: Team only.
+  // Season dropdown: Team, Schedule and Stats only
   const showSeason=which==="roster"||which==="schedule"||which==="stats";
-  const showCounts=which==="roster";
   document.getElementById("season-select").hidden=!showSeason;
-  document.getElementById("stats").hidden=!showCounts;
-  document.querySelector(".hero-row").hidden=!showSeason&&!showCounts;
+  document.querySelector(".hero-row").hidden=!showSeason;
   // Swap the season list to this view's scope (Team sees roster-only seasons; Schedule/Stats don't)
   if(which==="roster"||which==="schedule"||which==="stats"){
     const prev=seasonCol;
