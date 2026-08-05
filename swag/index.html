@@ -144,8 +144,8 @@ header.site{position:relative}
 .swag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--space-6);margin-top:var(--space-6)}
 .swag-card{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);clip-path:var(--clip-patch);display:flex;flex-direction:column;overflow:hidden;transition:transform var(--dur-med) var(--ease-out)}
 .swag-card:hover{transform:translateY(-2px)}
-.swag-photo{background:var(--oatmeal-200);aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:var(--space-6);border-bottom:1px solid var(--border-hairline)}
-.swag-photo img{max-width:100%;max-height:100%;object-fit:contain}
+.swag-photo{background:var(--oatmeal-200);aspect-ratio:1;position:relative;border-bottom:1px solid var(--border-hairline)}
+.swag-photo img{position:absolute;inset:var(--space-6);width:calc(100% - 2*var(--space-6));height:calc(100% - 2*var(--space-6));object-fit:contain}
 .swag-body{padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-2);flex:1}
 .swag-name{font-family:var(--font-display);font-size:19px;line-height:1.15;color:var(--text-strong);text-transform:uppercase}
 .swag-desc{font-family:var(--font-condensed);font-size:15px;letter-spacing:.04em;color:var(--text-muted)}
