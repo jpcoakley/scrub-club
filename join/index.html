@@ -185,22 +185,26 @@ section.block{padding-top:var(--space-8)}
 
 /* Player cards (committed) */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--space-3);margin-top:var(--space-6)}
-.player{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);transition:transform var(--dur-med) var(--ease-out)}
+.player{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);min-height:84px;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);transition:transform var(--dur-med) var(--ease-out)}
 .player:hover{transform:translateY(-2px)}
 .p-stack{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
 .p-first{font-family:var(--font-display);font-weight:700;font-size:23px;line-height:1.1;color:var(--text-strong);text-transform:uppercase}
 .p-last{font-family:var(--font-condensed);font-weight:600;font-size:12px;letter-spacing:.08em;line-height:1.2;color:var(--ink-500);text-transform:uppercase}
 .p-num{font-family:var(--font-numeral);font-weight:800;font-size:38px;line-height:1;color:var(--burgundy-600);flex:none}
+.p-num-none{color:var(--ink-100);font-size:30px}
+.p-role{font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-400);margin-top:2px}
 /* Flip cards (roster): tap/click to see beer duty on the back */
-.flipcard{background:transparent;box-shadow:none;padding:0;display:block;min-height:72px;height:72px;perspective:700px;cursor:pointer}
+.flipcard{background:transparent;box-shadow:none;padding:0;display:block;min-height:84px;height:84px;perspective:700px;cursor:pointer}
 .flipcard .flip{position:relative;height:100%;transform-style:preserve-3d;transition:transform .45s var(--ease-out)}
 .flipcard.flipped .flip{transform:rotateY(180deg)}
 .flipcard .face{position:absolute;inset:0;border-radius:var(--radius-md);box-shadow:var(--shadow-raised);backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:var(--space-3) var(--space-4)}
 .flipcard .face.front{background:var(--surface-raised)}
 .flipcard .face.back{background:var(--burgundy-600);transform:rotateY(180deg);justify-content:flex-start}
 .b-icon{flex:none;display:flex}
-.b-stack{display:flex;flex-direction:column;gap:2px}
-.b-date{font-family:var(--font-display);font-weight:700;font-size:15px;line-height:1.1;color:var(--oatmeal-300);text-transform:uppercase}
+.b-stack{display:flex;flex-direction:column;gap:2px;min-width:0}
+.b-name{font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-200);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.b-date{font-family:var(--font-display);font-weight:700;font-size:13px;line-height:1.1;color:var(--oatmeal-300);text-transform:uppercase;white-space:nowrap}
+.b-date.b-soft{white-space:normal;font-size:12px}
 .b-days{font-family:var(--font-condensed);font-weight:600;font-size:12px;color:var(--oatmeal-500)}
 .badge{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-sm)}
 .badge.ice{background:var(--ice-300);color:var(--ink-700)}
@@ -400,6 +404,7 @@ const SEASONS = [
 ];
 const COL_JERSEY = "L";
 const COL_DRINKS = "R"; // checkbox: unchecked = doesn't drink → beer card shows N/A
+const CAPTAINS = ["David Sanders"]; // shown as "Captain" on the roster card (goalies come from the sheet's Goalie status)
 /* ========================================== */
 
 const colIdx = c => c.toUpperCase().charCodeAt(0) - 65; // A=0 … Z=25
@@ -491,13 +496,16 @@ function playerCard(p){
   const stack=el("div","p-stack");
   stack.appendChild(el("div","p-first",p.first));
   if(p.last) stack.appendChild(el("div","p-last",p.last));
+  const role=p.goalie?"Goalie":CAPTAINS.includes(p.name)?"Captain":null;
+  if(role) stack.appendChild(el("div","p-role",role));
   front.appendChild(stack);
-  if(p.jersey) front.appendChild(el("div","p-num",p.jersey));
+  front.appendChild(el("div","p-num"+(p.jersey?"":" p-num-none"),p.jersey||"—"));
   const back=el("div","face back");
   const icon=el("div","b-icon");
-  icon.innerHTML='<svg viewBox="0 0 24 24" width="38" height="38" aria-hidden="true"><path fill="#FFF" d="M6 9h9v11a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 6 20V9Z"/><path fill="#FFF" d="M15 10.5h1.75A2.25 2.25 0 0 1 19 12.75v3a2.25 2.25 0 0 1-2.25 2.25H15V16.5h1.75a.75.75 0 0 0 .75-.75v-3a.75.75 0 0 0-.75-.75H15v-1.5Z"/><circle cx="7.5" cy="7.5" r="2.2" fill="#FFF"/><circle cx="10.8" cy="6.2" r="2.6" fill="#FFF"/><circle cx="14" cy="7.5" r="2.1" fill="#FFF"/></svg>';
+  icon.innerHTML='<svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path fill="#FFF" d="M6 9h9v11a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 6 20V9Z"/><path fill="#FFF" d="M15 10.5h1.75A2.25 2.25 0 0 1 19 12.75v3a2.25 2.25 0 0 1-2.25 2.25H15V16.5h1.75a.75.75 0 0 0 .75-.75v-3a.75.75 0 0 0-.75-.75H15v-1.5Z"/><circle cx="7.5" cy="7.5" r="2.2" fill="#FFF"/><circle cx="10.8" cy="6.2" r="2.6" fill="#FFF"/><circle cx="14" cy="7.5" r="2.1" fill="#FFF"/></svg>';
   back.appendChild(icon);
   const bstack=el("div","b-stack");
+  bstack.appendChild(el("div","b-name",p.name));
   const info=beerMap[p.name.toLowerCase()];
   if(!p.drinks){
     bstack.appendChild(el("div","b-date","N/A"));
@@ -506,7 +514,7 @@ function playerCard(p){
     bstack.appendChild(el("div","b-date",info.ds));
     bstack.appendChild(el("div","b-days",days<=0?"Today":days===1?"1 day ago":days+" days ago"));
   }else{
-    bstack.appendChild(el("div","b-date","No beer on record"));
+    bstack.appendChild(el("div","b-date b-soft","No beer on record"));
     bstack.appendChild(el("div","b-days","It's never too late"));
   }
   back.appendChild(bstack);
