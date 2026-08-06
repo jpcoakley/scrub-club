@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>if(/\/(about|team|schedule|stats|swag|join)\/?$/.test(location.pathname))document.write('<base href="../">');</script>
-<title>Scrub Club — Who's In</title>
+<title>Scrub Club Hockey</title>
 <meta name="description" content="Scrub Club season commitments — who's in, who's out, who's subbing.">
 <meta property="og:title" content="Scrub Club">
 <meta property="og:description" content="Season commitments for Scrub Club. Inscrubutable Hockey.">
@@ -595,11 +595,10 @@ function render(){
     });
   }
 
-  if(seasonCol===ALL_SEASONS){ document.title="Scrub Club — Who's In · All Seasons"; return; }
+  if(seasonCol===ALL_SEASONS){ return; }
 
   const entry=seasonEntry();
   const season=entryLabel(entry,header);
-  document.title = `Scrub Club — Who's In${season?" · "+season:""}`;
 
   const rosterNote=document.getElementById("roster-note");
   if(!entry.col){
