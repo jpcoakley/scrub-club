@@ -1,5 +1,5 @@
 {
- "updated": "Jul 31, 2026",
+ "updated": "Aug 7, 2026",
  "teamAliases": [
   "Washington Hockey Team",
   "Scrub Club"
@@ -84,7 +84,9 @@
      "date": "Aug 6",
      "time": "9:40 PM",
      "rink": "Rink 2",
-     "opponent": "Collision Experts"
+     "opponent": "Collision Experts",
+     "us": 2,
+     "them": 6
     },
     {
      "gm": 37,
