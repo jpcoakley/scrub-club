@@ -196,22 +196,24 @@ section.block{padding-top:var(--space-8)}
 .p-stack{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
 .p-first{font-family:var(--font-display);font-weight:700;font-size:23px;line-height:1.1;color:var(--text-strong);text-transform:uppercase}
 .p-last{font-family:var(--font-condensed);font-weight:600;font-size:12px;letter-spacing:.08em;line-height:1.2;color:var(--ink-500);text-transform:uppercase}
-.p-num{font-family:var(--font-numeral);font-weight:800;font-size:38px;line-height:1;color:var(--burgundy-600);flex:none}
-.p-num-none{color:var(--ink-100);font-size:30px}
+/* Tap the circle to add a player photo (stored in this browser only) */
+.p-photo{flex:none;width:56px;height:56px;border-radius:50%;overflow:hidden;padding:0;background:var(--oatmeal-200);border:2px dashed var(--border-hairline);color:var(--ink-300);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.p-photo:hover{border-color:var(--burgundy-600);color:var(--burgundy-600)}
+.p-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.p-photo.has-photo{border-style:solid;border-color:var(--oatmeal-600)}
 .p-role{font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-400);margin-top:2px}
-/* Flip cards (roster): tap/click to see beer duty on the back */
+/* Flip cards (roster): tap/click to see jersey + USA Hockey numbers on the back */
 .flipcard{background:transparent;box-shadow:none;padding:0;display:block;min-height:84px;height:84px;perspective:700px;cursor:pointer}
 .flipcard .flip{position:relative;height:100%;transform-style:preserve-3d;transition:transform .45s var(--ease-out)}
 .flipcard.flipped .flip{transform:rotateY(180deg)}
 .flipcard .face{position:absolute;inset:0;border-radius:var(--radius-md);box-shadow:var(--shadow-raised);backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:var(--space-3) var(--space-4)}
-.flipcard .face.front{background:var(--surface-raised)}
-.flipcard .face.back{background:var(--burgundy-600);transform:rotateY(180deg);justify-content:flex-start}
-.b-icon{flex:none;display:flex}
-.b-stack{display:flex;flex-direction:column;gap:2px;min-width:0}
-.b-name{font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-200);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.b-date{font-family:var(--font-display);font-weight:700;font-size:13px;line-height:1.1;color:var(--oatmeal-300);text-transform:uppercase;white-space:nowrap}
-.b-date.b-soft{white-space:normal;font-size:12px}
-.b-days{font-family:var(--font-condensed);font-weight:600;font-size:12px;color:var(--oatmeal-500)}
+.flipcard .face.front{background:var(--surface-raised);justify-content:flex-start}
+.flipcard .face.back{background:var(--burgundy-600);transform:rotateY(180deg);padding:var(--space-3);gap:var(--space-2)}
+.b-num{font-family:var(--font-numeral);font-weight:800;font-size:30px;line-height:1;color:var(--oatmeal-300);flex:none}
+.b-num.b-num-none{color:var(--burgundy-300)}
+.b-usah{flex:1;display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0;text-align:right}
+.b-usah-label{font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-200);white-space:nowrap}
+.b-usah-num{font-family:var(--font-numeral);font-weight:800;font-size:13px;letter-spacing:.02em;line-height:1;color:var(--oatmeal-300);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .badge{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:var(--radius-sm)}
 .badge.ice{background:var(--ice-300);color:var(--ink-700)}
 .badge.win{background:var(--status-win);color:var(--oatmeal-100)}
@@ -418,7 +420,7 @@ const SEASONS = [
   { key:"s24",   label:"Summer, 2024",    years:[2024],      gs:{season:6444,  team:239486} }
 ];
 const COL_JERSEY = "L";
-const COL_DRINKS = "R"; // checkbox: unchecked = doesn't drink → beer card shows N/A
+const COL_USAH   = "J"; // USA Hockey registration number, shown on the card back
 const CAPTAINS = ["David Sanders"]; // shown as "Captain" on the roster card (goalies come from the sheet's Goalie status)
 /* ========================================== */
 
@@ -452,7 +454,7 @@ function el(tag, cls, text){
 }
 
 // Beer log from the sheet's "Beer" tab: latest run per player + the full log for Beer Stats
-let beerMap={}, beerLog=[], beerByDate={};
+let beerLog=[], beerByDate={};
 async function loadBeer(){
   try{
     const res=await fetch(BEER_CSV_URL,{cache:"no-store"});
@@ -461,20 +463,18 @@ async function loadBeer(){
     const head=rows[0]||[];
     const iD=head.indexOf("Date"), iB=head.indexOf("Beer Duty");
     if(iD<0||iB<0) return;
-    const m={}, log=[];
+    const log=[];
     for(let i=1;i<rows.length;i++){
       const name=(rows[i][iB]||"").trim();
       const ds=(rows[i][iD]||"").trim();
       const t=Date.parse(ds);
       if(!name||isNaN(t)) continue;
       log.push({name,ds,t});
-      const n=name.toLowerCase();
-      if(!m[n]||t>m[n].t) m[n]={t,ds};
     }
-    beerMap=m; beerLog=log;
+    beerLog=log;
     beerByDate={};
     log.forEach(r=>{ beerByDate[r.ds]=r.name; });
-  }catch(e){/* beer data is optional — cards just show "no record" */}
+  }catch(e){/* beer data is optional — the Beer Stats section just stays empty */}
 }
 
 // All-time beer leaderboard: runs, cadence, most recent
@@ -504,35 +504,66 @@ function renderBeerStats(){
   document.getElementById("beer-total").textContent=total+" runs logged";
 }
 
+const PHOTO_KEY = name => "scrub-photo:"+name.toLowerCase();
+const PHOTO_PX  = 160; // stored square size — keeps localStorage well under quota
+
+function photoCircle(p){
+  const btn=el("button","p-photo");
+  btn.type="button";
+  const empty='<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.1-1.8A1 1 0 0 1 8.7 4.7h6.6a1 1 0 0 1 .9.5L17.3 7h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-9Z"/><circle cx="12" cy="12.8" r="3.4"/></svg>';
+  const show=src=>{
+    if(src){ const img=el("img"); img.src=src; img.alt=p.name; btn.replaceChildren(img); btn.classList.add("has-photo"); }
+    else { btn.innerHTML=empty; btn.classList.remove("has-photo"); }
+    btn.setAttribute("aria-label",(src?"Change":"Add")+" photo for "+p.name);
+  };
+  let saved=null;
+  try{ saved=localStorage.getItem(PHOTO_KEY(p.name)); }catch(e){/* private mode — circle stays empty */}
+  show(saved);
+
+  btn.addEventListener("click",ev=>{
+    ev.stopPropagation(); // don't flip the card
+    const inp=el("input"); inp.type="file"; inp.accept="image/*";
+    inp.addEventListener("change",async()=>{
+      const file=inp.files&&inp.files[0];
+      if(!file) return;
+      try{
+        const src=await squarePhoto(file);
+        show(src);
+        try{ localStorage.setItem(PHOTO_KEY(p.name),src); }
+        catch(e){ console.warn("Photo shown but not saved — browser storage is full",e); }
+      }catch(e){ console.warn("Couldn't read that image",e); }
+    });
+    inp.click();
+  });
+  return btn;
+}
+
+// Center-crop to a square and shrink, so stored photos stay small
+async function squarePhoto(file){
+  const bmp=await createImageBitmap(file);
+  const side=Math.min(bmp.width,bmp.height);
+  const c=document.createElement("canvas");
+  c.width=c.height=PHOTO_PX;
+  c.getContext("2d").drawImage(bmp,(bmp.width-side)/2,(bmp.height-side)/2,side,side,0,0,PHOTO_PX,PHOTO_PX);
+  return c.toDataURL("image/webp",0.8);
+}
+
 function playerCard(p){
   const shell=el("div","player flipcard");
   const flip=el("div","flip");
   const front=el("div","face front");
+  front.appendChild(photoCircle(p));
   const stack=el("div","p-stack");
   stack.appendChild(el("div","p-first",p.first));
   if(p.last) stack.appendChild(el("div","p-last",p.last));
-  const role=p.goalie?"Goalie":CAPTAINS.includes(p.name)?"Captain":null;
-  if(role) stack.appendChild(el("div","p-role",role));
+  if(CAPTAINS.includes(p.name)) stack.appendChild(el("div","p-role","Captain"));
   front.appendChild(stack);
-  front.appendChild(el("div","p-num"+(p.jersey?"":" p-num-none"),p.jersey||"—"));
   const back=el("div","face back");
-  const icon=el("div","b-icon");
-  icon.innerHTML='<svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path fill="#FFF" d="M6 9h9v11a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 6 20V9Z"/><path fill="#FFF" d="M15 10.5h1.75A2.25 2.25 0 0 1 19 12.75v3a2.25 2.25 0 0 1-2.25 2.25H15V16.5h1.75a.75.75 0 0 0 .75-.75v-3a.75.75 0 0 0-.75-.75H15v-1.5Z"/><circle cx="7.5" cy="7.5" r="2.2" fill="#FFF"/><circle cx="10.8" cy="6.2" r="2.6" fill="#FFF"/><circle cx="14" cy="7.5" r="2.1" fill="#FFF"/></svg>';
-  back.appendChild(icon);
-  const bstack=el("div","b-stack");
-  bstack.appendChild(el("div","b-name",p.name));
-  const info=beerMap[p.name.toLowerCase()];
-  if(!p.drinks){
-    bstack.appendChild(el("div","b-date","N/A"));
-  }else if(info){
-    const days=Math.floor((Date.now()-info.t)/86400000);
-    bstack.appendChild(el("div","b-date",info.ds));
-    bstack.appendChild(el("div","b-days",days<=0?"Today":days===1?"1 day ago":days+" days ago"));
-  }else{
-    bstack.appendChild(el("div","b-date b-soft","No beer on record"));
-    bstack.appendChild(el("div","b-days","It's never too late"));
-  }
-  back.appendChild(bstack);
+  back.appendChild(el("div","b-num"+(p.jersey?"":" b-num-none"),p.jersey||"—"));
+  const usah=el("div","b-usah");
+  usah.appendChild(el("div","b-usah-label","USA Hockey #"));
+  usah.appendChild(el("div","b-usah-num",p.usah||"—"));
+  back.appendChild(usah);
   flip.appendChild(front); flip.appendChild(back);
   shell.appendChild(flip);
   shell.addEventListener("click",()=>shell.classList.toggle("flipped"));
@@ -622,7 +653,7 @@ function render(){
   }
   rosterNote.hidden=true;
 
-  const iF=colIdx(COL_FIRST), iL=colIdx(COL_LAST), iS=colIdx(entry.col), iJ=colIdx(COL_JERSEY), iDr=colIdx(COL_DRINKS);
+  const iF=colIdx(COL_FIRST), iL=colIdx(COL_LAST), iS=colIdx(entry.col), iJ=colIdx(COL_JERSEY), iU=colIdx(COL_USAH);
   const players=[];
   for(let r=DATA_START-1;r<rows.length;r++){
     const row=rows[r]||[];
@@ -634,7 +665,7 @@ function render(){
       name:(first+" "+last).trim(),
       first, last, status, statusKey:status.toLowerCase(),
       jersey:(row[iJ]||"").trim(),
-      drinks:(row[iDr]||"").trim().toUpperCase()!=="FALSE",
+      usah:(row[iU]||"").trim(),
       goalie:status.toLowerCase()==="goalie"
     });
   }
