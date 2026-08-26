@@ -73,14 +73,16 @@ body{margin:0;background:var(--oatmeal-400);font-family:var(--font-body);color:v
 .beerman .lbl{font-family:var(--font-condensed);text-transform:uppercase;letter-spacing:.16em;font-size:14px;color:var(--oatmeal-300)}
 .beerman .rule{flex:1;border-bottom:2px solid var(--burgundy-300);height:26px}
 
+/* 1120x800 at 0.6 == 672x480px == 7in x 5in at 96dpi. The !important beats the
+   inline transform fit() writes for the screen, which otherwise carries into print. */
 @media print{
   @page{size:7in 5in;margin:0}
   body{background:var(--white)}
   .chrome{display:none}
-  .wrap{max-width:none;padding:0;gap:0}
-  .scalebox{height:auto !important}
-  .sheet{transform:scale(0.6);box-shadow:none;border:none}
-  .scalebox+.scalebox{page-break-before:always}
+  .wrap{display:block;max-width:none;padding:0;gap:0}
+  .scalebox{width:672px !important;height:480px !important;overflow:hidden}
+  .sheet{transform:scale(0.6) !important;box-shadow:none;border:none}
+  .scalebox+.scalebox{break-before:page;page-break-before:always}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style>
@@ -180,6 +182,7 @@ for(let i=1;i<=15;i++){
 
 // Fixed 1120x800 artboards scale down proportionally on narrow screens
 function fit(){
+  if(window.matchMedia&&window.matchMedia("print").matches) return;
   document.querySelectorAll(".scalebox").forEach(b=>{
     const s=Math.min(1,b.clientWidth/1120);
     const sheet=b.querySelector(".sheet");
@@ -188,6 +191,7 @@ function fit(){
   });
 }
 window.addEventListener("resize",fit);
+window.addEventListener("afterprint",fit);
 fit();
 </script>
 </body>
