@@ -769,11 +769,13 @@ function render(){
   }
   players.sort((a,b)=>a.last.localeCompare(b.last)||a.name.localeCompare(b.name));
 
-  // "Paid" on the sheet means committed — payment status itself is never shown on the site
-  const committed=players.filter(p=>p.statusKey==="in"||p.statusKey==="paid"||p.goalie);
+  // "Paid" on the sheet means committed — payment status itself is never shown on the site.
+  // "Half" means half a season, which still counts as being on the team.
+  const ON_TEAM=["in","paid","half","goalie"];
+  const committed=players.filter(p=>ON_TEAM.includes(p.statusKey));
   const subs=players.filter(p=>p.statusKey==="sub");
   const outs=players.filter(p=>p.statusKey==="out");
-  const unsure=players.filter(p=>!["in","paid","goalie","sub","out"].includes(p.statusKey));
+  const unsure=players.filter(p=>![...ON_TEAM,"sub","out"].includes(p.statusKey));
 
   // Committed grid ordered by jersey number (no number → last, alphabetical)
   const numVal=p=>p.jersey?parseInt(p.jersey,10):Infinity;
