@@ -156,7 +156,6 @@ header.site{position:relative}
   display:flex;align-items:center;justify-content:center}
 .wf-label{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-300);background:var(--surface-page);padding:4px 12px}
 .about-title{font-family:var(--font-display);font-size:clamp(32px,5vw,48px);letter-spacing:.02em;color:var(--text-strong);margin:0 0 var(--space-2)}
-.about-blurb{max-width:60ch;font-size:17px;line-height:1.6;color:var(--text-body)}
 /* About — season snapshot */
 .ab-season{padding-top:var(--space-8)}
 .ab-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:var(--space-3);margin-top:var(--space-6)}
@@ -265,6 +264,14 @@ section.block{padding-top:var(--space-8)}
 .p-photo.has-photo{border-color:var(--oatmeal-600);background:var(--oatmeal-200)}
 @media (hover:none){.p-cam{opacity:0}}
 .p-role{font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-400);margin-top:2px}
+/* Jersey number rides on the photo circle the way it does on the sweater. A card is
+   only ~158px wide on a phone and the name already fills the room beside the circle,
+   so anything laid out as a third column collides with it. */
+.p-ident{position:relative;flex:none;line-height:0}
+.p-num{position:absolute;right:-3px;bottom:-3px;min-width:23px;height:23px;padding:0 5px;border-radius:12px;
+  background:var(--oatmeal-300);border:2px solid var(--surface-raised);
+  font-family:var(--font-numeral);font-weight:800;font-size:14px;line-height:1;color:var(--burgundy-800);
+  font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center}
 /* Flip cards (roster): tap/click to see jersey + USA Hockey numbers on the back */
 .flipcard{background:transparent;box-shadow:none;padding:0;display:block;min-height:84px;height:84px;perspective:700px;cursor:pointer}
 .flipcard .flip{position:relative;height:100%;transform-style:preserve-3d;transition:transform .45s var(--ease-out)}
@@ -377,8 +384,7 @@ footer.site .fine{margin-left:auto}
     <div class="about-hero">
       <div class="about-intro">
         <p class="eyebrow">Scrub Club</p>
-        <h1 class="about-title">INSCRUBUTABLE HOCKEY</h1>
-        <p class="about-blurb">A beer-league team that has been showing up for seven seasons. We keep the roster, the schedule, and the beer duty in one place so nobody has to ask the group chat.</p>
+          <h1 class="about-title">INSCRUBUTABLE HOCKEY</h1>
       </div>
       <img class="about-photo" src="/photos/team-hero.jpg" alt="Scrub Club">
     </div>
@@ -511,27 +517,38 @@ const SHEET_ID   = "1nRKRkEoHEBUjb4c0mI8GQVk8riIwmDT_XBENtXcTwjg";
 const GID        = "901229563";
 const HEADER_ROW = 7;   // 1-based row holding "First / Last / <season>" headers
 const DATA_START = 8;   // 1-based first player row
-const COL_FIRST  = "O";
-const COL_LAST   = "P";
+/* Column lookups resolve by header text first and fall back to the letter the column
+   last lived at, because deleting a column in the sheet shifts everything left of it. */
+const COL_FIRST  = {header:"First", col:"N"};
+const COL_LAST   = {header:"Last",  col:"O"};
 // Seasons in the dropdown, newest first (first = default).
 // `col` = roster status column on the sheet; archive seasons (no col) show Schedule/Stats only.
 // `gs` = GameSheet {season, team} ids for the Schedule snapshot key + Stats embed.
 const SEASONS = [
-  { key:"W", col:"W", years:[2026,2027], rosterOnly:true },  // Winter, 2026-27 — Team only; drop rosterOnly when the league posts the season
-  { key:"V", col:"V", years:[2026], gs:{season:15132, team:519988} },                         // Summer, 2026
-  { key:"U", col:"U", years:[2026], gs:{season:14606, team:498925} },                         // Spring, 2026
+  { key:"W", col:"V", header:"Winter, 26-27", years:[2026,2027], rosterOnly:true },  // Team only; drop rosterOnly when the league posts the season
+  { key:"V", col:"U", header:"Summer, 26", years:[2026], gs:{season:15132, team:519988} },
+  { key:"U", col:"T", header:"Spring, 26", years:[2026], gs:{season:14606, team:498925} },
   { key:"w2526", label:"Winter, 2025-26", years:[2025,2026], gs:{season:11378, team:407904} },
   { key:"s25",   label:"Summer, 2025",    years:[2025],      gs:{season:10363, team:369945} },
   { key:"sp25",  label:"Spring, 2025",    years:[2025],      gs:{season:9767,  team:352088} },
   { key:"w2425", label:"Winter, 2024-25", years:[2024,2025], gs:{season:7100,  team:271299} },
   { key:"s24",   label:"Summer, 2024",    years:[2024],      gs:{season:6444,  team:239486} }
 ];
-const COL_JERSEY = "L";
-const COL_USAH   = "J"; // USA Hockey registration number, shown on the card back
+const COL_JERSEY = {leftOf:"Jersey Size", col:"K"}; // jersey number — the column has no header of its own
+const COL_USAH   = {header:"USA Hockey", col:"I"};  // USA Hockey registration number
 const CAPTAINS = ["David Sanders"]; // shown as "Captain" on the roster card (goalies come from the sheet's Goalie status)
 /* ========================================== */
 
 const colIdx = c => c.toUpperCase().charCodeAt(0) - 65; // A=0 … Z=25
+const headerIdx = (header,text) => (header||[]).findIndex(h=>(h||"").trim().toLowerCase()===text.trim().toLowerCase());
+// spec: {header} matches the header cell, {leftOf} the column just before a named one,
+// {col} is the letter fallback for when neither name is found.
+function resolveCol(spec,header){
+  if(typeof spec==="string") return colIdx(spec);
+  if(spec.header){ const i=headerIdx(header,spec.header); if(i>=0) return i; }
+  if(spec.leftOf){ const i=headerIdx(header,spec.leftOf); if(i>0) return i-1; }
+  return colIdx(spec.col);
+}
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
 const BEER_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Schedule`; // sheet tab renamed from "Beer" 2026-08-04
 
@@ -662,7 +679,10 @@ function playerCard(p){
   const shell=el("div","player flipcard");
   const flip=el("div","flip");
   const front=el("div","face front");
-  front.appendChild(photoCircle(p));
+  const ident=el("div","p-ident");
+  ident.appendChild(photoCircle(p));
+  if(p.jersey) ident.appendChild(el("div","p-num",p.jersey));
+  front.appendChild(ident);
   const stack=el("div","p-stack");
   stack.appendChild(el("div","p-first",p.first));
   if(p.last) stack.appendChild(el("div","p-last",p.last));
@@ -726,7 +746,7 @@ function fallbackSeason(pred){
   return false;
 }
 function seasonEntry(){ return SEASONS.find(s=>s.key===seasonCol)||SEASONS[0]; }
-function entryLabel(s,header){ return s.col ? (seasonLabel(header[colIdx(s.col)])||("Column "+s.col)) : s.label; }
+function entryLabel(s,header){ return s.col ? (seasonLabel((header||[])[resolveCol(s,header)])||("Column "+s.col)) : s.label; }
 
 function render(){
   const rows=allRows;
@@ -764,7 +784,8 @@ function render(){
   }
   rosterNote.hidden=true;
 
-  const iF=colIdx(COL_FIRST), iL=colIdx(COL_LAST), iS=colIdx(entry.col), iJ=colIdx(COL_JERSEY), iU=colIdx(COL_USAH);
+  const iF=resolveCol(COL_FIRST,header), iL=resolveCol(COL_LAST,header), iS=resolveCol(entry,header),
+        iJ=resolveCol(COL_JERSEY,header), iU=resolveCol(COL_USAH,header);
   const players=[];
   for(let r=DATA_START-1;r<rows.length;r++){
     const row=rows[r]||[];
