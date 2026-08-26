@@ -515,6 +515,7 @@ footer.site .fine{margin-left:auto}
    Update these if the sheet layout changes.  */
 const SHEET_ID   = "1nRKRkEoHEBUjb4c0mI8GQVk8riIwmDT_XBENtXcTwjg";
 const GID        = "901229563";
+const BEER_GID   = "1678597741"; // the "Schedule" tab (renamed from "Beer" 2026-08-04)
 const HEADER_ROW = 7;   // 1-based row holding "First / Last / <season>" headers
 const DATA_START = 8;   // 1-based first player row
 /* Column lookups resolve by header text first and fall back to the letter the column
@@ -534,23 +535,41 @@ const SEASONS = [
   { key:"w2425", label:"Winter, 2024-25", years:[2024,2025], gs:{season:7100,  team:271299} },
   { key:"s24",   label:"Summer, 2024",    years:[2024],      gs:{season:6444,  team:239486} }
 ];
-const COL_JERSEY = {leftOf:"Jersey Size", col:"K"}; // jersey number — the column has no header of its own
+const COL_JERSEY = {header:"Jersey #", leftOf:"Jersey Size", col:"K"};
 const COL_USAH   = {header:"USA Hockey", col:"I"};  // USA Hockey registration number
 const CAPTAINS = ["David Sanders"]; // shown as "Captain" on the roster card (goalies come from the sheet's Goalie status)
 /* ========================================== */
 
 const colIdx = c => c.toUpperCase().charCodeAt(0) - 65; // A=0 … Z=25
-const headerIdx = (header,text) => (header||[]).findIndex(h=>(h||"").trim().toLowerCase()===text.trim().toLowerCase());
+// Header text repeats across the sheet — "Winter, 26-27" labels both a payment column
+// near the left edge and the roster-status column near the right — so of the cells that
+// match, take the one nearest to where the column last lived.
+function headerIdx(header,text,near){
+  const want=text.trim().toLowerCase();
+  let best=-1;
+  (header||[]).forEach((h,i)=>{
+    if((h||"").trim().toLowerCase()!==want) return;
+    if(best<0 || Math.abs(i-near)<Math.abs(best-near)) best=i;
+  });
+  return best;
+}
 // spec: {header} matches the header cell, {leftOf} the column just before a named one,
-// {col} is the letter fallback for when neither name is found.
+// {col} is the letter the column last lived at — the fallback, and the tie-breaker above.
 function resolveCol(spec,header){
   if(typeof spec==="string") return colIdx(spec);
-  if(spec.header){ const i=headerIdx(header,spec.header); if(i>=0) return i; }
-  if(spec.leftOf){ const i=headerIdx(header,spec.leftOf); if(i>0) return i-1; }
-  return colIdx(spec.col);
+  const near=colIdx(spec.col);
+  if(spec.header){ const i=headerIdx(header,spec.header,near); if(i>=0) return i; }
+  if(spec.leftOf){ const i=headerIdx(header,spec.leftOf,near+1); if(i>0) return i-1; }
+  return near;
 }
-const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
-const BEER_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Schedule`; // sheet tab renamed from "Beer" 2026-08-04
+/* Read through /export, not /gviz. The gviz endpoint serves the sheet as it is
+   currently being *viewed*: a filter someone leaves on drops those players from the
+   site, and a hidden column comes back with an empty header. /export reads the
+   underlying data, so the roster doesn't change when someone filters their own
+   spreadsheet. Both send CORS headers. */
+const csvUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+const CSV_URL = csvUrl(GID);
+const BEER_CSV_URL = csvUrl(BEER_GID);
 
 // Minimal RFC-4180 CSV parser (handles quoted fields, embedded commas/newlines)
 function parseCSV(text){
