@@ -137,7 +137,8 @@ header.site{position:relative}
 .join-btn{font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-900);background:var(--oatmeal-300);border:none;clip-path:var(--clip-patch-sm);padding:11px 22px;cursor:pointer}
 .join-btn:hover{background:var(--white)}
 .about{padding-top:0;padding-bottom:var(--space-8)}
-.about-intro{padding:var(--space-8) 0}
+.about-intro{padding:var(--space-8) 0;display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-3)}
+.about-intro .eyebrow{margin:0}
 /* Phones and tablets: copy, then the photo full-bleed as a shallow band. The
    max-height keeps a wide-but-short window from turning 16/7 into a billboard;
    at phone widths the natural 16/7 height is already under it, so nothing changes. */
@@ -155,7 +156,9 @@ header.site{position:relative}
   linear-gradient(to bottom right,transparent calc(50% - 1px),var(--ink-100) calc(50% - 1px),var(--ink-100) calc(50% + 1px),transparent calc(50% + 1px));
   display:flex;align-items:center;justify-content:center}
 .wf-label{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-300);background:var(--surface-page);padding:4px 12px}
-.about-title{font-family:var(--font-display);font-size:clamp(32px,5vw,48px);letter-spacing:.02em;color:var(--text-strong);margin:0 0 var(--space-2)}
+/* The opening quote mark hangs into the margin so the first line still starts on the
+   same axis as the eyebrow above it. */
+.about-quote{margin:0;max-width:46ch;font-family:var(--font-body);font-size:clamp(16px,1.35vw,19px);line-height:1.65;color:var(--text-body);text-indent:-.42em}
 /* About — season snapshot */
 .ab-season{padding-top:var(--space-8)}
 .ab-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:var(--space-3);margin-top:var(--space-6)}
@@ -384,7 +387,7 @@ footer.site .fine{margin-left:auto}
     <div class="about-hero">
       <div class="about-intro">
         <p class="eyebrow">Scrub Club</p>
-          <h1 class="about-title">INSCRUBUTABLE HOCKEY</h1>
+        <blockquote class="about-quote">“We live in a culture obsessed with optimization. Every hobby has to become a side hustle. Every workout needs metrics and data. Every minute must be productive. Somewhere along the way, we began treating fun like it needed a quarterly earnings report. The shower beer is the utter rejection of that mindset-a tiny act of rebellion against the idea that every moment must be subjugated to a larger purpose.”</blockquote>
       </div>
       <img class="about-photo" src="/photos/team-hero.jpg" alt="Scrub Club">
     </div>
