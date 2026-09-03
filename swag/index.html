@@ -492,7 +492,7 @@ footer.site .fine{margin-left:auto}
   </div>
   <div class="container" style="padding-bottom:var(--space-8)">
     <section class="block">
-      <div class="section-head"><h2>BEER STATS</h2><span class="count" id="beer-total"></span></div>
+      <div class="section-head"><h2>BEER STATS</h2></div>
       <div class="bs-head">
         <span class="bs-rank"></span>
         <span class="bs-name">Player</span>
@@ -704,7 +704,7 @@ function renderBeerStats(){
   const box=document.getElementById("beer-stats");
   if(!box) return;
   const total=beerLog.length;
-  if(!total){ document.getElementById("beer-total").textContent=""; box.replaceChildren(); return; }
+  if(!total){ box.replaceChildren(); return; }
   const per={};
   beerLog.forEach(r=>{
     const p=per[r.name]||(per[r.name]={name:r.name,count:0,t:0,ds:""});
@@ -720,7 +720,6 @@ function renderBeerStats(){
     row.appendChild(el("span","bs-runs",String(p.count)));
     return row;
   }));
-  document.getElementById("beer-total").textContent=total+" runs logged";
 }
 
 const initials = p => ((p.first||"").trim()[0]||"")+((p.last||"").trim()[0]||"") || (p.name||"?").trim()[0].toUpperCase();
