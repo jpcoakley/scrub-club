@@ -142,12 +142,10 @@ header.site{position:relative}
 .bs-row{display:flex;align-items:baseline;gap:var(--space-3);padding:10px 0;border-bottom:1px solid var(--oatmeal-500)}
 .bs-rank{width:26px;flex:none;font-family:var(--font-numeral);font-weight:700;font-size:14px;color:var(--ink-300);font-variant-numeric:tabular-nums}
 .bs-name{flex:1;min-width:0;font-family:var(--font-display);font-size:16px;color:var(--text-strong);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bs-every{width:110px;flex:none;font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-500)}
 .bs-last{width:86px;flex:none;font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-300)}
 .bs-runs{width:44px;flex:none;text-align:right;font-family:var(--font-numeral);font-weight:800;font-size:22px;color:var(--burgundy-600);font-variant-numeric:tabular-nums}
 @media (max-width:560px){
   .bs-last,.bs-head .bs-last{display:none}
-  .bs-every{width:92px}
 }
 .league-note{padding:var(--space-8) var(--gutter-inline);font-size:16px;color:var(--ink-500);text-align:center}
 /* Join */
@@ -488,7 +486,6 @@ footer.site .fine{margin-left:auto}
       <div class="bs-head">
         <span class="bs-rank"></span>
         <span class="bs-name">Player</span>
-        <span class="bs-every">How often</span>
         <span class="bs-last">Last brought</span>
         <span class="bs-runs">Runs</span>
       </div>
@@ -692,7 +689,7 @@ async function loadBeer(){
   }catch(e){/* beer data is optional — the Beer Stats section just stays empty */}
 }
 
-// All-time beer leaderboard: runs, cadence, most recent
+// All-time beer leaderboard: runs and most recent
 function renderBeerStats(){
   const box=document.getElementById("beer-stats");
   if(!box) return;
@@ -710,8 +707,6 @@ function renderBeerStats(){
     const row=el("div","bs-row");
     row.appendChild(el("span","bs-rank",String(i+1)));
     row.appendChild(el("span","bs-name",p.name));
-    const cadence=total/p.count;
-    row.appendChild(el("span","bs-every","every "+(cadence>=10?Math.round(cadence):cadence.toFixed(1)).toString().replace(/\.0$/,"")+" games"));
     row.appendChild(el("span","bs-last",shortDate(p.ds)));
     row.appendChild(el("span","bs-runs",String(p.count)));
     return row;
