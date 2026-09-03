@@ -108,16 +108,32 @@ header.site{position:relative}
 .tabs.has-ink .tab.active{border-bottom-color:transparent}
 .tabs.has-ink .tab:hover{transform:translateY(-2px)}
 .league{background:var(--oatmeal-200)}
-.league iframe{display:block;width:100%;min-height:calc(100vh - var(--freeze-h,220px));border:none}
-#view-stats iframe{min-height:0;height:760px}
-.gs-wrap{position:relative;min-height:200px}
-.gs-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:var(--space-3);font-family:var(--font-condensed);font-weight:600;font-size:16px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500);background:var(--oatmeal-200)}
-.gs-loading[hidden]{display:none}
-.gs-spinner{width:16px;height:16px;border:2px solid var(--oatmeal-600);border-top-color:var(--burgundy-600);border-radius:50%;animation:gs-spin .8s linear infinite}
-@media (prefers-reduced-motion:reduce){.gs-spinner{animation:none}
+@media (prefers-reduced-motion:reduce){
   .tab-ink{transition:none}
   .tabs.has-ink .tab:hover{transform:none}}
-@keyframes gs-spin{to{transform:rotate(360deg)}}
+/* Stats: one season's table from stats.json (a weekly GameSheet snapshot) plus beer runs from the sheet */
+.st-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:var(--space-2)}
+.st{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.st th,.st td{padding:10px 8px;border-bottom:1px solid var(--oatmeal-500);text-align:right;white-space:nowrap}
+.st th{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500);padding:14px 8px 6px}
+.st th.st-name,.st td.st-name{text-align:left}
+.st th:first-child,.st td:first-child{padding-left:0}
+.st th:last-child,.st td:last-child{padding-right:0}
+.st td{font-family:var(--font-numeral);font-weight:700;font-size:18px;color:var(--ink-700)}
+.st td.st-num{font-size:14px;color:var(--ink-300);width:30px}
+.st td.st-name{font-family:var(--font-display);font-size:16px;color:var(--text-strong);text-transform:uppercase;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.st .st-sub{margin-left:8px;font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.12em;color:var(--burgundy-400);vertical-align:2px}
+.st td.st-pts,.st td.st-beer{color:var(--burgundy-600);font-weight:800;font-size:22px}
+.st td.st-none{color:var(--ink-300);font-weight:600}
+.st tr.st-off td{color:var(--ink-300)}
+.st tr.st-off td.st-name{color:var(--ink-500)}
+@media (max-width:560px){
+  .st th,.st td{padding-inline:6px}
+  .st td{font-size:16px}
+  .st td.st-name{font-size:14px;max-width:150px}
+  .st td.st-pts,.st td.st-beer{font-size:19px}
+  .st .st-hide-sm{display:none}
+}
 .gs-foot{padding-block:var(--space-3) var(--space-6);font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase}
 .gs-foot a{color:var(--burgundy-600);text-decoration:none}
 .gs-foot a:hover{text-decoration:underline}
@@ -453,19 +469,18 @@ footer.site .fine{margin-left:auto}
 <div class="league" id="view-stats" hidden>
   <div class="container">
     <section class="block">
-      <div class="section-head"><h2>HOCKEY STATS</h2></div>
+      <div class="section-head"><h2>SKATERS</h2><span class="count" id="st-skaters-count"></span></div>
+      <p class="league-note" hidden></p>
+      <div class="st-wrap"><table class="st" id="st-skaters"></table></div>
     </section>
+    <section class="block" id="st-goalies-sec" hidden>
+      <div class="section-head"><h2>GOALIES</h2><span class="count" id="st-goalies-count"></span></div>
+      <div class="st-wrap"><table class="st" id="st-goalies"></table></div>
+    </section>
+    <div class="sched-foot" id="st-foot" hidden></div>
   </div>
-  <p class="league-note" hidden></p>
-  <div class="gs-wrap">
-    <div class="gs-loading" id="gs-loading">
-      <span class="gs-spinner" aria-hidden="true"></span>
-      <span>Loading stats from GameSheet</span>
-    </div>
-    <iframe title="Ice Pack Hockey — Scrub Club team stats"></iframe>
-  </div>
-  <div class="container gs-foot">
-    <a id="gs-link" href="#" target="_blank" rel="noopener">Open full stats on GameSheet →</a>
+  <div class="container gs-foot" hidden>
+    <a id="gs-link" href="#" target="_blank" rel="noopener">Full stats on GameSheet →</a>
   </div>
   <div class="container" style="padding-bottom:var(--space-8)">
     <section class="block">
@@ -567,7 +582,7 @@ const COL_FIRST  = {header:"First", col:"N"};
 const COL_LAST   = {header:"Last",  col:"O"};
 // Seasons in the dropdown, newest first (first = default).
 // `col` = roster status column on the sheet; archive seasons (no col) show Schedule/Stats only.
-// `gs` = GameSheet {season, team} ids for the Schedule snapshot key + Stats embed.
+// `gs` = GameSheet {season, team} ids; the key names the season in schedule.json and stats.json.
 const SEASONS = [
   { key:"W", col:"V", header:"Winter, 26-27", years:[2026,2027], rosterOnly:true },  // Team only; drop rosterOnly when the league posts the season
   { key:"V", col:"U", header:"Summer, 26", years:[2026], gs:{season:15132, team:519988} },
@@ -581,6 +596,19 @@ const SEASONS = [
 const COL_JERSEY = {header:"Jersey #", leftOf:"Jersey Size", col:"K"};
 const COL_USAH   = {header:"USA Hockey", col:"I"};  // USA Hockey registration number
 const CAPTAINS = ["David Sanders"]; // shown as "Captain" on the roster card (goalies come from the sheet's Goalie status)
+// Sheet statuses that count as on the team. "Paid" means committed (payment itself is never shown);
+// "Half" is half a season, which still counts.
+const ON_TEAM = ["in","paid","half","goalie"];
+// Stats lines are joined to sheet players by last name, initial and jersey. GameSheet registers a few
+// people under another first name, so pin those here as "<GameSheet name>" or "<GameSheet name> #<number>"
+// -> the name on the sheet. A line that still doesn't resolve just shows GameSheet's short name.
+const GS_ALIASES = {
+  "R. Dunn": "Jay Dunn",                // registered as Raymond
+  "A. Thorlacius": "Eric Thorlacius",
+  "W. Van Order": "Al Van Order",
+  "W. Thomas": "Clyde Thomas",          // assumed: the only Thomas on the sheet
+  "D. Bortnick #27": "David Bortnick"   // Danny is #17 on the sheet and in GameSheet; the other D. Bortnick is David
+};
 /* ========================================== */
 
 const colIdx = c => c.toUpperCase().charCodeAt(0) - 65; // A=0 … Z=25
@@ -639,7 +667,7 @@ function el(tag, cls, text){
   return n;
 }
 
-// Beer log from the sheet's "Beer" tab: latest run per player + the full log for Beer Stats
+// Beer log from the sheet's "Beer" tab: the full log for Beer Stats, and per-season counts for Stats
 let beerLog=[], beerByDate={};
 async function loadBeer(){
   try{
@@ -647,7 +675,7 @@ async function loadBeer(){
     if(!res.ok) return;
     const rows=parseCSV(await res.text());
     const head=rows[0]||[];
-    const iD=head.indexOf("Date"), iB=head.indexOf("Beer Duty");
+    const iD=head.indexOf("Date"), iB=head.indexOf("Beer Duty"), iS=head.indexOf("Season");
     if(iD<0||iB<0) return;
     const log=[];
     for(let i=1;i<rows.length;i++){
@@ -655,7 +683,8 @@ async function loadBeer(){
       const ds=(rows[i][iD]||"").trim();
       const t=Date.parse(ds);
       if(!name||isNaN(t)) continue;
-      log.push({name,ds,t});
+      const d=new Date(t);
+      log.push({name,ds,t,season:iS<0?"":(rows[i][iS]||"").trim().toLowerCase(),year:d.getFullYear(),month:d.getMonth()+1});
     }
     beerLog=log;
     beerByDate={};
@@ -768,7 +797,7 @@ function seasonLabel(raw){
   return s.replace(/\b(\d{2})(-\d{2})?\b/,(m,y,r)=>"20"+y+(r||""));
 }
 
-let allRows=null, seasonCol=SEASONS.find(s=>!s.rosterOnly).key, userPickedSeason=false;
+let allRows=null, sheetLoadFailed=false, seasonCol=SEASONS.find(s=>!s.rosterOnly).key, userPickedSeason=false;
 // The Team view can browse every season (incl. next season's roster-only entry);
 // Schedule/Stats only list seasons the league has posted. Each scope remembers its pick.
 let sheetHeader=[], rosterSeason="W", leagueSeason=SEASONS.find(s=>!s.rosterOnly).key;
@@ -780,7 +809,7 @@ function rebuildSeasonOptions(view){
   if(!sheetHeader.length) return;
   const list=seasonsForView(view);
   // Only Schedule can show more than one season at once — Team has one roster per season,
-  // and Stats embeds a single GameSheet page per season.
+  // and Stats shows one season's table.
   const keys=list.map(s=>s.key);
   if(view==="schedule") keys.unshift(ALL_SEASONS);
   const memo=view==="roster"?rosterSeason:leagueSeason;
@@ -825,7 +854,7 @@ function render(){
       seasonCol=sel.value;
       if(activeView==="schedule"||activeView==="stats") leagueSeason=seasonCol; else rosterSeason=seasonCol;
       render();
-      if(activeView==="stats") updateFrame("stats");
+      if(activeView==="stats") renderStats();
       if(activeView==="schedule") renderSchedule();
     });
   }
@@ -865,9 +894,6 @@ function render(){
   }
   players.sort((a,b)=>a.last.localeCompare(b.last)||a.name.localeCompare(b.name));
 
-  // "Paid" on the sheet means committed — payment status itself is never shown on the site.
-  // "Half" means half a season, which still counts as being on the team.
-  const ON_TEAM=["in","paid","half","goalie"];
   const committed=players.filter(p=>ON_TEAM.includes(p.statusKey));
   const subs=players.filter(p=>p.statusKey==="sub");
   const outs=players.filter(p=>p.statusKey==="out");
@@ -909,6 +935,7 @@ async function load(){
   const state=document.getElementById("state");
   state.classList.remove("err");
   state.textContent="Loading the sheet…";
+  sheetLoadFailed=false;
   try{
     const beerReady=loadBeer();
     const res=await fetch(CSV_URL,{cache:"no-store"});
@@ -918,20 +945,23 @@ async function load(){
     render();
     renderBeerStats();
     if(activeView==="schedule") renderSchedule();
+    if(activeView==="stats") renderStats();
     state.textContent="";
     document.getElementById("updated").textContent="Updated "+new Date().toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   }catch(e){
     state.classList.add("err");
+    sheetLoadFailed=true;
+    if(activeView==="stats") renderStats(); // still shows the GameSheet names
     state.textContent="Couldn't reach the sheet — check that it's shared as “anyone with the link can view.”";
   }
 }
-// Tabs: Roster (sheet data), Schedule / Stats (GameSheet embeds), Swag, Join
+// Tabs: Roster (sheet data), Schedule / Stats (GameSheet snapshots), Swag, Join
 const VIEWS=["about","schedule","stats","swag","join"];
 let activeView="about";
 function gamesheetSrc(){
   const gs=seasonEntry().gs;
   if(!gs) return null;
-  return `https://gamesheetstats.com/seasons/${gs.season}/teams/${gs.team}?configuration%5Blogo%5D=false`;
+  return `https://gamesheetstats.com/seasons/${gs.season}/teams/${gs.team}/team-stats`;
 }
 
 // About: season record + next game, from the same snapshot the Schedule tab uses
@@ -1069,29 +1099,148 @@ async function renderSchedule(){
   if(!shown) box.appendChild(el("div","sched-empty","No games against "+oppFilter+" this season."));
   setFreezeH();
 }
-function updateFrame(view){
-  const box=document.getElementById("view-"+view);
-  const frame=box.querySelector("iframe");
-  if(!frame) return;
-  const note=box.querySelector(".league-note");
-  const src=gamesheetSrc();
-  const load=document.getElementById("gs-loading"), foot=document.querySelector(".gs-foot");
-  if(src){
-    if(frame.dataset.src!==src){
-      if(load) load.hidden=false;
-      frame.src=src; frame.dataset.src=src;
-      frame.addEventListener("load",()=>{ if(load) load.hidden=true; },{once:true});
-    }
-    if(foot){ foot.hidden=false; document.getElementById("gs-link").href=src.split("?")[0]; }
-    frame.hidden=false; note.hidden=true;
-  }else if(!userPickedSeason && fallbackSeason(s=>s.gs)){
-    updateFrame(view);
-  }else{
-    frame.hidden=true;
-    if(load) load.hidden=true;
-    if(foot) foot.hidden=true;
-    noSeasonNote(note);
+/* ---------- Stats: stats.json (a weekly GameSheet snapshot) joined with the roster sheet ---------- */
+// GameSheet sits behind a bot check, so the site can't read it live; the weekly refresh task
+// snapshots each season's team-stats page into stats.json. Names there are short ("D. Sanders");
+// the sheet has full names, so lines are joined to sheet players by last name, initial and jersey.
+let statsData=null;
+const normName=s=>(s||"").toLowerCase().replace(/[^a-z]/g,"");
+const numKey=v=>{ const n=parseInt(v,10); return isNaN(n)?"":String(n); };
+// "D. SANDERS" -> {initial:"d", last:"sanders", label:"D. Sanders"}
+function gsName(raw){
+  const m=(raw||"").trim().match(/^([A-Za-z])\.?\s+(.+)$/);
+  return {
+    initial:m?m[1].toLowerCase():"",
+    last:normName(m?m[2]:raw),
+    label:(raw||"").trim().toLowerCase().replace(/(^|[\s.'-])([a-z])/g,(x,p,c)=>p+c.toUpperCase())
+  };
+}
+// Everyone on the sheet, with their status for this season (blank for archive seasons)
+function sheetPlayers(entry){
+  if(!allRows) return [];
+  const header=allRows[HEADER_ROW-1]||[];
+  const iF=resolveCol(COL_FIRST,header), iL=resolveCol(COL_LAST,header), iJ=resolveCol(COL_JERSEY,header),
+        iS=entry.col?resolveCol(entry,header):-1;
+  const out=[];
+  for(let r=DATA_START-1;r<allRows.length;r++){
+    const row=allRows[r]||[];
+    const first=(row[iF]||"").trim(), last=(row[iL]||"").trim();
+    if(!first&&!last) continue;
+    out.push({name:(first+" "+last).trim(), lastKey:normName(last), initial:(first[0]||"").toLowerCase(),
+      jersey:(row[iJ]||"").trim(), status:iS>=0?(row[iS]||"").trim().toLowerCase():""});
   }
+  return out;
+}
+// Match GameSheet lines to sheet players. An alias wins; then jersey + initial + last name; then
+// initial + last name when the sheet has exactly one such player; then a typo-tolerant pass for
+// lines like "X. Byrum" or "-. Small" (last name unique on the sheet, and the jersey agrees or the
+// initial isn't a letter). Anything else keeps GameSheet's short name rather than guessing.
+function joinStats(lines,sheet){
+  const byLast={};
+  sheet.forEach(p=>{ (byLast[p.lastKey]=byLast[p.lastKey]||[]).push(p); });
+  lines.forEach(l=>{ l.gs=gsName(l.name); l.player=null; });
+  const taken=new Set();
+  const open=l=>(byLast[l.gs.last]||[]).filter(p=>!taken.has(p));
+  const alias=k=>k in GS_ALIASES ? sheet.find(p=>p.name===GS_ALIASES[k]) : null;
+  const sameNum=(p,l)=>numKey(p.jersey)!=="" && numKey(p.jersey)===numKey(l.num);
+  const passes=[
+    l=>alias(`${l.gs.label} #${l.num}`) || alias(l.gs.label),
+    l=>open(l).find(p=>p.initial===l.gs.initial && sameNum(p,l)),
+    l=>{ const c=(byLast[l.gs.last]||[]).filter(p=>p.initial===l.gs.initial); return c.length===1?c[0]:null; },
+    l=>{ const c=open(l); if(c.length!==1 || byLast[l.gs.last].length!==1) return null;
+         return sameNum(c[0],l) || !/[a-z]/.test(l.gs.initial) ? c[0] : null; }
+  ];
+  passes.forEach(pass=>lines.forEach(l=>{
+    if(l.player) return;
+    const p=pass(l);
+    if(p && !taken.has(p)){ l.player=p; taken.add(p); }
+  }));
+}
+// Beer runs this season, by sheet name. Winter spans two years: Aug to Dec of the first, Jan to Jul of the second.
+function beerRunsFor(entry){
+  const seasonName=(entryLabel(entry,sheetHeader)||"").split(",")[0].trim().toLowerCase();
+  const ys=entry.years||[];
+  const runs={};
+  beerLog.forEach(r=>{
+    if(!seasonName || r.season!==seasonName) return;
+    const ok=ys.length<2 ? r.year===ys[0] : (r.year===ys[0] && r.month>=8) || (r.year===ys[1] && r.month<8);
+    if(ok) runs[r.name]=(runs[r.name]||0)+1;
+  });
+  return runs;
+}
+const statCell=(v,cls)=>{ const none=v==null||v===""; return el("td",(cls||"")+(none?" st-none":""),none?"–":String(v)); };
+const svpText=v=>v==null?null:Number(v).toFixed(3).replace(/^0/,"");
+const gaaText=v=>v==null?null:Number(v).toFixed(2);
+function statsTable(table,cols,rows){
+  const thead=el("thead"), tr=el("tr");
+  cols.forEach(([t,cls])=>tr.appendChild(el("th",cls,t)));
+  thead.appendChild(tr);
+  const tbody=el("tbody");
+  rows.forEach(r=>tbody.appendChild(r));
+  table.replaceChildren(thead,tbody);
+}
+function statsRow(cells,cls){ const tr=el("tr",cls); cells.forEach(c=>tr.appendChild(c)); return tr; }
+function nameCell(l,entry,haveSheet){
+  const td=el("td","st-name",l.player?l.player.name:l.gs.label);
+  // Seasons the sheet tracks: anyone who dressed without an In/Paid/Half/Goalie status was filling in
+  if(haveSheet && entry.col && !(l.player && ON_TEAM.includes(l.player.status))) td.appendChild(el("span","st-sub","Sub"));
+  return td;
+}
+const numCell=l=>statCell((l.player&&l.player.jersey)||l.num||null,"st-num st-hide-sm");
+
+async function renderStats(){
+  const box=document.getElementById("view-stats"), note=box.querySelector(".league-note");
+  const skT=document.getElementById("st-skaters"), goT=document.getElementById("st-goalies");
+  const goSec=document.getElementById("st-goalies-sec"), foot=document.getElementById("st-foot"), gsFoot=box.querySelector(".gs-foot");
+  const clear=()=>{ skT.replaceChildren(); goT.replaceChildren(); goSec.hidden=true; foot.hidden=true; gsFoot.hidden=true;
+    document.getElementById("st-skaters-count").textContent=""; };
+  if(!statsData){
+    try{ statsData=await (await fetch("stats.json",{cache:"no-store"})).json(); }
+    catch(e){ clear(); note.textContent="Couldn't load the stats. Try refreshing."; note.hidden=false; return; }
+  }
+  if(!allRows && !sheetLoadFailed) return; // load() calls back once the sheet is in, so names come out in full
+  const entry=seasonEntry();
+  const season=statsData.seasons[entry.key];
+  if(!season){
+    if(!userPickedSeason && fallbackSeason(s=>statsData.seasons[s.key])){ renderStats(); return; }
+    clear(); noSeasonNote(note); return;
+  }
+  note.hidden=true;
+  const sheet=sheetPlayers(entry), haveSheet=sheet.length>0;
+  const runs=beerRunsFor(entry);
+  const beer=l=>l.player?(runs[l.player.name]||null):null;
+  const skaters=(season.skaters||[]).map(l=>Object.assign({},l));
+  const goalies=(season.goalies||[]).map(l=>Object.assign({},l));
+  joinStats(skaters,sheet); joinStats(goalies,sheet);
+  const label=l=>l.player?l.player.name:l.gs.label;
+  skaters.sort((a,b)=>(b.pts-a.pts)||(b.g-a.g)||(b.gp-a.gp)||label(a).localeCompare(label(b)));
+  goalies.sort((a,b)=>(b.gp-a.gp)||(b.w-a.w)||label(a).localeCompare(label(b)));
+
+  // On this season's roster but not on GameSheet: nothing played yet, or the league hasn't posted
+  const matched=new Set(skaters.concat(goalies).map(l=>l.player).filter(Boolean));
+  const bench=entry.col ? sheet.filter(p=>ON_TEAM.includes(p.status) && !matched.has(p)) : [];
+  const benchRow=(p,n)=>statsRow([statCell(p.jersey||null,"st-num st-hide-sm"), el("td","st-name",p.name),
+    ...Array.from({length:n},()=>statCell(null)), statCell(runs[p.name]||null,"st-beer")],"st-off");
+
+  const skRows=skaters.map(l=>statsRow([numCell(l), nameCell(l,entry,haveSheet), statCell(l.gp), statCell(l.g), statCell(l.a),
+      statCell(l.pts,"st-pts"), statCell(l.pim,"st-hide-sm"), statCell(beer(l),"st-beer")]))
+    .concat(bench.filter(p=>p.status!=="goalie").map(p=>benchRow(p,5)));
+  statsTable(skT,[["#","st-num st-hide-sm"],["Player","st-name"],["GP"],["G"],["A"],["PTS"],["PIM","st-hide-sm"],["Beer"]],skRows);
+  document.getElementById("st-skaters-count").textContent=skRows.length+(skRows.length===1?" skater":" skaters");
+
+  const goRows=goalies.map(l=>statsRow([numCell(l), nameCell(l,entry,haveSheet), statCell(l.gp),
+      statCell([l.w,l.l,l.t].map(v=>v==null?0:v).join("-")+(l.otl?"-"+l.otl:"")), statCell(l.ga,"st-hide-sm"),
+      statCell(gaaText(l.gaa)), statCell(svpText(l.svp)), statCell(l.so,"st-hide-sm"), statCell(beer(l),"st-beer")]))
+    .concat(bench.filter(p=>p.status==="goalie").map(p=>benchRow(p,6)));
+  statsTable(goT,[["#","st-num st-hide-sm"],["Goalie","st-name"],["GP"],["W-L-T"],["GA","st-hide-sm"],["GAA"],["SV%"],["SO","st-hide-sm"],["Beer"]],goRows);
+  document.getElementById("st-goalies-count").textContent=goRows.length+(goRows.length===1?" goalie":" goalies");
+  goSec.hidden=!goRows.length;
+
+  foot.textContent="Stats from GameSheet as of "+statsData.updated+". Beer is how many times each player brought the beer this season, from the team sheet.";
+  foot.hidden=false;
+  const src=gamesheetSrc();
+  gsFoot.hidden=!src;
+  if(src) document.getElementById("gs-link").href=src;
 }
 // URL routing: each view lives at its own path (…/about/, …/team/, …/schedule/, …)
 const VIEW_PATHS={about:"about",roster:"team",schedule:"schedule",stats:"stats",swag:"swag",join:"join"};
@@ -1127,7 +1276,7 @@ function showTab(which,push=true){
     rebuildSeasonOptions(which);
     if(seasonCol!==prev && allRows) render();
   }
-  if(which==="stats"){ updateFrame(which); renderBeerStats(); }
+  if(which==="stats"){ renderStats(); renderBeerStats(); }
   if(which==="schedule") renderSchedule();
   if(which==="about") renderAbout();
   window.scrollTo(0,0);
