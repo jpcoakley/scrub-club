@@ -591,7 +591,7 @@ const COL_LAST   = {header:"Last",  col:"O"};
 // `col` = roster status column on the sheet; archive seasons (no col) show Schedule/Stats only.
 // `gs` = GameSheet {season, team} ids; the key names the season in schedule.json and stats.json.
 const SEASONS = [
-  { key:"W", col:"V", header:"Winter, 26-27", years:[2026,2027], rosterOnly:true },  // Team only; drop rosterOnly when the league posts the season
+  { key:"W", col:"V", header:"Winter, 26-27", years:[2026,2027] },  // Schedule posted; add gs ids and drop the seed once GameSheet has the season
   { key:"V", col:"U", header:"Summer, 26", years:[2026], gs:{season:15132, team:519988} },
   { key:"U", col:"T", header:"Spring, 26", years:[2026], gs:{season:14606, team:498925} },
   { key:"w2526", label:"Winter, 2025-26", years:[2025,2026], gs:{season:11378, team:407904} },

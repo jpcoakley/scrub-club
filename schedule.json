@@ -5,6 +5,150 @@
   "Scrub Club"
  ],
  "seasons": {
+  "W": {
+   "games": [
+    {
+     "gm": 1,
+     "date": "Sep 10",
+     "time": "9:40 PM",
+     "rink": "Rink 2",
+     "opponent": "Collision Experts"
+    },
+    {
+     "gm": 2,
+     "date": "Sep 15",
+     "time": "10:10 PM",
+     "rink": "Rink 3",
+     "opponent": "Panthers"
+    },
+    {
+     "gm": 3,
+     "date": "Sep 22",
+     "time": "10:10 PM",
+     "rink": "Rink 3",
+     "opponent": "The Larrys"
+    },
+    {
+     "gm": 4,
+     "date": "Sep 29",
+     "time": "9:40 PM",
+     "rink": "Rink 2",
+     "opponent": "Blowholes"
+    },
+    {
+     "gm": 5,
+     "date": "Oct 8",
+     "time": "10:10 PM",
+     "rink": "Rink 3",
+     "opponent": "Screaming Eagles"
+    },
+    {
+     "gm": 6,
+     "date": "Oct 13",
+     "time": "10:10 PM",
+     "rink": "Rink 1",
+     "opponent": "Growlers"
+    },
+    {
+     "gm": 7,
+     "date": "Oct 22",
+     "time": "9:40 PM",
+     "rink": "Rink 2",
+     "opponent": "Ice Turtles"
+    },
+    {
+     "gm": 8,
+     "date": "Oct 27",
+     "time": "10:10 PM",
+     "rink": "Rink 1",
+     "opponent": "Collision Experts"
+    },
+    {
+     "gm": 9,
+     "date": "Nov 3",
+     "time": "9:40 PM",
+     "rink": "Rink 2",
+     "opponent": "Panthers"
+    },
+    {
+     "gm": 10,
+     "date": "Nov 12",
+     "time": "10:25 PM",
+     "rink": "Rink 2",
+     "opponent": "The Larrys"
+    },
+    {
+     "gm": 11,
+     "date": "Nov 19",
+     "time": "10:15 PM",
+     "rink": "Rink 3",
+     "opponent": "Blowholes"
+    },
+    {
+     "gm": 12,
+     "date": "Dec 3",
+     "time": "10:25 PM",
+     "rink": "Rink 2",
+     "opponent": "Screaming Eagles"
+    },
+    {
+     "gm": 13,
+     "date": "Dec 8",
+     "time": "9:30 PM",
+     "rink": "Rink 3",
+     "opponent": "Growlers"
+    },
+    {
+     "gm": 14,
+     "date": "Dec 15",
+     "time": "9:30 PM",
+     "rink": "Rink 3",
+     "opponent": "Ice Turtles"
+    },
+    {
+     "gm": 15,
+     "date": "Jan 5",
+     "time": "10:30 PM",
+     "rink": "Rink 2",
+     "opponent": "Collision Experts"
+    },
+    {
+     "gm": 16,
+     "date": "Jan 12",
+     "time": "9:30 PM",
+     "rink": "Rink 3",
+     "opponent": "Panthers"
+    },
+    {
+     "gm": 17,
+     "date": "Jan 19",
+     "time": "9:30 PM",
+     "rink": "Rink 3",
+     "opponent": "The Larrys"
+    },
+    {
+     "gm": 18,
+     "date": "Jan 28",
+     "time": "10:25 PM",
+     "rink": "Rink 2",
+     "opponent": "Blowholes"
+    },
+    {
+     "gm": 19,
+     "date": "Feb 4",
+     "time": "10:15 PM",
+     "rink": "Rink 3",
+     "opponent": "Screaming Eagles"
+    },
+    {
+     "gm": 20,
+     "date": "Feb 11",
+     "time": "10:25 PM",
+     "rink": "Rink 2",
+     "opponent": "Growlers"
+    }
+   ]
+  },
   "V": {
    "games": [
     {
