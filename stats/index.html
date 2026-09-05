@@ -238,6 +238,12 @@ header.site{position:relative}
   /* Beer Man drops to its own line so the opponent name gets the full width */
   .sg-row{flex-wrap:wrap;row-gap:3px}
   .sg-time{display:none}
+  /* A game that hasn't been played has an empty W/L column and no score to read, so the
+     time takes that room back instead of being dropped like it is on a finished game. */
+  .sg-upcoming .sg-time,
+  .sg-head.no-played .sg-time{display:block;width:auto}
+  .sg-upcoming .sg-res:empty,
+  .sg-head.no-played .sg-res{display:none}
   .sg-opp{width:auto;flex:1;min-width:0;white-space:normal}
   .sg-beer{width:100%;flex:none;padding-left:calc(58px + var(--space-4));font-size:13px}
   .sg-beer:empty{display:none}
@@ -1030,8 +1036,10 @@ function gameYear(entry,dateStr){
   if(ys.length<2) return ys[0];
   return ["Aug","Sep","Oct","Nov","Dec"].includes(dateStr.split(" ")[0]) ? ys[0] : ys[1];
 }
-function schedHeadRow(){
-  const r=el("div","sg-row sg-head");
+/* Phones drop the time column to make room for the score. A season nobody has played yet has
+   no scores at all, so there the header swaps W/L back out for Time to match its rows. */
+function schedHeadRow(anyPlayed){
+  const r=el("div","sg-row sg-head"+(anyPlayed?"":" no-played"));
   r.appendChild(el("span","sg-date","Date"));
   r.appendChild(el("span","sg-time","Time"));
   r.appendChild(el("span","sg-opp","Opponent"));
@@ -1045,11 +1053,12 @@ function seasonHeadRow(label){
   return r;
 }
 function schedRow(g,entry){
-  const r=el("div","sg-row");
+  const played=g.us!=null;
+  const r=el("div","sg-row"+(played?"":" sg-upcoming"));
   r.appendChild(el("span","sg-date",g.date));
   r.appendChild(el("span","sg-time",g.time));
   r.appendChild(el("span","sg-opp",g.opponent));
-  if(g.us!=null){
+  if(played){
     const res=g.us>g.them?"W":g.us<g.them?"L":"T";
     r.appendChild(el("span","sg-res "+(res==="W"?"win":res==="L"?"loss":"tie"),`${res} ${g.us}–${g.them}`));
   }else{
@@ -1090,14 +1099,17 @@ async function renderSchedule(){
   oppSel.hidden=opps.length<2;
 
   const list=el("div","sched-list");
-  list.appendChild(schedHeadRow());
-  let shown=0;
+  // Rows are built before the header because the header's mobile columns depend on whether
+  // anything in view has actually been played.
+  const body=[]; let shown=0, anyPlayed=false;
   entries.forEach(e=>{
     const games=schedData.seasons[e.key].games.filter(g=>!oppFilter||g.opponent===oppFilter);
     if(!games.length) return;
-    if(multi) list.appendChild(seasonHeadRow(entryLabel(e,sheetHeader)));
-    games.forEach(g=>{ list.appendChild(schedRow(g,e)); shown++; });
+    if(multi) body.push(seasonHeadRow(entryLabel(e,sheetHeader)));
+    games.forEach(g=>{ if(g.us!=null) anyPlayed=true; body.push(schedRow(g,e)); shown++; });
   });
+  list.appendChild(schedHeadRow(anyPlayed));
+  body.forEach(n=>list.appendChild(n));
   box.appendChild(list);
   if(!shown) box.appendChild(el("div","sched-empty","No games against "+oppFilter+" this season."));
   setFreezeH();
