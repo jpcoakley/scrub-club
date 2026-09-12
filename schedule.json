@@ -1,151 +1,259 @@
 {
- "updated": "Aug 28, 2026",
+ "updated": "Sep 12, 2026",
  "teamAliases": [
   "Washington Hockey Team",
-  "Scrub Club"
+  "Scrub Club",
+  "Scrub Club (WHT)"
  ],
  "seasons": {
   "W": {
    "games": [
     {
-     "gm": 1,
+     "gm": 3,
      "date": "Sep 10",
      "time": "9:40 PM",
      "rink": "Rink 2",
-     "opponent": "Collision Experts"
+     "opponent": "Collision Experts",
+     "us": 4,
+     "them": 0
     },
     {
-     "gm": 2,
+     "gm": 6,
      "date": "Sep 15",
      "time": "10:10 PM",
      "rink": "Rink 3",
      "opponent": "Panthers"
     },
     {
-     "gm": 3,
+     "gm": 10,
      "date": "Sep 22",
      "time": "10:10 PM",
      "rink": "Rink 3",
      "opponent": "The Larrys"
     },
     {
-     "gm": 4,
+     "gm": 14,
      "date": "Sep 29",
      "time": "9:40 PM",
      "rink": "Rink 2",
      "opponent": "Blowholes"
     },
     {
-     "gm": 5,
+     "gm": 22,
      "date": "Oct 8",
      "time": "10:10 PM",
      "rink": "Rink 3",
      "opponent": "Screaming Eagles"
     },
     {
-     "gm": 6,
+     "gm": 24,
      "date": "Oct 13",
      "time": "10:10 PM",
      "rink": "Rink 1",
      "opponent": "Growlers"
     },
     {
-     "gm": 7,
+     "gm": 31,
      "date": "Oct 22",
      "time": "9:40 PM",
      "rink": "Rink 2",
      "opponent": "Ice Turtles"
     },
     {
-     "gm": 8,
+     "gm": 34,
      "date": "Oct 27",
      "time": "10:10 PM",
      "rink": "Rink 1",
      "opponent": "Collision Experts"
     },
     {
-     "gm": 9,
+     "gm": 39,
      "date": "Nov 3",
      "time": "9:40 PM",
      "rink": "Rink 2",
      "opponent": "Panthers"
     },
     {
-     "gm": 10,
+     "gm": 47,
      "date": "Nov 12",
      "time": "10:25 PM",
      "rink": "Rink 2",
      "opponent": "The Larrys"
     },
     {
-     "gm": 11,
+     "gm": 51,
      "date": "Nov 19",
      "time": "10:15 PM",
      "rink": "Rink 3",
      "opponent": "Blowholes"
     },
     {
-     "gm": 12,
+     "gm": 57,
      "date": "Dec 3",
      "time": "10:25 PM",
      "rink": "Rink 2",
      "opponent": "Screaming Eagles"
     },
     {
-     "gm": 13,
+     "gm": 59,
      "date": "Dec 8",
      "time": "9:30 PM",
      "rink": "Rink 3",
      "opponent": "Growlers"
     },
     {
-     "gm": 14,
+     "gm": 64,
      "date": "Dec 15",
      "time": "9:30 PM",
      "rink": "Rink 3",
      "opponent": "Ice Turtles"
     },
     {
-     "gm": 15,
+     "gm": 70,
      "date": "Jan 5",
      "time": "10:30 PM",
      "rink": "Rink 2",
      "opponent": "Collision Experts"
     },
     {
-     "gm": 16,
+     "gm": 74,
      "date": "Jan 12",
      "time": "9:30 PM",
      "rink": "Rink 3",
      "opponent": "Panthers"
     },
     {
-     "gm": 17,
+     "gm": 79,
      "date": "Jan 19",
      "time": "9:30 PM",
      "rink": "Rink 3",
      "opponent": "The Larrys"
     },
     {
-     "gm": 18,
+     "gm": 87,
      "date": "Jan 28",
      "time": "10:25 PM",
      "rink": "Rink 2",
      "opponent": "Blowholes"
     },
     {
-     "gm": 19,
+     "gm": 91,
      "date": "Feb 4",
      "time": "10:15 PM",
      "rink": "Rink 3",
      "opponent": "Screaming Eagles"
     },
     {
-     "gm": 20,
+     "gm": 97,
      "date": "Feb 11",
      "time": "10:25 PM",
      "rink": "Rink 2",
      "opponent": "Growlers"
+    },
+    {
+     "gm": 99,
+     "date": "Feb 16",
+     "time": "9:40 PM",
+     "rink": "Rink 3",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 100,
+     "date": "Feb 16",
+     "time": "10:30 PM",
+     "rink": "Rink 2",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 101,
+     "date": "Feb 18",
+     "time": "10:15 PM",
+     "rink": "Rink 3",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 102,
+     "date": "Feb 18",
+     "time": "10:25 PM",
+     "rink": "Rink 2",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 103,
+     "date": "Feb 23",
+     "time": "9:40 PM",
+     "rink": "Rink 2",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 104,
+     "date": "Feb 23",
+     "time": "9:50 PM",
+     "rink": "Rink 3",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 105,
+     "date": "Feb 25",
+     "time": "9:40 PM",
+     "rink": "Rink 2",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 106,
+     "date": "Feb 25",
+     "time": "10:00 PM",
+     "rink": "Rink 3",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 107,
+     "date": "Mar 2",
+     "time": "9:30 PM",
+     "rink": "Rink 3",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 108,
+     "date": "Mar 2",
+     "time": "9:40 PM",
+     "rink": "Rink 2",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 109,
+     "date": "Mar 4",
+     "time": "9:20 PM",
+     "rink": "Rink 2",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 110,
+     "date": "Mar 4",
+     "time": "10:00 PM",
+     "rink": "Rink 3",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 111,
+     "date": "Mar 9",
+     "time": "9:10 PM",
+     "rink": "Rink 1",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 112,
+     "date": "Mar 10",
+     "time": "9:10 PM",
+     "rink": "Rink 1",
+     "opponent": "TBD"
+    },
+    {
+     "gm": 113,
+     "date": "Mar 11",
+     "time": "9:10 PM",
+     "rink": "Rink 2",
+     "opponent": "TBD"
     }
    ]
   },

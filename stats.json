@@ -1,6 +1,156 @@
 {
- "updated": "Sep 3, 2026",
+ "updated": "Sep 12, 2026",
  "seasons": {
+  "W": {
+   "skaters": [
+    {
+     "name": "A. Baker",
+     "num": "36",
+     "pos": "",
+     "gp": 1,
+     "g": 0,
+     "a": 0,
+     "pts": 0,
+     "pim": 2,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "D. Bortnick",
+     "num": "17",
+     "pos": "",
+     "gp": 1,
+     "g": 0,
+     "a": 0,
+     "pts": 0,
+     "pim": 0,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "D. Sanders",
+     "num": "11",
+     "pos": "",
+     "gp": 1,
+     "g": 0,
+     "a": 0,
+     "pts": 0,
+     "pim": 0,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "R. Ward",
+     "num": "76",
+     "pos": "",
+     "gp": 1,
+     "g": 0,
+     "a": 0,
+     "pts": 0,
+     "pim": 2,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "J. Chod",
+     "num": "00",
+     "pos": "",
+     "gp": 1,
+     "g": 0,
+     "a": 1,
+     "pts": 1,
+     "pim": 2,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "S. Hopkins",
+     "num": "5",
+     "pos": "",
+     "gp": 1,
+     "g": 1,
+     "a": 0,
+     "pts": 1,
+     "pim": 0,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 1,
+     "ht": 0
+    },
+    {
+     "name": "A. Vanorder",
+     "num": "0",
+     "pos": "",
+     "gp": 1,
+     "g": 0,
+     "a": 1,
+     "pts": 1,
+     "pim": 0,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "J. Coakley",
+     "num": "8",
+     "pos": "",
+     "gp": 1,
+     "g": 1,
+     "a": 1,
+     "pts": 2,
+     "pim": 0,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "F. Small",
+     "num": "69",
+     "pos": "",
+     "gp": 1,
+     "g": 2,
+     "a": 0,
+     "pts": 2,
+     "pim": 0,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    }
+   ],
+   "goalies": [
+    {
+     "name": "R. Huskey",
+     "num": "3",
+     "gp": 1,
+     "gs": 1,
+     "sa": 22,
+     "ga": 0,
+     "gaa": 0,
+     "sv": 22,
+     "svp": 1,
+     "w": 1,
+     "l": 0,
+     "t": 0,
+     "otl": 0,
+     "sol": 0,
+     "so": 1,
+     "min": 45
+    }
+   ]
+  },
   "V": {
    "skaters": [
     {
