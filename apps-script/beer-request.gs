@@ -1,11 +1,13 @@
-/* Beer Man requests from scrubclubhockeyteam.com.
+/* Beer Man assignments from scrubclubhockeyteam.com.
 
    Lives in the Scrub Club Roster sheet (Extensions > Apps Script), deployed as a web app
-   (Execute as: Me, Who has access: Anyone). The site's Request button posts
-   {date:"Sep 15, 2026", name:"Danny Bortnick", season:"Winter"} here.
+   (Execute as: Me, Who has access: Anyone). The site's Assign button posts
+   {date:"Sep 15, 2026", name:"Danny Bortnick", season:"Winter", seasonHeader:"Winter, 26-27"} here.
 
-   A request goes through only when:
-   - the name matches a player on the roster tab (First + Last), ignoring case and extra spaces,
+   An assignment goes through only when:
+   - the name is on that season's team: a player on the roster tab (First + Last, ignoring case
+     and extra spaces) whose status is In, Paid, Half or Goalie in the season's status column,
+     which is the rightmost roster column headed seasonHeader,
    - the date is an unplayed game in the site's schedule.json, today or later,
    - nobody already has beer for that date on the Schedule tab.
    It fills Beer Duty on that date's Schedule row, adding the row in date order if there isn't one.
@@ -16,6 +18,8 @@ const SCHEDULE_GID = 1678597741;
 const ROSTER_HEADER_ROW = 7;
 const SCHEDULE_URL = "https://scrubclubhockeyteam.com/schedule.json";
 const SEASON_NAMES = ["Winter", "Spring", "Summer", "Fall"];
+// Statuses that count as on the team; keep in step with ON_TEAM in index.html
+const ON_TEAM = ["in", "paid", "half", "goalie"];
 
 function doGet() {
   return reply({ ok: true, message: "Scrub Club beer requests are running." });
@@ -36,11 +40,11 @@ function request(req) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const tz = ss.getSpreadsheetTimeZone();
 
-  // Name: must already be on the roster
-  const roster = rosterNames(ss);
-  const typed = norm(req.name);
-  const name = roster.find(n => norm(n) === typed);
-  if (!name) return { ok: false, error: "That name isn't on the roster.", suggestions: suggest(roster, typed) };
+  // Name: must be on this season's team
+  const team = teamNames(ss, req.seasonHeader);
+  if (!team.length) return { ok: false, error: "There's no team list for that season yet." };
+  const name = team.find(n => norm(n) === norm(req.name));
+  if (!name) return { ok: false, error: "Only players on this season's team can be assigned beer." };
 
   // Date: an unplayed game on the posted schedule, not in the past
   const m = String(req.date || "").match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/);
@@ -101,25 +105,21 @@ function request(req) {
   return { ok: true, name, date: req.date };
 }
 
-function rosterNames(ss) {
+// Players whose status in the season's column counts as on the team. Season headers repeat on the
+// roster tab (a payment column and a status column share the name), and status is the rightmost.
+function teamNames(ss, seasonHeader) {
   const rows = sheetById(ss, ROSTER_GID).getDataRange().getDisplayValues();
   const head = rows[ROSTER_HEADER_ROW - 1].map(h => h.trim());
   const iF = head.indexOf("First"), iL = head.indexOf("Last");
+  const iS = head.lastIndexOf(String(seasonHeader || "").trim());
+  if (iF < 0 || iL < 0 || iS < 0 || !String(seasonHeader || "").trim()) return [];
   const names = [];
   for (let r = ROSTER_HEADER_ROW; r < rows.length; r++) {
+    if (!ON_TEAM.includes(norm(rows[r][iS]))) continue;
     const n = `${rows[r][iF] || ""} ${rows[r][iL] || ""}`.replace(/\s+/g, " ").trim();
     if (n && !names.includes(n)) names.push(n);
   }
   return names;
-}
-
-// Roster names sharing the typed last name, or failing that the typed first name
-function suggest(roster, typed) {
-  const parts = typed.split(" ");
-  const last = parts[parts.length - 1], first = parts[0];
-  let hits = roster.filter(n => norm(n).split(" ").pop() === last);
-  if (!hits.length) hits = roster.filter(n => norm(n).split(" ")[0] === first);
-  return hits.slice(0, 5);
 }
 
 function upcomingGames() {

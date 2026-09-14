@@ -251,7 +251,7 @@ header.site{position:relative}
   .sg-head .sg-beer{display:none}
   .sched-list{width:100%}
 }
-/* Beer Man request: a small patch button in an empty Beer Man cell, and the pop-up it opens */
+/* Beer Man assignment: a small patch button in an empty Beer Man cell, and the pop-up it opens */
 .sg-req{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-700);background:var(--burgundy-100);border:none;clip-path:var(--clip-patch-sm);padding:4px 11px;cursor:pointer;line-height:1.3}
 .sg-req:hover{background:var(--burgundy-600);color:var(--oatmeal-300)}
 .br{margin:auto;padding:0;border:none;background:transparent;width:min(420px,calc(100vw - 32px));max-width:none;color:var(--text-body)}
@@ -259,13 +259,11 @@ header.site{position:relative}
 .br-card{background:var(--surface-card);clip-path:var(--clip-patch);padding:var(--space-6);display:flex;flex-direction:column;gap:var(--space-2);border-top:4px solid var(--burgundy-600)}
 .br-k{font-family:var(--font-condensed);font-weight:700;font-size:13px;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--burgundy-600)}
 .br-game{font-family:var(--font-display);font-size:20px;line-height:1.15;color:var(--text-strong);text-transform:uppercase;margin-bottom:var(--space-3)}
+.br-game .nb{white-space:nowrap}
 .br-label{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500)}
 .br-input{font-family:var(--font-body);font-size:17px;color:var(--ink-900);background:var(--white);border:1px solid var(--oatmeal-600);border-radius:var(--radius-sm);padding:10px 12px;width:100%}
 .br-input:focus{outline:none;border-color:var(--burgundy-600);box-shadow:0 0 0 3px var(--burgundy-100)}
 .br-msg{font-size:14px;line-height:1.4;color:var(--penalty-500)}
-.br-picks{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.br-pick{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--burgundy-700);background:var(--burgundy-100);border:none;border-radius:var(--radius-sm);padding:5px 10px;cursor:pointer}
-.br-pick:hover{background:var(--burgundy-200)}
 .br-actions{display:flex;justify-content:flex-end;gap:var(--space-3);margin-top:var(--space-4)}
 .br-cancel,.br-send{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;border:none;clip-path:var(--clip-patch-sm);padding:10px 18px;cursor:pointer}
 .br-cancel{color:var(--ink-500);background:transparent}
@@ -472,14 +470,13 @@ footer.site .fine{margin-left:auto}
 <dialog id="beer-req" class="br" aria-labelledby="br-title">
   <form id="br-form" class="br-card" novalidate>
     <div class="br-k">Beer Man</div>
-    <h2 id="br-title" class="br-game" aria-live="polite"><span id="br-game"></span></h2>
-    <label class="br-label" for="br-name">Your name</label>
-    <input id="br-name" class="br-input" list="br-names" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="First and last, as on the roster">
-    <datalist id="br-names"></datalist>
+    <h2 id="br-title" class="br-game"><span id="br-game"></span></h2>
+    <label class="br-label" for="br-name">Who's bringing beer?</label>
+    <select id="br-name" class="br-input"></select>
     <div id="br-msg" class="br-msg" role="alert" hidden></div>
     <div class="br-actions">
       <button type="button" id="br-cancel" class="br-cancel">Cancel</button>
-      <button type="submit" id="br-send" class="br-send">Request</button>
+      <button type="submit" id="br-send" class="br-send">Assign</button>
     </div>
   </form>
 </dialog>
@@ -560,8 +557,8 @@ footer.site .fine{margin-left:auto}
 const SHEET_ID   = "1nRKRkEoHEBUjb4c0mI8GQVk8riIwmDT_XBENtXcTwjg";
 const GID        = "901229563";
 const BEER_GID   = "1678597741"; // the "Schedule" tab (renamed from "Beer" 2026-08-04)
-// Beer Man requests: the web app URL of apps-script/beer-request.gs, deployed from the sheet.
-// Empty hides the schedule's Request buttons.
+// Beer Man assignments: the web app URL of apps-script/beer-request.gs, deployed from the sheet.
+// Empty hides the schedule's Assign buttons.
 const BEER_REQUEST_URL = "";
 const HEADER_ROW = 7;   // 1-based row holding "First / Last / <season>" headers
 const DATA_START = 8;   // 1-based first player row
@@ -917,10 +914,10 @@ function schedRow(g,entry){
   const year=gameYear(entry,g.date);
   const ds=year?`${g.date}, ${year}`:"";
   const beer=el("span","sg-beer",(ds&&beerByDate[ds])||"");
-  if(ds && !played && !beerByDate[ds] && canRequestBeer(ds)){
-    const b=el("button","sg-req","Request");
+  if(ds && !played && !beerByDate[ds] && canRequestBeer(ds,entry)){
+    const b=el("button","sg-req","Assign");
     b.type="button";
-    b.setAttribute("aria-label",`Request beer duty for ${g.date} against ${g.opponent}`);
+    b.setAttribute("aria-label",`Assign beer duty for ${g.date} against ${g.opponent}`);
     b.addEventListener("click",()=>openBeerRequest(g,entry,ds));
     beer.appendChild(b);
   }
@@ -928,82 +925,63 @@ function schedRow(g,entry){
   return r;
 }
 
-/* ---------- Beer Man requests ----------
-   A teammate picks an unclaimed upcoming game and types their name. Only names already on the
-   roster sheet go through: the pop-up checks first and offers close matches, and the Apps Script
-   behind BEER_REQUEST_URL checks again before it writes to the sheet's Schedule tab. */
-function canRequestBeer(ds){
+/* ---------- Beer Man assignments ----------
+   Anyone can put a teammate on beer for an unplayed game nobody has claimed yet. The pick list is
+   that season's team (the ON_TEAM statuses in the season's column), so subs, the unsure and people
+   sitting out can't be picked. The Apps Script behind BEER_REQUEST_URL checks the same thing
+   before it writes to the sheet's Schedule tab. */
+function teamNames(entry){
+  if(!entry.col) return [];
+  return [...new Set(sheetPlayers(entry).filter(p=>ON_TEAM.includes(p.status)).map(p=>p.name))]
+    .sort((a,b)=>a.localeCompare(b));
+}
+function canRequestBeer(ds,entry){
   if(!BEER_REQUEST_URL || !allRows) return false;
   const t=Date.parse(ds);
-  return !isNaN(t) && t>=new Date().setHours(0,0,0,0);
-}
-const normPerson=s=>(s||"").replace(/\s+/g," ").trim().toLowerCase();
-function rosterNameList(){
-  return [...new Set(sheetPlayers(SEASONS[0]).map(p=>p.name))].sort((a,b)=>a.localeCompare(b));
-}
-// Roster names sharing the typed last name, or failing that the typed first name
-function nameSuggestions(names,typed){
-  const parts=normPerson(typed).split(" ");
-  const last=parts[parts.length-1], first=parts[0];
-  let hits=names.filter(n=>normPerson(n).split(" ").pop()===last);
-  if(!hits.length) hits=names.filter(n=>normPerson(n).split(" ")[0]===first);
-  return hits.slice(0,5);
+  return !isNaN(t) && t>=new Date().setHours(0,0,0,0) && teamNames(entry).length>0;
 }
 let beerReq=null;
 function openBeerRequest(g,entry,ds){
   const dlg=document.getElementById("beer-req");
-  const names=rosterNameList();
+  const names=teamNames(entry);
   beerReq={g,entry,ds,names};
-  document.getElementById("br-game").textContent=[g.date,g.opponent==="TBD"?"Playoffs":g.opponent,g.time].filter(Boolean).join(" · ");
-  document.getElementById("br-names").replaceChildren(...names.map(n=>new Option(n)));
-  const input=document.getElementById("br-name");
-  input.value="";
+  // Each piece stays whole so a narrow pop-up breaks between them, never inside "10:10 PM"
+  const parts=[g.date,g.opponent==="TBD"?"Playoffs":g.opponent,g.time].filter(Boolean);
+  document.getElementById("br-game").replaceChildren(...parts.flatMap((t,i)=>[...(i?[" · "]:[]),el("span","nb",t)]));
+  const sel=document.getElementById("br-name");
+  const prompt=new Option("Pick a teammate","");
+  prompt.disabled=true;
+  sel.replaceChildren(prompt,...names.map(n=>new Option(n,n)));
+  sel.value="";
   beerReqMessage("");
   beerReqBusy(false);
   dlg.showModal();
-  input.focus();
+  sel.focus();
 }
 function beerReqBusy(on){
   const btn=document.getElementById("br-send");
   btn.disabled=on;
-  btn.textContent=on?"Sending…":"Request";
+  btn.textContent=on?"Assigning…":"Assign";
   document.getElementById("br-name").disabled=on;
 }
-// Shows an error line, plus tappable name chips when there are close matches
-function beerReqMessage(text,picks){
+function beerReqMessage(text){
   const msg=document.getElementById("br-msg");
-  msg.replaceChildren();
+  msg.textContent=text||"";
   msg.hidden=!text;
-  if(!text) return;
-  msg.appendChild(el("div","",text));
-  if(picks&&picks.length){
-    const row=el("div","br-picks");
-    picks.forEach(n=>{
-      const c=el("button","br-pick",n);
-      c.type="button";
-      c.addEventListener("click",()=>{ document.getElementById("br-name").value=n; beerReqMessage(""); document.getElementById("br-send").focus(); });
-      row.appendChild(c);
-    });
-    msg.appendChild(row);
-  }
 }
 async function sendBeerRequest(ev){
   ev.preventDefault();
   if(!beerReq) return;
-  const {g,entry,ds,names}=beerReq;
-  const typed=document.getElementById("br-name").value;
-  const name=names.find(n=>normPerson(n)===normPerson(typed));
-  if(!normPerson(typed)){ beerReqMessage("Type your name as it appears on the roster."); return; }
-  if(!name){
-    const picks=nameSuggestions(names,typed);
-    beerReqMessage(picks.length?"That name isn't on the roster. Did you mean:":"That name isn't on the roster. Pick your name from the list.",picks);
-    return;
-  }
+  const {entry,ds,names}=beerReq;
+  const name=document.getElementById("br-name").value;
+  if(!names.includes(name)){ beerReqMessage("Pick a teammate from the list."); return; }
   beerReqBusy(true);
   let res;
   try{
-    // text/plain keeps this a simple request, so the Apps Script endpoint needs no CORS preflight
-    const r=await fetch(BEER_REQUEST_URL,{method:"POST",body:JSON.stringify({date:ds,name,season:(entryLabel(entry,sheetHeader)||"").split(/[ ,]/)[0]})});
+    // text/plain keeps this a simple request, so the Apps Script endpoint needs no CORS preflight.
+    // seasonHeader names the roster column the script checks team status against.
+    const r=await fetch(BEER_REQUEST_URL,{method:"POST",body:JSON.stringify({date:ds,name,
+      season:(entryLabel(entry,sheetHeader)||"").split(/[ ,]/)[0],seasonHeader:entry.header})});
     res=await r.json();
   }catch(e){
     beerReqBusy(false);
@@ -1021,7 +999,7 @@ async function sendBeerRequest(ev){
     beerByDate[ds]=res.taken;
     renderSchedule();
   }
-  beerReqMessage(res.error||"That didn't go through. Try again.",res.suggestions);
+  beerReqMessage(res.error||"That didn't go through. Try again.");
 }
 function wireBeerRequest(){
   const dlg=document.getElementById("beer-req");
