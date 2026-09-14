@@ -945,8 +945,8 @@ function openBeerRequest(g,entry,ds){
   const dlg=document.getElementById("beer-req");
   const names=teamNames(entry);
   beerReq={g,entry,ds,names};
-  // Each piece stays whole so a narrow pop-up breaks between them, never inside "10:10 PM"
-  const parts=[g.date,g.opponent==="TBD"?"Playoffs":g.opponent,g.time].filter(Boolean);
+  // Each piece stays whole so a narrow pop-up breaks between them, never inside "Screaming Eagles"
+  const parts=[g.date,g.opponent==="TBD"?"Playoffs":g.opponent].filter(Boolean);
   document.getElementById("br-game").replaceChildren(...parts.flatMap((t,i)=>[...(i?[" · "]:[]),el("span","nb",t)]));
   const sel=document.getElementById("br-name");
   const prompt=new Option("Pick a teammate","");
