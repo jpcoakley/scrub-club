@@ -988,8 +988,10 @@ async function sendBeerRequest(ev){
     beerReqMessage("Couldn't reach the team sheet. Try again.");
     return;
   }
-  if(res.ok){
-    beerByDate[ds]=res.name||name;
+  // A saved assignment always echoes the name back. A reply without one (the script's GET
+  // greeting, which is what arrives if Google turns the POST into a GET on a redirect) wrote nothing.
+  if(res.ok && res.name){
+    beerByDate[ds]=res.name;
     document.getElementById("beer-req").close();
     renderSchedule();
     return;
