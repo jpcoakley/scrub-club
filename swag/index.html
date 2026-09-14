@@ -969,6 +969,11 @@ function beerReqMessage(text){
   msg.textContent=text||"";
   msg.hidden=!text;
 }
+// Who the sheet's Schedule tab has on beer for a date, read fresh ("" if nobody)
+async function beerOnSheet(ds){
+  await loadBeer();
+  return beerByDate[ds]||"";
+}
 async function sendBeerRequest(ev){
   ev.preventDefault();
   if(!beerReq) return;
@@ -976,32 +981,44 @@ async function sendBeerRequest(ev){
   const name=document.getElementById("br-name").value;
   if(!names.includes(name)){ beerReqMessage("Pick a teammate from the list."); return; }
   beerReqBusy(true);
-  let res;
+  let res=null;
   try{
     // text/plain keeps this a simple request, so the Apps Script endpoint needs no CORS preflight.
     // seasonHeader names the roster column the script checks team status against.
     const r=await fetch(BEER_REQUEST_URL,{method:"POST",body:JSON.stringify({date:ds,name,
       season:(entryLabel(entry,sheetHeader)||"").split(/[ ,]/)[0],seasonHeader:entry.header})});
     res=await r.json();
-  }catch(e){
+  }catch(e){ /* no readable reply; the sheet check below decides */ }
+  // The script turned it down and said why
+  if(res && !res.ok && res.error){
     beerReqBusy(false);
-    beerReqMessage("Couldn't reach the team sheet. Try again.");
+    if(res.taken){ beerByDate[ds]=res.taken; renderSchedule(); }
+    beerReqMessage(res.error);
     return;
   }
-  // A saved assignment always echoes the name back. A reply without one (the script's GET
-  // greeting, which is what arrives if Google turns the POST into a GET on a redirect) wrote nothing.
-  if(res.ok && res.name){
-    beerByDate[ds]=res.name;
+  // A saved assignment echoes the name. Without that, the save can still have happened: Google
+  // hands the reply back from a second address that a browser or extension can block, and right
+  // after a deployment change the POST can come back as the script's GET greeting. So ask the
+  // sheet, giving it a moment to catch up before calling it a failure.
+  let saved=res && res.ok && res.name ? res.name : "";
+  for(let i=0;!saved && i<2;i++){
+    if(i) await new Promise(r=>setTimeout(r,2500));
+    try{ saved=await beerOnSheet(ds); }catch(e){}
+  }
+  if(saved===name){
+    beerByDate[ds]=saved;
     document.getElementById("beer-req").close();
     renderSchedule();
     return;
   }
   beerReqBusy(false);
-  if(res.taken){
-    beerByDate[ds]=res.taken;
+  if(saved){
+    beerByDate[ds]=saved;
     renderSchedule();
+    beerReqMessage(`${saved} already has beer for this game.`);
+    return;
   }
-  beerReqMessage(res.error||"That didn't go through. Try again.");
+  beerReqMessage("Couldn't reach the team sheet. Try again.");
 }
 function wireBeerRequest(){
   const dlg=document.getElementById("beer-req");
