@@ -232,7 +232,8 @@ header.site{position:relative}
 .sg-opp{font-family:var(--font-display);font-size:16px;color:var(--text-strong);text-transform:uppercase;width:230px;flex:none}
 .sg-res{font-family:var(--font-numeral);font-weight:800;font-size:16px;flex:none;white-space:nowrap;width:64px}
 .sg-beer{width:130px;flex:none;font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sg-head{border-bottom:2px solid var(--burgundy-600)}
+/* Column headers stay pinned under the frozen site header and season picker while the games scroll */
+.sg-head{border-bottom:2px solid var(--burgundy-600);position:sticky;top:var(--freeze-h,0px);z-index:5;background:var(--surface-page)}
 .sg-head span{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500)}
 @media (max-width:640px){
   /* Beer Man drops to its own line so the opponent name gets the full width */
@@ -252,8 +253,10 @@ header.site{position:relative}
   .sched-list{width:100%}
 }
 /* Beer Man assignment: a small patch button in an empty Beer Man cell, and the pop-up it opens */
-.sg-req{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-700);background:var(--burgundy-100);border:none;clip-path:var(--clip-patch-sm);padding:4px 11px;cursor:pointer;line-height:1.3}
-.sg-req:hover{background:var(--burgundy-600);color:var(--oatmeal-300)}
+/* Same gray as an assigned name, so an open slot reads as part of the column; burgundy on hover says it's a button */
+.sg-req{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);background:none;border:none;padding:0;cursor:pointer;line-height:1.2}
+.sg-req:hover{color:var(--burgundy-600);text-decoration:underline;text-underline-offset:3px}
+.sg-req:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:3px}
 .br{margin:auto;padding:0;border:none;background:transparent;width:min(420px,calc(100vw - 32px));max-width:none;color:var(--text-body)}
 .br::backdrop{background:rgba(63,21,35,.55)}
 .br-card{background:var(--surface-card);clip-path:var(--clip-patch);padding:var(--space-6);display:flex;flex-direction:column;gap:var(--space-2);border-top:4px solid var(--burgundy-600)}
