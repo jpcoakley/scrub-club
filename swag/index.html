@@ -227,17 +227,28 @@ header.site{position:relative}
 .sg-row:first-child.sg-season{padding-top:8px}
 .sched-empty{padding:var(--space-8) 0;text-align:center;font-family:var(--font-condensed);font-size:15px;letter-spacing:.06em;color:var(--ink-500)}
 .sg-row{display:flex;align-items:baseline;gap:var(--space-4);padding:12px 0;border-bottom:1px solid var(--oatmeal-500)}
-.sg-date{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500);width:58px;flex:none}
-.sg-time{font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-300);width:66px;flex:none}
+/* Our game number within the season, 1 to N in date order */
+.sg-gm{font-family:var(--font-numeral);font-weight:800;font-size:16px;color:var(--ink-300);width:44px;flex:none;font-variant-numeric:tabular-nums}
+.sg-gm-short{display:none}
+.sg-date{font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500);width:68px;flex:none}
+.sg-time{font-family:var(--font-condensed);font-weight:600;font-size:16px;color:var(--ink-300);width:74px;flex:none}
 .sg-opp{font-family:var(--font-display);font-size:16px;color:var(--text-strong);text-transform:uppercase;width:230px;flex:none}
 .sg-res{font-family:var(--font-numeral);font-weight:800;font-size:16px;flex:none;white-space:nowrap;width:64px}
-.sg-beer{width:130px;flex:none;font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg-beer{width:150px;flex:none;font-family:var(--font-condensed);font-weight:600;font-size:16px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Column headers stay pinned under the frozen site header and season picker while the games scroll */
 .sg-head{border-bottom:2px solid var(--burgundy-600);position:sticky;top:var(--freeze-h,0px);z-index:5;background:var(--surface-page)}
 .sg-head span{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500)}
-@media (max-width:640px){
-  /* Beer Man drops to its own line so the opponent name gets the full width */
-  .sg-row{flex-wrap:wrap;row-gap:3px}
+@media (max-width:760px){
+  /* Beer Man drops to its own line so the opponent name gets the full width. The number, date and
+     score columns are cut to their widest text ("35", "AUG 20", "W 11–1") so "COLLISION EXPERTS"
+     still fits on one line at 375px. */
+  .sg-row{flex-wrap:wrap;row-gap:3px;column-gap:10px}
+  .sg-gm{width:18px;font-size:15px}
+  .sg-gm-long{display:none}
+  .sg-head .sg-gm-short{display:inline}
+  .sg-date{width:50px;font-size:15px}
+  .sg-time{font-size:15px}
+  .sg-res{width:44px}
   .sg-time{display:none}
   /* A game that hasn't been played has an empty W/L column and no score to read, so the
      time takes that room back instead of being dropped like it is on a finished game. */
@@ -246,7 +257,7 @@ header.site{position:relative}
   .sg-upcoming .sg-res:empty,
   .sg-head.no-played .sg-res{display:none}
   .sg-opp{width:auto;flex:1;min-width:0;white-space:normal}
-  .sg-beer{width:100%;flex:none;padding-left:calc(58px + var(--space-4));font-size:13px}
+  .sg-beer{width:100%;flex:none;padding-left:calc(18px + 50px + 20px);font-size:15px}
   .sg-beer:empty{display:none}
   .sg-beer::before{content:"Beer · ";color:var(--ink-300)}
   .sg-head .sg-beer{display:none}
@@ -254,7 +265,7 @@ header.site{position:relative}
 }
 /* Beer Man assignment: a small patch button in an empty Beer Man cell, and the pop-up it opens */
 /* Same gray as an assigned name, so an open slot reads as part of the column; burgundy on hover says it's a button */
-.sg-req{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);background:none;border:none;padding:0;cursor:pointer;line-height:1.2}
+.sg-req{font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);background:none;border:none;padding:0;cursor:pointer;line-height:1.2}
 .sg-req:hover{color:var(--burgundy-600);text-decoration:underline;text-underline-offset:3px}
 .sg-req:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:3px}
 .br{margin:auto;padding:0;border:none;background:transparent;width:min(420px,calc(100vw - 32px));max-width:none;color:var(--text-body)}
@@ -890,6 +901,11 @@ function gameYear(entry,dateStr){
    no scores at all, so there the header swaps W/L back out for Time to match its rows. */
 function schedHeadRow(anyPlayed){
   const r=el("div","sg-row sg-head"+(anyPlayed?"":" no-played"));
+  // "Game" doesn't fit the narrow number column on phones, so it reads "#" there
+  const gm=el("span","sg-gm");
+  gm.appendChild(el("span","sg-gm-long","Game"));
+  gm.appendChild(el("span","sg-gm-short","#"));
+  r.appendChild(gm);
   r.appendChild(el("span","sg-date","Date"));
   r.appendChild(el("span","sg-time","Time"));
   r.appendChild(el("span","sg-opp","Opponent"));
@@ -902,9 +918,10 @@ function seasonHeadRow(label){
   r.appendChild(el("span","sg-season-label",label));
   return r;
 }
-function schedRow(g,entry){
+function schedRow(g,entry,num){
   const played=g.us!=null;
   const r=el("div","sg-row"+(played?"":" sg-upcoming"));
+  r.appendChild(el("span","sg-gm",String(num)));
   r.appendChild(el("span","sg-date",g.date));
   r.appendChild(el("span","sg-time",g.time));
   r.appendChild(el("span","sg-opp",g.opponent));
@@ -1065,10 +1082,12 @@ async function renderSchedule(){
   // anything in view has actually been played.
   const body=[]; let shown=0, anyPlayed=false;
   entries.forEach(e=>{
-    const games=schedData.seasons[e.key].games.filter(g=>!oppFilter||g.opponent===oppFilter);
+    // Number before filtering, so a game keeps its season number when one opponent is picked
+    const games=schedData.seasons[e.key].games.map((g,i)=>({g,num:i+1}))
+      .filter(({g})=>!oppFilter||g.opponent===oppFilter);
     if(!games.length) return;
     if(multi) body.push(seasonHeadRow(entryLabel(e,sheetHeader)));
-    games.forEach(g=>{ if(g.us!=null) anyPlayed=true; body.push(schedRow(g,e)); shown++; });
+    games.forEach(({g,num})=>{ if(g.us!=null) anyPlayed=true; body.push(schedRow(g,e,num)); shown++; });
   });
   list.appendChild(schedHeadRow(anyPlayed));
   body.forEach(n=>list.appendChild(n));
