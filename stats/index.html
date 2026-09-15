@@ -597,7 +597,8 @@ const COL_JERSEY = {header:"Jersey #", leftOf:"Jersey Size", col:"K"};
 // USA Hockey registration number. The sheet keeps one column per year ("USA Hockey, 2026"), so the
 // newest year wins; `col` is the fallback if no header matches.
 const COL_USAH   = {headerPrefix:"USA Hockey", col:"J"};
-const CAPTAINS = ["David Sanders"]; // shown as "Captain" on the roster card (goalies come from the sheet's Goalie status)
+const CAPTAINS = ["David Sanders"]; // "C" after the name on Team (goalies come from the sheet's Goalie status)
+const ALTERNATES = ["Adam Davis", "Fred Small"]; // "A" after the name on Team
 // Sheet statuses that count as on the team. "Paid" means committed (payment itself is never shown);
 // "Half" is half a season, which still counts.
 const ON_TEAM = ["in","paid","half","goalie"];
@@ -1185,7 +1186,8 @@ function statusGroup(status){
 }
 function nameCell(name,p){
   const td=el("td","st-name",name);
-  if(p && CAPTAINS.includes(p.name)) td.appendChild(el("span","st-sub","C"));
+  const letter=p && (CAPTAINS.includes(p.name)?["C","Captain"]:ALTERNATES.includes(p.name)?["A","Alternate captain"]:null);
+  if(letter){ const b=el("span","st-sub",letter[0]); b.title=letter[1]; b.setAttribute("aria-label",letter[1]); td.appendChild(b); }
   if(p && p.usah) td.appendChild(el("span","st-usah-sm","USA Hockey "+p.usah));
   return td;
 }
