@@ -597,8 +597,10 @@ const COL_JERSEY = {header:"Jersey #", leftOf:"Jersey Size", col:"K"};
 // USA Hockey registration number. The sheet keeps one column per year ("USA Hockey, 2026"), so the
 // newest year wins; `col` is the fallback if no header matches.
 const COL_USAH   = {headerPrefix:"USA Hockey", col:"J"};
-const CAPTAINS = ["David Sanders"]; // "C" after the name on Team (goalies come from the sheet's Goalie status)
-const ALTERNATES = ["Adam Davis", "Fred Small"]; // "A" after the name on Team
+// Letters after names on Team: C for captain, A for alternates. `from` is the first season (a SEASONS
+// key) the letter applies to; leave it off for every season. Names match the sheet's First + Last.
+const CAPTAINS   = [{name:"David Sanders"}];
+const ALTERNATES = [{name:"Adam Davis"}, {name:"Fred Small", from:"W"}]; // Fred's A starts Winter 2026-27
 // Sheet statuses that count as on the team. "Paid" means committed (payment itself is never shown);
 // "Half" is half a season, which still counts.
 const ON_TEAM = ["in","paid","half","goalie"];
@@ -1184,9 +1186,17 @@ function statusGroup(status){
   if(status==="sub"||status==="out") return status;
   return status?"unsure":"";
 }
+// SEASONS runs newest first, so a season is on or after `from` when its index is no larger
+function holdsLetter(list,name){
+  const hit=list.find(x=>x.name===name);
+  if(!hit) return false;
+  if(!hit.from) return true;
+  const at=SEASONS.findIndex(s=>s.key===seasonEntry().key), from=SEASONS.findIndex(s=>s.key===hit.from);
+  return from<0 || at<=from;
+}
 function nameCell(name,p){
   const td=el("td","st-name",name);
-  const letter=p && (CAPTAINS.includes(p.name)?["C","Captain"]:ALTERNATES.includes(p.name)?["A","Alternate captain"]:null);
+  const letter=p && (holdsLetter(CAPTAINS,p.name)?["C","Captain"]:holdsLetter(ALTERNATES,p.name)?["A","Alternate captain"]:null);
   if(letter){ const b=el("span","st-sub",letter[0]); b.title=letter[1]; b.setAttribute("aria-label",letter[1]); td.appendChild(b); }
   if(p && p.usah) td.appendChild(el("span","st-usah-sm","USA Hockey "+p.usah));
   return td;
