@@ -204,7 +204,7 @@ header.site{position:relative}
 /* a line may legally break after a hyphen, which would split this in two */
 .about-quote .nb{white-space:nowrap}
 .about-note{margin-top:var(--space-4);font-family:var(--font-condensed);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
-/* About — season snapshot */
+/* About: season snapshot */
 .ab-season{padding-top:var(--space-8)}
 .ab-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:var(--space-3);margin-top:var(--space-6)}
 .ab-tile{background:var(--surface-inverse);clip-path:var(--clip-patch-sm);padding:var(--space-4) var(--space-3);text-align:center}
@@ -618,8 +618,8 @@ const GS_ALIASES = {
 /* ========================================== */
 
 const colIdx = c => c.toUpperCase().charCodeAt(0) - 65; // A=0 … Z=25
-// Header text repeats across the sheet — "Winter, 26-27" labels both a payment column
-// near the left edge and the roster-status column near the right — so of the cells that
+// Header text repeats across the sheet ("Winter, 26-27" labels both a payment column
+// near the left edge and the roster-status column near the right), so of the cells that
 // match, take the one nearest to where the column last lived.
 function headerIdx(header,text,near){
   const want=text.trim().toLowerCase();
@@ -632,7 +632,7 @@ function headerIdx(header,text,near){
 }
 // spec: {header} matches the header cell, {headerPrefix} the newest "<prefix>, <year>" header,
 // {leftOf} the column just before a named one,
-// {col} is the letter the column last lived at — the fallback, and the tie-breaker above.
+// {col} is the letter the column last lived at: the fallback, and the tie-breaker above.
 function resolveCol(spec,header){
   if(typeof spec==="string") return colIdx(spec);
   const near=colIdx(spec.col);
@@ -710,7 +710,7 @@ async function loadBeer(){
       log.push({name,ds,t,season:iS<0?"":(rows[i][iS]||"").trim().toLowerCase(),year:d.getFullYear(),month:d.getMonth()+1});
     }
     beerLog=log;
-  }catch(e){/* beer data is optional — the Beer Stats section just stays empty */}
+  }catch(e){/* beer data is optional; the Beer Stats section just stays empty */}
 }
 
 // All-time beer leaderboard: runs and most recent
@@ -826,7 +826,7 @@ async function load(){
     state.classList.add("err");
     sheetLoadFailed=true;
     if(activeView==="roster") renderTeam(); // still shows the GameSheet names
-    state.textContent="Couldn't reach the sheet — check that it's shared as “anyone with the link can view.”";
+    state.textContent="Couldn't reach the sheet. Check that it's shared as “anyone with the link can view.”";
   }
 }
 // Tabs: About, Team (sheet + GameSheet stats), Schedule (GameSheet snapshot), Swag, Join
