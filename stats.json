@@ -1,5 +1,5 @@
 {
- "updated": "Sep 12, 2026",
+ "updated": "Sep 16, 2026",
  "seasons": {
   "W": {
    "skaters": [
@@ -32,8 +32,22 @@
      "ht": 0
     },
     {
-     "name": "D. Sanders",
-     "num": "11",
+     "name": "P. Stagnitto",
+     "num": "29",
+     "pos": "",
+     "gp": 1,
+     "g": 0,
+     "a": 0,
+     "pts": 0,
+     "pim": 0,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "E. Thorlacius",
+     "num": "9",
      "pos": "",
      "gp": 1,
      "g": 0,
@@ -49,7 +63,7 @@
      "name": "R. Ward",
      "num": "76",
      "pos": "",
-     "gp": 1,
+     "gp": 2,
      "g": 0,
      "a": 0,
      "pts": 0,
@@ -74,8 +88,8 @@
      "ht": 0
     },
     {
-     "name": "S. Hopkins",
-     "num": "5",
+     "name": "D. Conicello",
+     "num": "99",
      "pos": "",
      "gp": 1,
      "g": 1,
@@ -84,7 +98,21 @@
      "pim": 0,
      "ppg": 0,
      "shg": 0,
-     "gwg": 1,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "D. Sanders",
+     "num": "11",
+     "pos": "",
+     "gp": 2,
+     "g": 1,
+     "a": 0,
+     "pts": 1,
+     "pim": 2,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
      "ht": 0
     },
     {
@@ -116,13 +144,69 @@
      "ht": 0
     },
     {
-     "name": "F. Small",
-     "num": "69",
+     "name": "A. Davis",
+     "num": "2",
+     "pos": "",
+     "gp": 1,
+     "g": 0,
+     "a": 2,
+     "pts": 2,
+     "pim": 0,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "C. Barry",
+     "num": "98",
      "pos": "",
      "gp": 1,
      "g": 2,
-     "a": 0,
-     "pts": 2,
+     "a": 1,
+     "pts": 3,
+     "pim": 2,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "J. Heller",
+     "num": "23",
+     "pos": "",
+     "gp": 1,
+     "g": 0,
+     "a": 3,
+     "pts": 3,
+     "pim": 0,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 0,
+     "ht": 0
+    },
+    {
+     "name": "S. Hopkins",
+     "num": "5",
+     "pos": "",
+     "gp": 2,
+     "g": 3,
+     "a": 1,
+     "pts": 4,
+     "pim": 0,
+     "ppg": 0,
+     "shg": 0,
+     "gwg": 2,
+     "ht": 0
+    },
+    {
+     "name": "F. Small",
+     "num": "69",
+     "pos": "",
+     "gp": 2,
+     "g": 3,
+     "a": 1,
+     "pts": 4,
      "pim": 0,
      "ppg": 0,
      "shg": 0,
@@ -134,20 +218,20 @@
     {
      "name": "R. Huskey",
      "num": "3",
-     "gp": 1,
-     "gs": 1,
-     "sa": 22,
-     "ga": 0,
-     "gaa": 0,
-     "sv": 22,
-     "svp": 1,
-     "w": 1,
+     "gp": 2,
+     "gs": 2,
+     "sa": 47,
+     "ga": 4,
+     "gaa": 2,
+     "sv": 43,
+     "svp": 0.915,
+     "w": 2,
      "l": 0,
      "t": 0,
      "otl": 0,
      "sol": 0,
      "so": 1,
-     "min": 45
+     "min": 90
     }
    ]
   },
