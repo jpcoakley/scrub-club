@@ -6,7 +6,18 @@ Beer-league hockey team site. Static SPA, design tokens inline in index.html (bu
 
 GitHub Pages from `jpcoakley/scrub-club`. **Pushing to main is what deploys.**
 
-Local preview: Google Drive paths are blocked for the preview server. Rsync the site to the session scratchpad and serve from there (`.claude/launch.json` `scrub-club` entry; update its scratchpad path per session).
+Local preview: Google Drive paths are blocked for the preview server, so serve a copy from the session scratchpad.
+
+1. `rsync -a --delete --exclude .git ./ <scratchpad>/site/` (re-run after every edit; run `sync-routes.sh` first if index.html changed).
+2. `python3 -m http.server --directory ...` fails at startup (`PermissionError` from `os.getcwd()`, because the launch cwd is on Drive). Write `<scratchpad>/serve.py` instead, which changes directory before serving:
+   ```python
+   import os, sys, http.server, functools
+   d=sys.argv[1]; os.chdir(d)
+   http.server.ThreadingHTTPServer(("127.0.0.1",8471), functools.partial(http.server.SimpleHTTPRequestHandler, directory=d)).serve_forever()
+   ```
+3. The launch entry is `scrub-club-site` in `Hockey/Claude/.claude/launch.json` (the parent folder, not this repo): `"runtimeExecutable": "python3"`, `"runtimeArgs": ["<scratchpad>/serve.py", "<scratchpad>/site"]`, `"port": 8471`. The scratchpad path changes every session, so update both args, then `preview_start` with that name.
+
+The console shows harmless 404s for `/team/stats.json`; the page falls back to `/stats.json`.
 
 ## Rules
 
