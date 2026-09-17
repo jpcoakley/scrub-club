@@ -251,7 +251,10 @@ async function whoami(request, env) {
 async function fetchRoster(env) {
   if (!env.SHEET_KEY) throw new Error("SHEET_KEY secret is not set");
   const body = await sheetApi({ what: "emails", key: env.SHEET_KEY });
-  const emails = body.emails || {}, names = body.names || [];
+  if (!body.emails || !Array.isArray(body.names)) {
+    throw new Error("sheet api returned no emails (is the updated script deployed?)");
+  }
+  const emails = body.emails, names = body.names;
   for (const [e, n] of Object.entries(EXTRA_EMAILS)) {
     if (!(e in emails)) emails[e] = n;
     if (!names.includes(n)) names.push(n);
@@ -276,7 +279,11 @@ async function publicData(env, ctx, fresh) {
   const cached = fresh ? null : await env.SC_KV.get("cache:public", "json");
   const refresh = async () => {
     const body = await sheetApi({ what: "public" });
-    const data = { roster: body.roster || [], schedule: body.schedule || [] };
+    // An older script deployment answers with just its greeting; never cache that as an empty roster
+    if (!Array.isArray(body.roster) || !body.roster.length || !Array.isArray(body.schedule)) {
+      throw new Error("sheet api returned no roster (is the updated script deployed?)");
+    }
+    const data = { roster: body.roster, schedule: body.schedule };
     await env.SC_KV.put("cache:public", JSON.stringify({ data, at: Date.now() }));
     return data;
   };
