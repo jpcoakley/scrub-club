@@ -991,10 +991,17 @@ async function renderAbout(){
   const l=played.filter(g=>g.us<g.them).length;
   const t=played.length-w-l;
   const gf=played.reduce((n,g)=>n+g.us,0), ga=played.reduce((n,g)=>n+g.them,0);
+  // Penalty minutes: the season's skaters and goalies in stats.json (the weekly GameSheet snapshot)
+  if(!statsData){
+    try{ statsData=await (await fetch("stats.json",{cache:"no-store"})).json(); }
+    catch(e){ statsData={seasons:{}}; }
+  }
+  const st=(statsData.seasons||{})[entry.key];
+  const pim=st ? [...(st.skaters||[]),...(st.goalies||[])].reduce((n,l)=>n+(parseInt(l.pim,10)||0),0) : null;
 
   const lbl=entryLabel(entry,sheetHeader)||"";
   document.getElementById("ab-season-label").textContent=/^Column /.test(lbl)?"":lbl;
-  const tiles=[[t?`${w}-${l}-${t}`:`${w}-${l}`,"Record"],[played.length,"Played"],[gf,"Goals for"],[ga,"Goals against"]];
+  const tiles=[[t?`${w}-${l}-${t}`:`${w}-${l}`,"Record"],[pim==null?"–":pim,"Penalty minutes"],[gf,"Goals for"],[ga,"Goals against"]];
   const box2=document.getElementById("ab-tiles");
   box2.replaceChildren(...tiles.map(([v,k])=>{
     const d=el("div","ab-tile"); d.appendChild(el("b",null,String(v))); d.appendChild(el("span",null,k)); return d;
