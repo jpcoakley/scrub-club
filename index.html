@@ -1243,7 +1243,6 @@ function rsvpNamesRow(entry,ds){
   // Anyone signed in can answer for a teammate (anyone on the sheet, subs included)
   if(rsvpSession){
     const add=el("div","grp add");
-    add.appendChild(el("b",null,"Someone else"));
     const sel=document.createElement("select");
     sel.className="sg-pick";
     sel.setAttribute("aria-label","Teammate to answer for");
