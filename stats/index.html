@@ -1061,9 +1061,8 @@ function dutyCells(g,entry,ds,played){
 function rsvpSplit(entry,ds){
   const answers=(rsvpBySeason[entry.key]||{})[ds]||{};
   const ins=[], outs=[];
-  // An answer someone else gave for them says so: "Roy Ward (via JP)"
-  const tag=(name,v)=>v.by&&v.by!==name ? `${name} (via ${v.by.split(" ")[0]})` : name;
-  Object.entries(answers).forEach(([name,v])=>{ if(v.a==="in") ins.push(tag(name,v)); else if(v.a==="out") outs.push(tag(name,v)); });
+  // An answer a teammate gave for someone reads the same as their own (JP: no "via" tags)
+  Object.entries(answers).forEach(([name,v])=>{ if(v.a==="in") ins.push(name); else if(v.a==="out") outs.push(name); });
   const said=new Set(Object.keys(answers).filter(nm=>["in","out"].includes(answers[nm].a)));
   const quiet=teamNames(entry).filter(nm=>!said.has(nm));
   const sortNames=a=>a.slice().sort((x,y)=>x.localeCompare(y));

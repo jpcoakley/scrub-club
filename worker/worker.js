@@ -16,7 +16,6 @@
  *   GET  /rsvp?season=W                    -> {games: {"Sep 22, 2026": {"JP Coakley": {a, t}}}}
  *   POST /rsvp              Bearer, {season, date, answer: "in" | "out" | "", name?}
  *                           name = a teammate on the sheet, to answer for them
- *                           (the answer then carries who set it, in `by`)
  *
  * Storage (KV):
  *   sess:<token>            {email, at, renewed}              a year, renewed weekly by /me
@@ -36,7 +35,7 @@
  * runs as JP: ?what=public blanks every column but names, jersey, USA Hockey and season
  * status, and ?what=emails needs the SHEET_KEY secret (set with `wrangler secret put
  * SHEET_KEY`; the same value is the script's WORKER_KEY property).
- *   rsvp:<season>:<ymd>:<name>   value "in" | "out", metadata {a, t, d, by?}
+ *   rsvp:<season>:<ymd>:<name>   value "in" | "out", metadata {a, t, d}
  *
  * One key per player per game means two people tapping at once can't
  * overwrite each other, and a season's answers come back from one
@@ -213,13 +212,12 @@ async function route(request, env, ctx) {
     }
     const key = `rsvp:${season}:${game.ymd}:${name}`;
     if (answer) {
-      const metadata = { a: answer, t: Date.now(), d: game.date };
-      if (name !== me.name) metadata.by = me.name;
-      await env.SC_KV.put(key, answer, { metadata });
+      // Who answered isn't kept: an answer given for a teammate reads the same as their own
+      await env.SC_KV.put(key, answer, { metadata: { a: answer, t: Date.now(), d: game.date } });
     } else {
       await env.SC_KV.delete(key);
     }
-    return json({ ok: true, season, date: game.date, name, answer, by: name !== me.name ? me.name : undefined });
+    return json({ ok: true, season, date: game.date, name, answer });
   }
 
   return json({ ok: false, error: "No such endpoint." }, 404);
@@ -420,9 +418,7 @@ async function answersFor(env, season) {
       const md = k.metadata || {};
       const name = k.name.split(":").slice(3).join(":");
       if (!md.d || !name || !["in", "out"].includes(md.a)) continue;
-      const v = { a: md.a, t: md.t || 0 };
-      if (md.by) v.by = md.by;
-      (games[md.d] = games[md.d] || {})[name] = v;
+      (games[md.d] = games[md.d] || {})[name] = { a: md.a, t: md.t || 0 };
     }
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);
