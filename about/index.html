@@ -289,6 +289,9 @@ header.site{position:relative}
 .sg-names .grp b{font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-300);margin-right:6px}
 .sg-names .grp.in b{color:var(--status-win)}
 .sg-names .grp.out b{color:var(--penalty-500)}
+.sg-names .grp.add{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:2px}
+.sg-pick{font-family:var(--font-body);font-size:15px;color:var(--ink-900);background:var(--white);border:1px solid var(--oatmeal-600);border-radius:var(--radius-sm);padding:5px 8px;max-width:220px}
+.sg-pick:focus{outline:none;border-color:var(--burgundy-600);box-shadow:0 0 0 3px var(--burgundy-100)}
 /* Who's signed in, above the list */
 .sg-bar{display:flex;align-items:baseline;gap:var(--space-4);padding-top:var(--space-6);font-family:var(--font-condensed);font-weight:600;font-size:15px;letter-spacing:.04em;color:var(--ink-500)}
 .sg-bar b{color:var(--ink-900)}
@@ -1184,12 +1187,13 @@ function rsvpBar(entries){
     who.append("Signed in as ",el("b",null,rsvpSession.name));
     link.textContent="Sign out";
     link.addEventListener("click",signOut);
+    bar.append(who,link);
   }else{
-    who.textContent="Tap In or Out on a game to say if you're coming.";
+    // Signed out: just the link (JP asked for no explanatory line)
     link.textContent="Sign in";
     link.addEventListener("click",()=>{ rsvpPending=null; openSignIn(); });
+    bar.append(link);
   }
-  bar.append(who,link);
   if(rsvpMsg) bar.appendChild(el("span","sg-bar-msg",rsvpMsg));
   return bar;
 }
@@ -1223,8 +1227,10 @@ function rsvpCell(g,entry,ds){
 function rsvpNamesRow(entry,ds){
   const answers=(rsvpBySeason[entry.key]||{})[ds]||{};
   const ins=[], outs=[];
-  Object.entries(answers).forEach(([name,v])=>{ if(v.a==="in") ins.push(name); else if(v.a==="out") outs.push(name); });
-  const said=new Set([...ins,...outs]);
+  // An answer someone else gave for them says so: "Roy Ward (via JP)"
+  const tag=(name,v)=>v.by&&v.by!==name ? `${name} (via ${v.by.split(" ")[0]})` : name;
+  Object.entries(answers).forEach(([name,v])=>{ if(v.a==="in") ins.push(tag(name,v)); else if(v.a==="out") outs.push(tag(name,v)); });
+  const said=new Set(Object.keys(answers).filter(nm=>["in","out"].includes(answers[nm].a)));
   const quiet=teamNames(entry).filter(nm=>!said.has(nm));
   const row=el("div","sg-names");
   [["in","In",ins],["out","Out",outs],["quiet","No answer",quiet]].forEach(([cls,label,names])=>{
@@ -1235,20 +1241,42 @@ function rsvpNamesRow(entry,ds){
     row.appendChild(grp);
   });
   if(!row.childElementCount) row.appendChild(el("span",null,"Nobody has answered yet."));
+  // Anyone signed in can answer for a teammate (anyone on the sheet, subs included)
+  if(rsvpSession){
+    const add=el("div","grp add");
+    add.appendChild(el("b",null,"Someone else"));
+    const sel=document.createElement("select");
+    sel.className="sg-pick";
+    sel.setAttribute("aria-label","Teammate to answer for");
+    const prompt=new Option("Pick a teammate","");
+    prompt.disabled=true;
+    const names=[...new Set(sheetPlayers(entry).map(p=>p.name))].sort((a,b)=>a.localeCompare(b));
+    sel.replaceChildren(prompt,...names.map(nm=>new Option(nm,nm)));
+    sel.value="";
+    const io=el("span","sg-io");
+    [["in","In"],["out","Out"]].forEach(([a,label])=>{
+      const b=el("button","",label);
+      b.type="button";
+      b.addEventListener("click",()=>{ if(!sel.value){ sel.focus(); return; } answer(entry,ds,a,sel.value); });
+      io.appendChild(b);
+    });
+    add.append(sel,io);
+    row.appendChild(add);
+  }
   return row;
 }
-async function answer(entry,ds,a){
-  if(!rsvpSession){ rsvpPending={entry,ds,a}; openSignIn(); return; }
-  const name=rsvpSession.name;
+async function answer(entry,ds,a,who){
+  if(!rsvpSession){ rsvpPending={entry,ds,a,who}; openSignIn(); return; }
+  const name=who||rsvpSession.name;
   const games=rsvpBySeason[entry.key]=rsvpBySeason[entry.key]||{};
   const before=games[ds]?.[name];
   games[ds]=games[ds]||{};
   // Show it at once; put it back if the save fails
-  if(a) games[ds][name]={a,t:Date.now()}; else delete games[ds][name];
+  if(a) games[ds][name]=Object.assign({a,t:Date.now()},name!==rsvpSession.name?{by:rsvpSession.name}:{}); else delete games[ds][name];
   renderSchedule();
   let error="";
   try{
-    const {status,res}=await api("/rsvp",{season:entry.key,date:ds,answer:a});
+    const {status,res}=await api("/rsvp",{season:entry.key,date:ds,answer:a,name});
     if(res?.ok) return;
     if(status===401) saveSession(null);
     error=res?.error||"";
@@ -1318,7 +1346,7 @@ async function ioSubmit(ev){
   document.getElementById("io-dlg").close();
   const p=rsvpPending;
   rsvpPending=null;
-  if(p) answer(p.entry,p.ds,p.a); else renderSchedule();
+  if(p) answer(p.entry,p.ds,p.a,p.who); else renderSchedule();
 }
 function wireSignIn(){
   const dlg=document.getElementById("io-dlg");

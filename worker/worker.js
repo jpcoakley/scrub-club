@@ -13,14 +13,16 @@
  *   GET  /me                Bearer         -> {name, email}
  *   POST /auth/signout      Bearer         drops the session
  *   GET  /rsvp?season=W                    -> {games: {"Sep 22, 2026": {"JP Coakley": {a, t}}}}
- *   POST /rsvp              Bearer, {season, date, answer: "in" | "out" | ""}
+ *   POST /rsvp              Bearer, {season, date, answer: "in" | "out" | "", name?}
+ *                           name = a teammate on the sheet, to answer for them
+ *                           (the answer then carries who set it, in `by`)
  *
  * Storage (KV):
  *   sess:<token>            {email, at}                       a year
  *   otp:<email>             {hash, tries}                     10 minutes
  *   rl:<what>:<who>         counter                           rate limits
- *   cache:roster            {email: "First Last"}             5 minutes
- *   rsvp:<season>:<ymd>:<name>   value "in" | "out", metadata {a, t, d}
+ *   cache:roster2           {emails: {email: name}, names}    5 minutes
+ *   rsvp:<season>:<ymd>:<name>   value "in" | "out", metadata {a, t, d, by?}
  *
  * One key per player per game means two people tapping at once can't
  * overwrite each other, and a season's answers come back from one
@@ -163,13 +165,20 @@ async function route(request, env) {
     if (!["in", "out", ""].includes(answer)) return json({ ok: false, error: "Answer In or Out." }, 400);
     const game = await gameCheck(season, String(body.date || "").trim());
     if (game.error) return json({ ok: false, error: game.error }, 400);
-    const key = `rsvp:${season}:${game.ymd}:${me.name}`;
+    // Anyone signed in can answer for a teammate; the sheet says who counts as one
+    const name = String(body.name || "").replace(/\s+/g, " ").trim() || me.name;
+    if (name !== me.name && !(await isRosterName(env, name))) {
+      return json({ ok: false, error: "That name isn't on the roster sheet." }, 400);
+    }
+    const key = `rsvp:${season}:${game.ymd}:${name}`;
     if (answer) {
-      await env.SC_KV.put(key, answer, { metadata: { a: answer, t: Date.now(), d: game.date } });
+      const metadata = { a: answer, t: Date.now(), d: game.date };
+      if (name !== me.name) metadata.by = me.name;
+      await env.SC_KV.put(key, answer, { metadata });
     } else {
       await env.SC_KV.delete(key);
     }
-    return json({ ok: true, season, date: game.date, name: me.name, answer });
+    return json({ ok: true, season, date: game.date, name, answer, by: name !== me.name ? me.name : undefined });
   }
 
   return json({ ok: false, error: "No such endpoint." }, 404);
@@ -206,36 +215,48 @@ async function fetchRoster() {
   const head = (rows[ROSTER_HEADER_ROW - 1] || []).map((h) => String(h).trim());
   const iE = head.indexOf("Email"), iF = head.indexOf("First"), iL = head.indexOf("Last");
   if (iE < 0 || iF < 0 || iL < 0) throw new Error("roster sheet is missing Email, First or Last");
-  const map = {};
+  const emails = {}, names = [];
   for (let i = ROSTER_HEADER_ROW; i < rows.length; i++) {
     const row = rows[i] || [];
     const name = `${row[iF] || ""} ${row[iL] || ""}`.replace(/\s+/g, " ").trim();
     if (!name) continue;
+    if (!names.includes(name)) names.push(name);
     // a cell may hold more than one address
     for (const e of String(row[iE] || "").split(/[\s,;]+/).map(normEmail).filter(emailish)) {
-      if (!(e in map)) map[e] = name;
+      if (!(e in emails)) emails[e] = name;
     }
   }
-  for (const [e, n] of Object.entries(EXTRA_EMAILS)) if (!(e in map)) map[e] = n;
-  return map;
+  for (const [e, n] of Object.entries(EXTRA_EMAILS)) {
+    if (!(e in emails)) emails[e] = n;
+    if (!names.includes(n)) names.push(n);
+  }
+  return { emails, names };
 }
 
-async function rosterEmails(env, fresh) {
+// {emails, names, cached}; the sheet is read at most every five minutes
+async function roster(env, fresh) {
   if (!fresh) {
-    const cached = await env.SC_KV.get("cache:roster", "json");
-    if (cached) return { map: cached, cached: true };
+    const cached = await env.SC_KV.get("cache:roster2", "json");
+    if (cached && cached.emails) return Object.assign(cached, { cached: true });
   }
-  const map = await fetchRoster();
-  await env.SC_KV.put("cache:roster", JSON.stringify(map), { expirationTtl: 300 });
-  return { map, cached: false };
+  const r = await fetchRoster();
+  await env.SC_KV.put("cache:roster2", JSON.stringify(r), { expirationTtl: 300 });
+  return Object.assign(r, { cached: false });
 }
 
 // An email JP just added to the sheet shouldn't wait out the cache
 async function nameForEmail(env, email) {
-  const { map, cached } = await rosterEmails(env, false);
-  if (map[email]) return map[email];
-  if (!cached) return "";
-  return (await rosterEmails(env, true)).map[email] || "";
+  const r = await roster(env, false);
+  if (r.emails[email]) return r.emails[email];
+  if (!r.cached) return "";
+  return (await roster(env, true)).emails[email] || "";
+}
+
+async function isRosterName(env, name) {
+  const r = await roster(env, false);
+  if (r.names.includes(name)) return true;
+  if (!r.cached) return false;
+  return (await roster(env, true)).names.includes(name);
 }
 
 /* ---------------- the schedule ---------------- */
@@ -282,7 +303,9 @@ async function answersFor(env, season) {
       const md = k.metadata || {};
       const name = k.name.split(":").slice(3).join(":");
       if (!md.d || !name || !["in", "out"].includes(md.a)) continue;
-      (games[md.d] = games[md.d] || {})[name] = { a: md.a, t: md.t || 0 };
+      const v = { a: md.a, t: md.t || 0 };
+      if (md.by) v.by = md.by;
+      (games[md.d] = games[md.d] || {})[name] = v;
     }
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);
