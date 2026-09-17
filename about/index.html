@@ -171,6 +171,9 @@ header.site{position:relative}
 .join-cta{background:var(--surface-inverse);color:var(--text-on-inverse);clip-path:var(--clip-patch);padding:var(--space-6)}
 .join-cta-h{font-family:var(--font-display);font-size:19px;line-height:1.2;color:var(--oatmeal-300);margin-bottom:var(--space-3)}
 .join-cta p{font-size:15px;line-height:1.55;color:var(--burgundy-200);margin-bottom:var(--space-6)}
+.join-email{display:block;margin:calc(-1*var(--space-3)) 0 var(--space-6);font-family:var(--font-body);font-weight:600;font-size:15px;color:var(--oatmeal-300);text-decoration:underline;text-decoration-color:var(--burgundy-300);text-underline-offset:3px;overflow-wrap:anywhere}
+.join-email:hover{color:var(--white);text-decoration-color:currentColor}
+.join-email:focus-visible{outline:2px solid var(--oatmeal-300);outline-offset:3px}
 .join-btn{font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-900);background:var(--oatmeal-300);border:none;clip-path:var(--clip-patch-sm);padding:11px 22px;cursor:pointer}
 .join-btn:hover{background:var(--white)}
 .about{padding-top:0;padding-bottom:var(--space-8)}
@@ -604,7 +607,7 @@ footer.site .fine{margin-left:auto}
         <div class="join-main">
           <p class="join-lead">Scrub Club is a beer-league team. We are not good, we are not trying to be, and we would rather have skaters who show up than skaters who can dangle.</p>
           <dl class="join-facts">
-            <div><dt>The league</dt><dd>8 teams, it's chill.</dd></div>
+            <div><dt>The league</dt><dd>8 teams, it's chill. No contact. Need to be 40+ years old.</dd></div>
             <div><dt>When</dt><dd>Tuesday/Thursday ice, usually late. Most puck drops land between 9:00 and 10:30 PM.</dd></div>
             <div><dt>Commitment</dt><dd>Pay the season fee, come when you can. Everyone rotates through beer duty.</dd></div>
             <div><dt>Subs</dt><dd>Always welcome, skaters and goalies both. Subbing is the usual way onto the roster.</dd></div>
@@ -612,7 +615,8 @@ footer.site .fine{margin-left:auto}
         </div>
         <aside class="join-cta">
           <div class="join-cta-h">How to get on the list</div>
-          <p>Talk to any Scrub Club player about joining or subbing. Check the roster to see who you already know.</p>
+          <p>Talk to any Scrub Club player about joining or subbing, or email the team. Check the roster to see who you already know.</p>
+          <a class="join-email" href="mailto:waturi@scrubclubhockeyteam.com">waturi@scrubclubhockeyteam.com</a>
           <button class="join-btn" type="button" data-view="roster">See the roster</button>
         </aside>
       </div>
@@ -1704,6 +1708,10 @@ function setFreezeH(){
   if(sh&&sh.offsetHeight) document.documentElement.style.setProperty("--sect-h",sh.offsetHeight+"px");
 }
 window.addEventListener("resize",setFreezeH);
+// The frozen bar changes height on its own: the season picker shows on Team and Schedule but not
+// on About, Swag or Join. Without this, a page opened from Schedule kept Schedule's taller offset
+// and its pinned section heading slid down over the content.
+if(window.ResizeObserver){ const f=document.querySelector(".freeze"); if(f) new ResizeObserver(setFreezeH).observe(f); }
 setFreezeH();
 
 document.getElementById("refresh").addEventListener("click",e=>{e.preventDefault();load();});
