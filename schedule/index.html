@@ -146,9 +146,9 @@ header.site{position:relative}
 .gs-foot a{color:var(--burgundy-600);text-decoration:none}
 .gs-foot a:hover{text-decoration:underline}
 .gs-foot[hidden]{display:none}
-/* Beer Stats: rank, player, then three stats (beer runs, 3rd Beer, Scrub Daddy), each a count
+/* Scrub Stats: rank, player, then three stats (beer runs, 3rd Beer, Scrub Daddy), each a count
    over the date it last happened. Phones put the three under the name with their own labels. */
-.bs-head,.bs-row{display:grid;grid-template-columns:26px minmax(0,1fr) 128px 128px 128px;gap:var(--space-3);align-items:center}
+.bs-head,.bs-row{display:grid;grid-template-columns:26px minmax(180px,260px) 128px 128px 128px;gap:var(--space-3);align-items:center;width:fit-content;max-width:100%}
 .bs-head{padding:14px 0 6px;font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500)}
 .bs-head .bs-col{text-align:right}
 .bs-row{padding:10px 0;border-bottom:1px solid var(--oatmeal-500)}
@@ -162,7 +162,7 @@ header.site{position:relative}
 .bs-stat.zero b{color:var(--oatmeal-600)}
 @media (max-width:640px){
   .bs-head{display:none}
-  .bs-row{grid-template-columns:22px minmax(0,1fr);row-gap:6px}
+  .bs-row{grid-template-columns:22px minmax(0,1fr);row-gap:6px;width:100%}
   .bs-stats{display:flex;gap:var(--space-4);grid-column:2}
   .bs-stat{align-items:flex-start;flex:1;min-width:0}
   .bs-stat .bs-lbl{display:block;font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-300)}
@@ -517,7 +517,7 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
     <a id="gs-link" href="#" target="_blank" rel="noopener">Full stats on GameSheet →</a>
   </div>
   <section class="block">
-    <div class="section-head"><h2>BEER STATS</h2></div>
+    <div class="section-head"><h2>SCRUB STATS</h2></div>
     <div class="bs-head">
       <span class="bs-rank"></span>
       <span class="bs-name">Player</span>
@@ -800,12 +800,12 @@ function el(tag, cls, text){
   return n;
 }
 
-// Beer log from the sheet's "Beer" tab: the full log for Beer Stats, and per-season counts for Stats
+// Beer log from the sheet's "Beer" tab: the full log for Scrub Stats, and per-season counts for Stats
 let beerLog=[], beerByDate={};
 // Per-game awards from the same tab: {"Sep 10, 2026": {third:"Name", daddy:"Name"}}. The columns
 // are read by header ("Third Beer", "Scrub Daddy"), so they can sit anywhere on the tab.
 let awardsByDate={};
-// Every award handed out, for Beer Stats: {third:[{name,ds,t}], daddy:[...]}
+// Every award handed out, for Scrub Stats: {third:[{name,ds,t}], daddy:[...]}
 let awardLog={third:[],daddy:[]};
 async function loadBeer(fresh){
   try{
@@ -836,7 +836,7 @@ async function loadBeer(fresh){
     }
     beerLog=log;
     awardLog=awards;
-  }catch(e){/* beer data is optional; the Beer Stats section just stays empty */}
+  }catch(e){/* beer data is optional; the Scrub Stats section just stays empty */}
 }
 
 // All-time beer leaderboard: runs and most recent
