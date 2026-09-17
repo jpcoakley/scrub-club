@@ -29,11 +29,14 @@ a{color:var(--burgundy-600);text-underline-offset:3px}
 a:hover{color:var(--burgundy-900)}
 a:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:3px}
 
-header.site{background:var(--burgundy-600)}
-header.site .bar{max-width:1200px;margin:0 auto;padding:12px var(--gutter);display:flex;align-items:center;justify-content:space-between;gap:16px}
+/* The site's own top bar, pinned so it stays put while the policy scrolls */
+header.site{background:var(--burgundy-600);position:sticky;top:0;z-index:10}
+header.site .bar{max-width:1200px;margin:0 auto;padding:12px var(--gutter);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 header.site img{height:52px;width:auto;display:block}
-header.site .home{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--oatmeal-300);text-decoration:none}
-header.site .home:hover{text-decoration:underline;color:var(--oatmeal-100)}
+header.site nav{display:flex;gap:24px;flex-wrap:wrap}
+header.site nav a{font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.14em;text-transform:uppercase;color:var(--burgundy-300);text-decoration:none;padding-bottom:4px;border-bottom:3px solid transparent}
+header.site nav a:hover{color:var(--oatmeal-300)}
+header.site nav a:focus-visible{outline:2px solid var(--oatmeal-300);outline-offset:3px}
 
 main{width:100%;max-width:720px;margin:0 auto;padding:48px var(--gutter) 72px}
 .eyebrow{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--burgundy-600)}
@@ -61,6 +64,8 @@ footer.site .bar{max-width:1200px;margin:0 auto;padding:24px var(--gutter);font-
   main{padding-top:32px}
   .lede{font-size:17px}
   header.site img{height:44px}
+  header.site nav{gap:16px}
+  header.site nav a{font-size:14px;letter-spacing:.1em}
 }
 </style>
 </head>
@@ -69,7 +74,9 @@ footer.site .bar{max-width:1200px;margin:0 auto;padding:24px var(--gutter);font-
 <header class="site">
   <div class="bar">
     <a href="/"><img src="/soap-logo.png" alt="Scrub Club home"></a>
-    <a class="home" href="/schedule/">Back to the schedule</a>
+    <nav aria-label="Site">
+      <a href="/about/">About</a><a href="/team/">Team</a><a href="/schedule/">Schedule</a><a href="/swag/">Swag</a><a href="/join/">Join</a>
+    </nav>
   </div>
 </header>
 
