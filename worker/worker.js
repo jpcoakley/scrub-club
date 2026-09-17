@@ -18,7 +18,7 @@
  *                           (the answer then carries who set it, in `by`)
  *
  * Storage (KV):
- *   sess:<token>            {email, at}                       a year
+ *   sess:<token>            {email, at}                       a year, renewed on every /me
  *   otp:<email>             {hash, tries}                     10 minutes
  *   rl:<what>:<who>         counter                           rate limits
  *   cache:roster2           {emails: {email: name}, names}    5 minutes
@@ -76,16 +76,15 @@ async function route(request, env) {
     const body = await readJson(request);
     const email = normEmail(body.email);
     if (!emailish(email)) return json({ ok: false, error: "That's not an email address." }, 400);
+    // No cap per address (JP hit the old one on day one); one per network address
+    // keeps a script from flooding a teammate's inbox
     const ip = request.headers.get("CF-Connecting-IP") || "?";
-    if (await overLimit(env, "ip:" + ip, 30, 3600)) {
+    if (await overLimit(env, "ip:" + ip, 60, 3600)) {
       return json({ ok: false, error: "Too many codes sent. Try again in an hour." }, 429);
-    }
-    if (await overLimit(env, "otp:" + email, 5, 3600)) {
-      return json({ ok: false, error: "Too many codes sent to that address. Try again in an hour." }, 429);
     }
     const name = await nameForEmail(env, email);
     if (!name) {
-      await refund(env, "otp:" + email);
+      await refund(env, "ip:" + ip);
       return json({ ok: false, unknown: true });
     }
     const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
@@ -100,9 +99,8 @@ async function route(request, env) {
     } catch (e) {
       const why = String((e && (e.code || e.message)) || e);
       console.error("code not sent", email, why);
-      // a failed send shouldn't use up one of their five tries this hour
       await env.SC_KV.delete("otp:" + email);
-      await refund(env, "otp:" + email);
+      await refund(env, "ip:" + ip);
       if (/SUPPRESS/i.test(why)) {
         return json({ ok: false, error: "Your email provider turned away our last message. " +
           "Check that your inbox isn't full, then try again tomorrow or text JP." }, 502);
@@ -134,19 +132,23 @@ async function route(request, env) {
     const token = randomToken();
     await env.SC_KV.put("sess:" + token, JSON.stringify({ email, at: Date.now() }),
       { expirationTtl: SESSION_TTL });
-    return json({ ok: true, token, name });
+    return json({ ok: true, token, name }, 200, { "Set-Cookie": sessionCookie(token) });
   }
 
   if (m === "GET" && p === "/me") {
     const me = await whoami(request, env);
     if (!me) return json({ ok: false, error: "Not signed in." }, 401);
-    return json({ ok: true, name: me.name, email: me.email });
+    // Every visit pushes the session's expiry out another year, so a player who keeps
+    // using the site on one phone never has to sign in again
+    await env.SC_KV.put("sess:" + me.token, JSON.stringify({ email: me.email, at: me.at }),
+      { expirationTtl: SESSION_TTL });
+    return json({ ok: true, name: me.name, email: me.email }, 200, { "Set-Cookie": sessionCookie(me.token) });
   }
 
   if (m === "POST" && p === "/auth/signout") {
     const token = bearer(request);
     if (token) await env.SC_KV.delete("sess:" + token);
-    return json({ ok: true });
+    return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie() });
   }
 
   // ---- who's in and out, one season at a time ----
@@ -186,10 +188,32 @@ async function route(request, env) {
 
 /* ---------------- who is asking ---------------- */
 
+// The token comes as a Bearer header (the page keeps it in localStorage) or, when
+// Safari has cleared that storage, as the cookie set at sign-in. Both name the same
+// KV session, so signing out kills both.
 function bearer(request) {
   const h = request.headers.get("Authorization") || "";
   const m = h.match(/^Bearer\s+([A-Za-z0-9_-]{20,80})$/);
-  return m ? m[1] : "";
+  if (m) return m[1];
+  const c = cookieValue(request, "scrub");
+  return /^[A-Za-z0-9_-]{20,80}$/.test(c) ? c : "";
+}
+
+function cookieValue(request, name) {
+  for (const part of (request.headers.get("Cookie") || "").split(/;\s*/)) {
+    if (part.startsWith(name + "=")) return part.slice(name.length + 1);
+  }
+  return "";
+}
+
+// Domain-wide so the site's own pages carry it to the api host; HttpOnly and set by
+// the server, so Safari's seven-day purge of script-written storage leaves it alone
+function sessionCookie(token) {
+  return `scrub=${token}; Domain=scrubclubhockeyteam.com; Path=/; Max-Age=${SESSION_TTL}; ` +
+         "HttpOnly; Secure; SameSite=Lax";
+}
+function clearSessionCookie() {
+  return "scrub=; Domain=scrubclubhockeyteam.com; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax";
 }
 
 // A live session whose email is still on the roster; the sheet can revoke anyone
@@ -200,7 +224,7 @@ async function whoami(request, env) {
   if (!sess || !sess.email) return null;
   const name = await nameForEmail(env, sess.email);
   if (!name) return null;
-  return { email: sess.email, name, token };
+  return { email: sess.email, name, token, at: sess.at || Date.now() };
 }
 
 /* ---------------- the roster sheet ---------------- */
@@ -368,6 +392,7 @@ function corsHeaders(origin) {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };

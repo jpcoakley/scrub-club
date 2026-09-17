@@ -1150,7 +1150,8 @@ let rsvpMsg="", rsvpMsgTimer=null;
 const SESSION_KEY="scrub.session";
 function loadSession(){
   try{ rsvpSession=JSON.parse(localStorage.getItem(SESSION_KEY)||"null"); }catch(e){ rsvpSession=null; }
-  if(rsvpSession && !(rsvpSession.token && rsvpSession.name)) rsvpSession=null;
+  // token may be empty: the sign-in cookie then carries the session
+  if(rsvpSession && !rsvpSession.name) rsvpSession=null;
 }
 function saveSession(s){
   rsvpSession=s;
@@ -1160,7 +1161,8 @@ function saveSession(s){
 async function api(path,body){
   const headers={"Content-Type":"application/json"};
   if(rsvpSession?.token) headers.Authorization="Bearer "+rsvpSession.token;
-  const r=await fetch(RSVP_API+path,{method:body?"POST":"GET",headers,body:body?JSON.stringify(body):undefined});
+  // credentials: the sign-in cookie rides along, so a phone that lost localStorage is still signed in
+  const r=await fetch(RSVP_API+path,{method:body?"POST":"GET",headers,body:body?JSON.stringify(body):undefined,credentials:"include"});
   let res=null;
   try{ res=await r.json(); }catch(e){}
   return {status:r.status,res};
@@ -1183,13 +1185,18 @@ function loadRsvpFor(entries){
     }catch(err){ delete rsvpBySeason[e.key]; }
   })).then(renderSchedule);
 }
-// On load, make sure a remembered session still works (JP can revoke one by clearing the email in the sheet)
+/* On load, ask the Worker who we are. It answers from the Bearer token or from the sign-in
+   cookie, so a phone whose localStorage was cleared comes back signed in, and each visit renews
+   the session for another year. Only a definite "not signed in" (401) ends a session; a hiccup
+   reading the sheet or a dead network keeps whatever we remembered. */
 async function checkSession(){
-  if(!rsvpSession) return;
   try{
     const {status,res}=await api("/me");
-    if(status===401 || (res && !res.ok)){ saveSession(null); renderSchedule(); }
-    else if(res?.name && res.name!==rsvpSession.name){ saveSession({...rsvpSession,name:res.name}); renderSchedule(); }
+    if(status===401){ if(rsvpSession){ saveSession(null); renderSchedule(); } return; }
+    if(res?.ok && res.name && (!rsvpSession || rsvpSession.name!==res.name || rsvpSession.email!==res.email)){
+      saveSession({token:rsvpSession?.token||"",name:res.name,email:res.email});
+      renderSchedule();
+    }
   }catch(e){ /* offline: keep the session, the next tap will tell */ }
 }
 function rsvpBar(entries){
