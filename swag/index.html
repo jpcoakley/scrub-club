@@ -273,6 +273,7 @@ header.site{position:relative}
 /* In/Out: a two-button toggle in each upcoming row; the count beside it opens the names */
 .sg-rsvp{width:190px;flex:none;display:flex;align-items:center;gap:12px;align-self:center}
 .sg-head .sg-rsvp{display:block}
+.sg-openable{cursor:pointer}
 .sg-io{display:inline-flex;border:1px solid var(--oatmeal-600);border-radius:var(--radius-sm);overflow:hidden;flex:none;background:var(--white)}
 .sg-io button{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);background:transparent;border:none;padding:5px 11px;cursor:pointer;line-height:1.2}
 .sg-io button+button{border-left:1px solid var(--oatmeal-600)}
@@ -1005,7 +1006,17 @@ function schedRow(g,entry,num){
   r.appendChild(beer);
   if(RSVP_API){
     // In/Out only for a game still to come in a season the sheet has a team for
-    if(ds && !played && entry.col) r.appendChild(rsvpCell(g,entry,ds));
+    if(ds && !played && entry.col){
+      r.appendChild(rsvpCell(g,entry,ds));
+      // Anywhere on the row opens or closes the names; the buttons and picker keep their own jobs
+      const id=entry.key+"|"+ds;
+      r.classList.add("sg-openable");
+      r.addEventListener("click",e=>{
+        if(e.target.closest("button,select,a")) return;
+        if(rsvpOpen.has(id)) rsvpOpen.delete(id); else rsvpOpen.add(id);
+        renderSchedule();
+      });
+    }
     else r.appendChild(el("span","sg-rsvp"));
   }
   return r;
@@ -1235,7 +1246,7 @@ function rsvpNamesRow(entry,ds){
   [["in","In",ins],["out","Out",outs],["quiet","No answer",quiet]].forEach(([cls,label,names])=>{
     if(!names.length) return;
     const grp=el("div","grp "+cls);
-    grp.appendChild(el("b",null,`${label} (${names.length})`));
+    grp.appendChild(el("b",null,label));
     grp.append(names.slice().sort((a,b)=>a.localeCompare(b)).join(", "));
     row.appendChild(grp);
   });
