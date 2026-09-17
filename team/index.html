@@ -263,8 +263,13 @@ header.site{position:relative}
   .sg-beer::before{content:"Beer · ";color:var(--ink-300)}
   .sg-head .sg-beer{display:none}
   .sched-list{width:100%}
-  /* In/Out follows Beer Man onto its own line */
-  .sg-rsvp{width:100%;padding-left:calc(18px + 50px + 20px);gap:12px}
+  /* In/Out sits at the right edge, buttons over the count, so an upcoming game stays two lines
+     tall like a played one; the opponent and Beer lines leave it room */
+  .sg-row.sg-upcoming{position:relative} /* not .sg-head, which must stay sticky */
+  /* .sg-row .sg-rsvp outranks the desktop .sg-rsvp rule below (width 190px, centred, side by side) */
+  .sg-row .sg-rsvp{position:absolute;right:0;top:50%;transform:translateY(-50%);width:auto;flex-direction:column;align-items:flex-end;gap:5px}
+  .sg-row .sg-rsvp .sg-count{font-size:13px}
+  .sg-upcoming .sg-opp,.sg-upcoming .sg-beer{padding-right:104px}
   /* span.sg-rsvp outranks the desktop .sg-head .sg-rsvp rule below, which comes later in the file */
   .sg-rsvp:empty,.sg-head span.sg-rsvp{display:none}
   .sg-names{padding-left:calc(18px + 50px + 20px)}
