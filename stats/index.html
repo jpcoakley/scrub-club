@@ -146,17 +146,28 @@ header.site{position:relative}
 .gs-foot a{color:var(--burgundy-600);text-decoration:none}
 .gs-foot a:hover{text-decoration:underline}
 .gs-foot[hidden]{display:none}
-.bs-head{display:flex;align-items:baseline;gap:var(--space-3);padding:14px 0 6px;font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500)}
-.bs-row{display:flex;align-items:baseline;gap:var(--space-3);padding:10px 0;border-bottom:1px solid var(--oatmeal-500)}
-.bs-rank{width:26px;flex:none;font-family:var(--font-numeral);font-weight:700;font-size:14px;color:var(--ink-300);font-variant-numeric:tabular-nums}
-.bs-name{flex:1;min-width:0;font-family:var(--font-display);font-size:16px;color:var(--text-strong);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bs-last{width:112px;flex:none;font-family:var(--font-condensed);font-weight:600;font-size:14px;color:var(--ink-300)}
-.bs-runs{width:44px;flex:none;text-align:right;font-family:var(--font-numeral);font-weight:800;font-size:22px;color:var(--burgundy-600);font-variant-numeric:tabular-nums}
-@media (max-width:560px){
-  .bs-head .bs-last{display:none}
-  .bs-row{flex-wrap:wrap;row-gap:2px}
-  .bs-last{order:1;width:100%;padding-left:calc(26px + var(--space-3));font-size:13px}
-  .bs-last::before{content:"Last brought \00b7  ";color:var(--ink-300)}
+/* Beer Stats: rank, player, then three stats (beer runs, 3rd Beer, Scrub Daddy), each a count
+   over the date it last happened. Phones put the three under the name with their own labels. */
+.bs-head,.bs-row{display:grid;grid-template-columns:26px minmax(0,1fr) 128px 128px 128px;gap:var(--space-3);align-items:center}
+.bs-head{padding:14px 0 6px;font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500)}
+.bs-head .bs-col{text-align:right}
+.bs-row{padding:10px 0;border-bottom:1px solid var(--oatmeal-500)}
+.bs-rank{font-family:var(--font-numeral);font-weight:700;font-size:14px;color:var(--ink-300);font-variant-numeric:tabular-nums}
+.bs-name{min-width:0;font-family:var(--font-display);font-size:16px;color:var(--text-strong);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bs-stats{display:contents}
+.bs-stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1;gap:2px}
+.bs-stat .bs-lbl{display:none}
+.bs-stat b{font-family:var(--font-numeral);font-weight:800;font-size:22px;color:var(--burgundy-600);font-variant-numeric:tabular-nums}
+.bs-stat small{font-family:var(--font-condensed);font-weight:600;font-size:12px;color:var(--ink-300);white-space:nowrap}
+.bs-stat.zero b{color:var(--oatmeal-600)}
+@media (max-width:640px){
+  .bs-head{display:none}
+  .bs-row{grid-template-columns:22px minmax(0,1fr);row-gap:6px}
+  .bs-stats{display:flex;gap:var(--space-4);grid-column:2}
+  .bs-stat{align-items:flex-start;flex:1;min-width:0}
+  .bs-stat .bs-lbl{display:block;font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-300)}
+  .bs-stat b{font-size:20px}
+  .bs-stat small{font-size:11px}
 }
 .league-note{padding:var(--space-8) var(--gutter-inline);font-size:16px;color:var(--ink-500);text-align:center}
 /* Join */
@@ -510,11 +521,12 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
     <div class="bs-head">
       <span class="bs-rank"></span>
       <span class="bs-name">Player</span>
-      <span class="bs-last">Last brought</span>
-      <span class="bs-runs">Runs</span>
+      <span class="bs-col">Beer runs</span>
+      <span class="bs-col">3rd Beer</span>
+      <span class="bs-col">Scrub Daddy</span>
     </div>
     <div id="beer-stats"></div>
-    <div class="sched-foot">All-time, from the team sheet's Beer log</div>
+    <div class="sched-foot">All-time, from the team sheet's Beer log. Each count sits over the date it last happened.</div>
   </section>
 
   <div class="meta-strip">
@@ -793,6 +805,8 @@ let beerLog=[], beerByDate={};
 // Per-game awards from the same tab: {"Sep 10, 2026": {third:"Name", daddy:"Name"}}. The columns
 // are read by header ("Third Beer", "Scrub Daddy"), so they can sit anywhere on the tab.
 let awardsByDate={};
+// Every award handed out, for Beer Stats: {third:[{name,ds,t}], daddy:[...]}
+let awardLog={third:[],daddy:[]};
 async function loadBeer(fresh){
   try{
     const rows=(await teamData(fresh)).schedule||[];
@@ -802,6 +816,7 @@ async function loadBeer(fresh){
     if(iD<0||iB<0) return;
     const log=[];
     beerByDate={}; awardsByDate={};
+    const awards={third:[],daddy:[]};
     // A Beer Man requested for a game not yet played shows on the schedule but isn't a run yet
     const endOfToday=new Date().setHours(23,59,59,999);
     for(let i=1;i<rows.length;i++){
@@ -811,6 +826,8 @@ async function loadBeer(fresh){
       if(isNaN(t)) continue;
       const third=iT<0?"":(rows[i][iT]||"").trim(), daddy=iSD<0?"":(rows[i][iSD]||"").trim();
       if(third||daddy) awardsByDate[ds]={third,daddy};
+      if(third) awards.third.push({name:third,ds,t});
+      if(daddy) awards.daddy.push({name:daddy,ds,t});
       if(!name) continue;
       beerByDate[ds]=name;
       if(t>endOfToday) continue;
@@ -818,6 +835,7 @@ async function loadBeer(fresh){
       log.push({name,ds,t,season:iS<0?"":(rows[i][iS]||"").trim().toLowerCase(),year:d.getFullYear(),month:d.getMonth()+1});
     }
     beerLog=log;
+    awardLog=awards;
   }catch(e){/* beer data is optional; the Beer Stats section just stays empty */}
 }
 
@@ -825,21 +843,32 @@ async function loadBeer(fresh){
 function renderBeerStats(){
   const box=document.getElementById("beer-stats");
   if(!box) return;
-  const total=beerLog.length;
-  if(!total){ box.replaceChildren(); return; }
+  if(!beerLog.length && !awardLog.third.length && !awardLog.daddy.length){ box.replaceChildren(); return; }
+  // One line per player: count and most recent date for runs and for each award
   const per={};
-  beerLog.forEach(r=>{
-    const p=per[r.name]||(per[r.name]={name:r.name,count:0,t:0,ds:""});
-    p.count++;
-    if(r.t>p.t){ p.t=r.t; p.ds=r.ds; }
+  const tally=(entries,key)=>entries.forEach(r=>{
+    const p=per[r.name]||(per[r.name]={name:r.name,runs:{n:0,t:0,ds:""},third:{n:0,t:0,ds:""},daddy:{n:0,t:0,ds:""}});
+    const st=p[key];
+    st.n++;
+    if(r.t>st.t){ st.t=r.t; st.ds=r.ds; }
   });
-  const list=Object.values(per).sort((a,b)=>b.count-a.count||a.t-b.t);
+  tally(beerLog,"runs"); tally(awardLog.third,"third"); tally(awardLog.daddy,"daddy");
+  // Most runs first; ties go to whoever has waited longest since their last run
+  const list=Object.values(per).sort((a,b)=>b.runs.n-a.runs.n||(b.third.n+b.daddy.n)-(a.third.n+a.daddy.n)||a.runs.t-b.runs.t||a.name.localeCompare(b.name));
+  const stat=(label,st)=>{
+    const c=el("span","bs-stat"+(st.n?"":" zero"));
+    c.appendChild(el("span","bs-lbl",label));
+    c.appendChild(el("b",null,st.n?String(st.n):"0"));
+    c.appendChild(el("small",null,st.ds||"\u00a0"));
+    return c;
+  };
   box.replaceChildren(...list.map((p,i)=>{
     const row=el("div","bs-row");
     row.appendChild(el("span","bs-rank",String(i+1)));
     row.appendChild(el("span","bs-name",p.name));
-    row.appendChild(el("span","bs-last",p.ds));
-    row.appendChild(el("span","bs-runs",String(p.count)));
+    const stats=el("span","bs-stats");
+    stats.append(stat("Beer runs",p.runs),stat("3rd Beer",p.third),stat("Scrub Daddy",p.daddy));
+    row.appendChild(stats);
     return row;
   }));
 }
