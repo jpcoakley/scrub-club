@@ -534,9 +534,8 @@ footer.site .fine{margin-left:auto}
 </dialog>
 <dialog id="io-dlg" class="br" aria-labelledby="io-title">
   <form id="io-form" class="br-card" novalidate>
-    <div class="br-k">In or Out</div>
     <h2 id="io-title" class="br-game">Sign in</h2>
-    <p class="io-help" id="io-help">Use the email on your row of the roster sheet. We'll send you a code.</p>
+    <p class="io-help" id="io-help" hidden></p>
     <label class="br-label" for="io-email">Email</label>
     <input id="io-email" class="br-input" type="email" autocomplete="email" inputmode="email" spellcheck="false">
     <div id="io-code-wrap" hidden>
@@ -1297,7 +1296,9 @@ function openSignIn(){
   email.readOnly=false;
   document.getElementById("io-code").value="";
   document.getElementById("io-code-wrap").hidden=true;
-  document.getElementById("io-help").textContent="Use the email on your row of the roster sheet. We'll send you a code.";
+  const help=document.getElementById("io-help");
+  help.textContent="";
+  help.hidden=true;
   ioMessage("");
   ioBusy(false);
   dlg.showModal();
@@ -1329,7 +1330,9 @@ async function ioSubmit(ev){
     ioStep="code";
     ioBusy(false);
     emailEl.readOnly=true;
-    document.getElementById("io-help").textContent=`We emailed a code to ${email}. It works for 10 minutes.`;
+    const help=document.getElementById("io-help");
+    help.textContent=`We emailed a code to ${email}. It works for 10 minutes.`;
+    help.hidden=false;
     document.getElementById("io-code-wrap").hidden=false;
     document.getElementById("io-code").focus();
     return;
