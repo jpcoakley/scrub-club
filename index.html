@@ -149,7 +149,9 @@ header.site{position:relative}
 /* Scrub Stats: rank, player, then three stats (beer runs, 3rd Beer, Scrub Daddy), each a count
    over the date it last happened. Phones put the three under the name with their own labels. */
 .bs-head,.bs-row{display:grid;grid-template-columns:26px minmax(180px,260px) 128px 128px 128px;gap:var(--space-3);align-items:center;width:fit-content;max-width:100%}
-.bs-head{padding:14px 0 6px;font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500)}
+/* Pinned under the frozen bar and the section head while the list scrolls, like the Skaters headers */
+.bs-head{padding:14px 0 6px;font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500);
+  position:sticky;top:calc(var(--freeze-h,0px) + var(--sect-h,0px));z-index:5;background:var(--surface-page);box-shadow:inset 0 -2px 0 var(--burgundy-600)}
 .bs-head .bs-col{text-align:right}
 .bs-row{padding:10px 0;border-bottom:1px solid var(--oatmeal-500)}
 .bs-rank{font-family:var(--font-numeral);font-weight:700;font-size:14px;color:var(--ink-300);font-variant-numeric:tabular-nums}
