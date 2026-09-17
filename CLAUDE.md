@@ -1,6 +1,6 @@
 # scrubclubhockeyteam.com (Scrub Club)
 
-Beer-league hockey team site. Static SPA, design tokens inline in index.html (burgundy/oatmeal, Rokkitt/Archivo/Big Shoulders). Graduate was the display font until Sep 17, 2026; its zero has a dot in it, which JP will not have, so Rokkitt 700 (plain zero) replaced it in index.html, privacy/index.html and beer-review.html.
+Beer-league hockey team site. Static SPA, design tokens inline in index.html (burgundy/oatmeal, Futura/Archivo/Big Shoulders). The display font is **Futura Bold** (JP's pick, Sep 17, 2026): the stack is `"Futura-Bold","Futura","Jost"`, so iPhones and Macs use their built-in Futura and everything else gets Jost 700 from Google Fonts, the closest free clone. Futura itself cannot be shipped (no web licence). Graduate was the display font before that day; its zero has a dot in it, which JP will not have (Rokkitt was live for an hour in between). Same stack in privacy/index.html and beer-review.html.
 
 ## Deploy
 
