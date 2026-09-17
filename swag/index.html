@@ -278,7 +278,10 @@ header.site{position:relative}
 .sg-res.loss{color:var(--penalty-500)}
 .sg-res.tie{color:var(--ink-500)}
 .sg-res.next{font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--whistle-500)}
-.sg-beer{font-family:var(--font-condensed);font-weight:600;font-size:15px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg-beer{display:flex;flex-direction:column;gap:2px;min-width:0;font-family:var(--font-condensed);font-weight:600;font-size:15px;color:var(--ink-500)}
+.sg-bm,.sg-award{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg-award{font-size:13px}
+.sg-award b{font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-300);margin-right:5px}
 .sg-cnt{display:none}
 .sg-you{text-align:right;white-space:nowrap}
 .sg-you button{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;background:none;border:none;padding:0;cursor:pointer}
@@ -325,8 +328,9 @@ header.site{position:relative}
   .sg-opp{grid-area:1/3}
   .sg-res,.sg-you{grid-area:1/4;text-align:right}
   .sg-beer{grid-area:2/3;font-size:13px;color:var(--ink-300)}
-  .sg-beer::before{content:"Beer · "}
+  .sg-bm::before{content:"Beer · "}
   .sg-beer:empty{display:none}
+  .sg-award{font-size:12px;white-space:normal}
   .sg-cnt{display:inline}
   .sg-beer .sg-req{font-size:13px}
   .sg-date{font-size:14px;letter-spacing:.06em}
@@ -781,21 +785,28 @@ function el(tag, cls, text){
 
 // Beer log from the sheet's "Beer" tab: the full log for Beer Stats, and per-season counts for Stats
 let beerLog=[], beerByDate={};
+// Per-game awards from the same tab: {"Sep 10, 2026": {third:"Name", daddy:"Name"}}. The columns
+// are read by header ("Third Beer", "Scrub Daddy"), so they can sit anywhere on the tab.
+let awardsByDate={};
 async function loadBeer(fresh){
   try{
     const rows=(await teamData(fresh)).schedule||[];
     const head=rows[0]||[];
     const iD=head.indexOf("Date"), iB=head.indexOf("Beer Duty"), iS=head.indexOf("Season");
+    const iT=head.indexOf("Third Beer"), iSD=head.indexOf("Scrub Daddy");
     if(iD<0||iB<0) return;
     const log=[];
-    beerByDate={};
+    beerByDate={}; awardsByDate={};
     // A Beer Man requested for a game not yet played shows on the schedule but isn't a run yet
     const endOfToday=new Date().setHours(23,59,59,999);
     for(let i=1;i<rows.length;i++){
       const name=(rows[i][iB]||"").trim();
       const ds=(rows[i][iD]||"").trim();
       const t=Date.parse(ds);
-      if(!name||isNaN(t)) continue;
+      if(isNaN(t)) continue;
+      const third=iT<0?"":(rows[i][iT]||"").trim(), daddy=iSD<0?"":(rows[i][iSD]||"").trim();
+      if(third||daddy) awardsByDate[ds]={third,daddy};
+      if(!name) continue;
       beerByDate[ds]=name;
       if(t>endOfToday) continue;
       const d=new Date(t);
@@ -996,7 +1007,7 @@ function gameYear(entry,dateStr){
    no scores at all, so there the header swaps W/L back out for Time to match its rows. */
 function schedHeadRow(){
   const r=el("div","sg-row sg-head");
-  [["sg-gm","#"],["sg-when","When"],["sg-opp","Opponent"],["sg-res","Result"],["sg-beer","Beer Man"],["sg-you",RSVP_API?"You":""]]
+  [["sg-gm","#"],["sg-when","When"],["sg-opp","Opponent"],["sg-res","Result"],["sg-beer","Beer Man · Awards"],["sg-you",RSVP_API?"You":""]]
     .forEach(([c,t])=>r.appendChild(el("span",c,t)));
   return r;
 }
@@ -1018,15 +1029,26 @@ function nextGame(entry,games){
   }
   return null;
 }
+// Beer Man on the first line (or Assign), then the game's awards under it once it's been played
 function beerCell(g,entry,ds,played){
-  const beer=el("span","sg-beer",(ds&&beerByDate[ds])||"");
+  const beer=el("span","sg-beer");
+  const bm=el("span","sg-bm",(ds&&beerByDate[ds])||"");
   if(ds && !played && !beerByDate[ds] && canRequestBeer(ds,entry)){
     const b=el("button","sg-req","Assign");
     b.type="button";
     b.setAttribute("aria-label",`Assign beer duty for ${g.date} against ${g.opponent}`);
     b.addEventListener("click",()=>openBeerRequest(g,entry,ds));
-    beer.appendChild(b);
+    bm.appendChild(b);
   }
+  if(bm.childNodes.length) beer.appendChild(bm);
+  const aw=(ds&&awardsByDate[ds])||{};
+  [["third","Third beer",aw.third],["daddy","Scrub Daddy",aw.daddy]].forEach(([cls,label,who])=>{
+    if(!who) return;
+    const a=el("span","sg-award "+cls);
+    a.appendChild(el("b",null,label));
+    a.append(who);
+    beer.appendChild(a);
+  });
   return beer;
 }
 // Who has said In or Out for a game, and who on the season's team hasn't
@@ -1102,7 +1124,9 @@ function schedRow(g,entry,num,isNext){
   const rsvpable=!!(RSVP_API && ds && !played && entry.col);
   if(rsvpable){
     const {ins}=rsvpSplit(entry,ds);
-    beer.appendChild(el("span","sg-cnt",(beer.textContent?" · ":"")+`${ins.length} in`));
+    let bm=beer.querySelector(".sg-bm");
+    if(!bm){ bm=el("span","sg-bm"); beer.appendChild(bm); }
+    bm.appendChild(el("span","sg-cnt",(bm.textContent?" · ":"")+`${ins.length} in`));
   }
   r.appendChild(beer);
   r.appendChild(rsvpable?youCell(g,entry,ds):el("span","sg-you"));
