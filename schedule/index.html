@@ -1175,16 +1175,26 @@ function rsvpNote(text){
   renderSchedule();
 }
 // Fetch a season's answers the first time it shows, then redraw
+// A season whose answers failed to load waits this long before a redraw may ask again. Without
+// the wait, a failure (offline, a blocked request, the Worker down) redrew the schedule, the
+// redraw asked again at once, and the page sent the Worker hundreds of requests a second.
+const RSVP_RETRY_MS=30000;
+const rsvpFailedAt={};
 function loadRsvpFor(entries){
-  const need=entries.filter(e=>e.col && !(e.key in rsvpBySeason) && schedData.seasons[e.key]?.games?.some(g=>g.us==null));
+  const now=Date.now();
+  const need=entries.filter(e=>e.col && !(e.key in rsvpBySeason) && !(now-(rsvpFailedAt[e.key]||0)<RSVP_RETRY_MS)
+    && schedData.seasons[e.key]?.games?.some(g=>g.us==null));
   if(!need.length) return;
   need.forEach(e=>{ rsvpBySeason[e.key]={}; });
+  let loaded=false;
   Promise.all(need.map(async e=>{
     try{
       const {res}=await api("/rsvp?season="+encodeURIComponent(e.key));
-      if(res?.ok) rsvpBySeason[e.key]=res.games||{};
-    }catch(err){ delete rsvpBySeason[e.key]; }
-  })).then(renderSchedule);
+      if(res?.ok){ rsvpBySeason[e.key]=res.games||{}; delete rsvpFailedAt[e.key]; loaded=true; return; }
+    }catch(err){}
+    delete rsvpBySeason[e.key];
+    rsvpFailedAt[e.key]=Date.now();
+  })).then(()=>{ if(loaded) renderSchedule(); });
 }
 /* On load, ask the Worker who we are. It answers from the Bearer token or from the sign-in
    cookie, so a phone whose localStorage was cleared comes back signed in, and each visit renews
