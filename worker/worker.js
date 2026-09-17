@@ -122,7 +122,8 @@ async function route(request, env, ctx) {
     try {
       await sendMail(env, email, "Your Scrub Club sign-in code",
         "Hi " + name.split(" ")[0] + ",\n\n" +
-        "Your Scrub Club sign-in code is " + code + ". It works for the next 10 minutes.");
+        "Your Scrub Club sign-in code is:\n" + code + "\n\n" +
+        "It's good for 10 minutes.");
     } catch (e) {
       const why = String((e && (e.code || e.message)) || e);
       console.error("code not sent", email, why);
