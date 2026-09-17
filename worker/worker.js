@@ -18,7 +18,7 @@
  *                           (the answer then carries who set it, in `by`)
  *
  * Storage (KV):
- *   sess:<token>            {email, at}                       a year, renewed on every /me
+ *   sess:<token>            {email, at, renewed}              a year, renewed weekly by /me
  *   otp:<email>             {hash, tries}                     10 minutes
  *   rl:<what>:<who>         counter                           rate limits
  *   cache:roster2           {emails: {email: name}, names}    5 minutes
@@ -138,10 +138,15 @@ async function route(request, env) {
   if (m === "GET" && p === "/me") {
     const me = await whoami(request, env);
     if (!me) return json({ ok: false, error: "Not signed in." }, 401);
-    // Every visit pushes the session's expiry out another year, so a player who keeps
-    // using the site on one phone never has to sign in again
-    await env.SC_KV.put("sess:" + me.token, JSON.stringify({ email: me.email, at: me.at }),
-      { expirationTtl: SESSION_TTL });
+    // A visit more than a week after the last renewal pushes the session's expiry out
+    // another year, so a player who keeps using the site on one phone never signs in
+    // again. Not on every visit: a KV read can be a minute stale, and renewing a session
+    // that was just signed out would bring it back.
+    if (Date.now() - (me.renewed || me.at) > 7 * 86400000) {
+      await env.SC_KV.put("sess:" + me.token,
+        JSON.stringify({ email: me.email, at: me.at, renewed: Date.now() }),
+        { expirationTtl: SESSION_TTL });
+    }
     return json({ ok: true, name: me.name, email: me.email }, 200, { "Set-Cookie": sessionCookie(me.token) });
   }
 
@@ -224,7 +229,7 @@ async function whoami(request, env) {
   if (!sess || !sess.email) return null;
   const name = await nameForEmail(env, sess.email);
   if (!name) return null;
-  return { email: sess.email, name, token, at: sess.at || Date.now() };
+  return { email: sess.email, name, token, at: sess.at || Date.now(), renewed: sess.renewed || 0 };
 }
 
 /* ---------------- the roster sheet ---------------- */
