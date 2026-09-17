@@ -1274,7 +1274,8 @@ function rsvpNamesRow(entry,ds){
     row.appendChild(grp);
   });
   if(!row.childElementCount) row.appendChild(el("span",null,"Nobody has answered yet."));
-  // Anyone signed in can answer for a teammate (anyone on the sheet, subs included)
+  // Anyone signed in can answer for a teammate: this season's team, subs and the unsure
+  // (the sheet's status column); people sitting out or with no status aren't listed
   if(rsvpSession){
     const add=el("div","grp add");
     const sel=document.createElement("select");
@@ -1282,7 +1283,8 @@ function rsvpNamesRow(entry,ds){
     sel.setAttribute("aria-label","Teammate to answer for");
     const prompt=new Option("Pick a teammate","");
     prompt.disabled=true;
-    const names=[...new Set(sheetPlayers(entry).map(p=>p.name))].sort((a,b)=>a.localeCompare(b));
+    const names=[...new Set(sheetPlayers(entry).filter(p=>["in","sub","unsure"].includes(statusGroup(p.status))).map(p=>p.name))]
+      .sort((a,b)=>a.localeCompare(b));
     sel.replaceChildren(prompt,...names.map(nm=>new Option(nm,nm)));
     sel.value="";
     const io=el("span","sg-io");
