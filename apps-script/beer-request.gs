@@ -1,17 +1,19 @@
-/* Beer Man assignments from scrubclubhockeyteam.com.
+/* Beer Man and award assignments from scrubclubhockeyteam.com.
 
    Lives in the Scrub Club Roster sheet (Extensions > Apps Script), deployed as a web app
-   (Execute as: Me, Who has access: Anyone). The site's Assign button posts
-   {date:"Sep 15, 2026", name:"Danny Bortnick", season:"Winter", seasonHeader:"Winter, 26-27"} here.
+   (Execute as: Me, Who has access: Anyone). The site's Assign buttons post
+   {date:"Sep 15, 2026", name:"Danny Bortnick", season:"Winter", seasonHeader:"Winter, 26-27"} here,
+   plus award:"third" (Third Beer) or award:"daddy" (Scrub Daddy) for a game's awards.
 
    An assignment goes through only when:
    - the name is on that season's team: a player on the roster tab (First + Last, ignoring case
      and extra spaces) whose status is In, Paid, Half or Goalie in the season's status column,
      which is the rightmost roster column headed seasonHeader,
-   - the date is an unplayed game in the site's schedule.json, today or later,
-   - nobody already has beer for that date on the Schedule tab.
-   It fills Beer Duty on that date's Schedule row, adding the row in date order if there isn't one.
-   Changing or clearing a Beer Man is done by hand in the sheet.
+   - the date is a game in the site's schedule.json: for beer, unplayed and today or later; for
+     an award, today or earlier,
+   - that cell on the Schedule tab is still empty.
+   It fills the cell on that date's Schedule row, adding the row in date order if there isn't one.
+   Changing or clearing a name is done by hand in the sheet.
 
    Team data (since Sep 17, 2026, when the sheet stopped being public):
    GET ?what=public          the roster tab with only names, jersey numbers, USA Hockey numbers
@@ -29,6 +31,8 @@ const SCHEDULE_URL = "https://scrubclubhockeyteam.com/schedule.json";
 const SEASON_NAMES = ["Winter", "Spring", "Summer", "Fall"];
 // Statuses that count as on the team; keep in step with ON_TEAM in index.html
 const ON_TEAM = ["in", "paid", "half", "goalie"];
+// What the site may fill in: the Schedule tab column for each kind of assignment
+const FIELDS = { beer: "Beer Duty", third: "Third Beer", daddy: "Scrub Daddy" };
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
@@ -102,31 +106,41 @@ function request(req) {
   const name = team.find(n => norm(n) === norm(req.name));
   if (!name) return { ok: false, error: "Only players on this season's team can be assigned beer." };
 
-  // Date: an unplayed game on the posted schedule, not in the past
+  // What is being filled in: beer duty (the default) or one of the awards
+  const kind = req.award ? String(req.award) : "beer";
+  const field = FIELDS[kind];
+  if (!field) return { ok: false, error: "Bad request." };
+
+  // Date: a game on the posted schedule; beer only before it's played, awards only after
   const m = String(req.date || "").match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/);
   if (!m) return { ok: false, error: "Bad game date." };
   const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(m[1]);
   if (mon < 0) return { ok: false, error: "Bad game date." };
   const when = new Date(+m[3], mon, +m[2], 12); // noon, so no time zone can push it into another day
   const day = ymd(when, tz), today = ymd(new Date(), tz);
-  if (isNaN(when) || day < today) return { ok: false, error: "That game has already been played." };
-  const game = upcomingGames().find(g => g.date === `${m[1]} ${m[2]}`);
+  if (isNaN(when)) return { ok: false, error: "Bad game date." };
+  // seasonKey (schedule.json's key for the season) keeps "Sep 12" from matching another year's game
+  const game = allGames(String(req.seasonKey || "")).find(g => g.date === `${m[1]} ${m[2]}`);
   if (!game) return { ok: false, error: "That game isn't on the schedule." };
+  if (kind === "beer" && (day < today || game.played)) return { ok: false, error: "That game has already been played." };
+  if (kind !== "beer" && day > today) return { ok: false, error: "That game hasn't been played yet." };
 
   const sheet = sheetById(ss, SCHEDULE_GID);
   const data = sheet.getDataRange().getValues();
   const head = data[0].map(h => String(h).trim());
   const col = h => head.indexOf(h);
-  const iDate = col("Date"), iBeer = col("Beer Duty");
-  if (iDate < 0 || iBeer < 0) return { ok: false, error: "The Schedule tab is missing its Date or Beer Duty column." };
+  const iDate = col("Date"), iField = col(field);
+  if (iDate < 0) return { ok: false, error: "The Schedule tab is missing its Date column." };
+  if (iField < 0) return { ok: false, error: `The Schedule tab has no ${field} column yet.` };
+  const what = kind === "beer" ? "beer" : field;
 
   // Already a row for this date?
   for (let r = 1; r < data.length; r++) {
     if (cellDay(data[r][iDate], tz) !== day) continue;
-    const current = String(data[r][iBeer]).trim();
-    if (current) return { ok: false, taken: current, error: `${current} already has beer for this game.` };
-    sheet.getRange(r + 1, iBeer + 1).setValue(name);
-    return { ok: true, name, date: req.date };
+    const current = String(data[r][iField]).trim();
+    if (current) return { ok: false, taken: current, error: `${current} already has ${what} for this game.` };
+    sheet.getRange(r + 1, iField + 1).setValue(name);
+    return { ok: true, name, date: req.date, award: kind === "beer" ? undefined : kind };
   }
 
   // No row yet: insert one where the date belongs so the log stays in order
@@ -149,16 +163,16 @@ function request(req) {
     "Month": when.getMonth() + 1,
     "Year": when.getFullYear(),
     "Date": when,
-    "Beer Duty": name,
     "Opponent": game.opponent === "TBD" ? "" : game.opponent
   };
+  values[field] = name;
   const formulas = prev.getFormulasR1C1()[0];
   head.forEach((h, i) => {
     const cell = sheet.getRange(at, i + 1);
     if (formulas[i]) cell.setFormulaR1C1(formulas[i]);
     else if (h in values) cell.setValue(values[h]);
   });
-  return { ok: true, name, date: req.date };
+  return { ok: true, name, date: req.date, award: kind === "beer" ? undefined : kind };
 }
 
 // Players whose status in the season's column counts as on the team. Season headers repeat on the
@@ -178,7 +192,8 @@ function teamNames(ss, seasonHeader) {
   return names;
 }
 
-function upcomingGames() {
+// Every game on the posted schedule (one season's when seasonKey names it), with whether it has a score yet
+function allGames(seasonKey) {
   const cache = CacheService.getScriptCache();
   let json = cache.get("schedule");
   if (!json) {
@@ -186,7 +201,8 @@ function upcomingGames() {
     cache.put("schedule", json, 600);
   }
   const seasons = JSON.parse(json).seasons || {};
-  return Object.values(seasons).flatMap(s => (s.games || []).filter(g => g.us == null));
+  const picked = seasonKey && seasons[seasonKey] ? [seasons[seasonKey]] : Object.values(seasons);
+  return picked.flatMap(s => (s.games || []).map(g => Object.assign({ played: g.us != null }, g)));
 }
 
 function sheetById(ss, gid) {
