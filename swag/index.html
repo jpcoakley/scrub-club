@@ -471,7 +471,7 @@ footer.site .fine{margin-left:auto}
 
   <div class="meta-strip">
     <div class="inner">
-      <span id="state">Loading the sheet…</span>
+      <span id="state">Loading the roster…</span>
       <span id="updated"></span>
       <a href="#" id="refresh">Refresh</a>
     </div>
@@ -629,9 +629,10 @@ footer.site .fine{margin-left:auto}
 <script>
 /* ================= CONFIG =================
    Update these if the sheet layout changes.  */
-const SHEET_ID   = "1nRKRkEoHEBUjb4c0mI8GQVk8riIwmDT_XBENtXcTwjg";
-const GID        = "901229563";
-const BEER_GID   = "1678597741"; // the "Schedule" tab (renamed from "Beer" 2026-08-04)
+// The roster sheet is private. The site gets its public columns (names, jersey, USA Hockey,
+// season statuses) and the Schedule tab's beer log from the In/Out Worker, which reads them
+// through the sheet's Apps Script and never passes along emails, phones, Venmo or dues.
+const TEAM_DATA_URL = "https://api.scrubclubhockeyteam.com/public";
 // Beer Man assignments: the web app URL of apps-script/beer-request.gs, deployed from the sheet.
 // Empty hides the schedule's Assign buttons.
 const BEER_REQUEST_URL = "https://script.google.com/macros/s/AKfycbwhXIOvklsm7Ay4Egc3pR83EYe6HvnWcjirOoa0qLrfnn1n40IcHAqgFbKlAlz23yQ/exec";
@@ -713,31 +714,20 @@ function resolveCol(spec,header){
   if(spec.leftOf){ const i=headerIdx(header,spec.leftOf,near+1); if(i>0) return i-1; }
   return near;
 }
-/* Read through /export, not /gviz. The gviz endpoint serves the sheet as it is
-   currently being *viewed*: a filter someone leaves on drops those players from the
-   site, and a hidden column comes back with an empty header. /export reads the
-   underlying data, so the roster doesn't change when someone filters their own
-   spreadsheet. Both send CORS headers. */
-const csvUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
-const CSV_URL = csvUrl(GID);
-const BEER_CSV_URL = csvUrl(BEER_GID);
-
-// Minimal RFC-4180 CSV parser (handles quoted fields, embedded commas/newlines)
-function parseCSV(text){
-  const rows=[[]]; let field="", inQ=false;
-  for(let i=0;i<text.length;i++){
-    const ch=text[i];
-    if(inQ){
-      if(ch==='"'){ if(text[i+1]==='"'){field+='"';i++;} else inQ=false; }
-      else field+=ch;
-    }else if(ch==='"') inQ=true;
-    else if(ch===','){ rows[rows.length-1].push(field); field=""; }
-    else if(ch==='\n'){ rows[rows.length-1].push(field); field=""; rows.push([]); }
-    else if(ch!=='\r') field+=ch;
+// {roster, schedule} as row arrays shaped like the sheet. One request per page load serves both
+// loaders; fresh skips the Worker's cache (used to confirm a Beer Man save landed).
+let teamDataReq=null;
+function teamData(fresh){
+  if(fresh || !teamDataReq){
+    const req=fetch(TEAM_DATA_URL+(fresh?"?fresh=1":""),{cache:"no-store"}).then(async r=>{
+      const body=await r.json();
+      if(!r.ok || !body.ok) throw new Error(body.error||("HTTP "+r.status));
+      return body;
+    });
+    if(!fresh) teamDataReq=req.catch(e=>{ teamDataReq=null; throw e; });
+    return fresh?req:teamDataReq;
   }
-  rows[rows.length-1].push(field);
-  if(rows[rows.length-1].length===1 && rows[rows.length-1][0]==="") rows.pop();
-  return rows;
+  return teamDataReq;
 }
 
 function el(tag, cls, text){
@@ -749,11 +739,9 @@ function el(tag, cls, text){
 
 // Beer log from the sheet's "Beer" tab: the full log for Beer Stats, and per-season counts for Stats
 let beerLog=[], beerByDate={};
-async function loadBeer(){
+async function loadBeer(fresh){
   try{
-    const res=await fetch(BEER_CSV_URL,{cache:"no-store"});
-    if(!res.ok) return;
-    const rows=parseCSV(await res.text());
+    const rows=(await teamData(fresh)).schedule||[];
     const head=rows[0]||[];
     const iD=head.indexOf("Date"), iB=head.indexOf("Beer Duty"), iS=head.indexOf("Season");
     if(iD<0||iB<0) return;
@@ -871,13 +859,12 @@ function render(){
 async function load(){
   const state=document.getElementById("state");
   state.classList.remove("err");
-  state.textContent="Loading the sheet…";
+  state.textContent="Loading the roster…";
   sheetLoadFailed=false;
   try{
+    teamDataReq=null; // Refresh asks again
     const beerReady=loadBeer();
-    const res=await fetch(CSV_URL,{cache:"no-store"});
-    if(!res.ok) throw new Error("HTTP "+res.status);
-    allRows=parseCSV(await res.text());
+    allRows=(await teamData()).roster||[];
     await beerReady;
     render();
     renderBeerStats();
@@ -888,7 +875,7 @@ async function load(){
     state.classList.add("err");
     sheetLoadFailed=true;
     if(activeView==="roster") renderTeam(); // still shows the GameSheet names
-    state.textContent="Couldn't reach the sheet. Check that it's shared as “anyone with the link can view.”";
+    state.textContent="Couldn't load the team roster. Try Refresh in a minute.";
   }
 }
 // Tabs: About, Team (sheet + GameSheet stats), Schedule (GameSheet snapshot), Swag, Join
@@ -1080,7 +1067,7 @@ function beerReqMessage(text){
 }
 // Who the sheet's Schedule tab has on beer for a date, read fresh ("" if nobody)
 async function beerOnSheet(ds){
-  await loadBeer();
+  await loadBeer(true);
   return beerByDate[ds]||"";
 }
 async function sendBeerRequest(ev){

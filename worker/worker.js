@@ -12,6 +12,7 @@
  *   POST /auth/verify       {email, code}  -> {token, name}; the token is a Bearer token
  *   GET  /me                Bearer         -> {name, email}
  *   POST /auth/signout      Bearer         drops the session
+ *   GET  /public[?fresh=1]                 -> {roster, schedule}: the sheet's public columns
  *   GET  /rsvp?season=W                    -> {games: {"Sep 22, 2026": {"JP Coakley": {a, t}}}}
  *   POST /rsvp              Bearer, {season, date, answer: "in" | "out" | "", name?}
  *                           name = a teammate on the sheet, to answer for them
@@ -22,6 +23,13 @@
  *   otp:<email>             {hash, tries}                     10 minutes
  *   rl:<what>:<who>         counter                           rate limits
  *   cache:roster2           {emails: {email: name}, names}    5 minutes
+ *   cache:public            {data: {roster, schedule}, at}    no expiry, refreshed after a minute
+ *
+ * The roster sheet is private (since Sep 17, 2026). Both roster reads go through the
+ * Apps Script web app bound to it (apps-script/beer-request.gs, SHEET_API below), which
+ * runs as JP: ?what=public blanks every column but names, jersey, USA Hockey and season
+ * status, and ?what=emails needs the SHEET_KEY secret (set with `wrangler secret put
+ * SHEET_KEY`; the same value is the script's WORKER_KEY property).
  *   rsvp:<season>:<ymd>:<name>   value "in" | "out", metadata {a, t, d, by?}
  *
  * One key per player per game means two people tapping at once can't
@@ -32,9 +40,9 @@
  * today or later (Eastern time).
  */
 
-const SHEET_ID = "1nRKRkEoHEBUjb4c0mI8GQVk8riIwmDT_XBENtXcTwjg";
-const ROSTER_GID = "901229563";
-const ROSTER_HEADER_ROW = 7;
+const SHEET_API = "https://script.google.com/macros/s/AKfycbwhXIOvklsm7Ay4Egc3pR83EYe6HvnWcjirOoa0qLrfnn1n40IcHAqgFbKlAlz23yQ/exec";
+// How old the cached public roster can get before a visit refreshes it in the background
+const PUBLIC_STALE_MS = 60 * 1000;
 const SCHEDULE_URL = "https://scrubclubhockeyteam.com/schedule.json";
 // Emails that sign in even when the sheet doesn't list them, and who they are
 const EXTRA_EMAILS = { "jpcoakley@gmail.com": "JP Coakley" };
@@ -49,11 +57,11 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 const enc = new TextEncoder();
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const cors = corsHeaders(request.headers.get("Origin") || "");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     let res;
-    try { res = await route(request, env); }
+    try { res = await route(request, env, ctx); }
     catch (e) {
       console.error("unhandled", String(e && e.stack || e));
       res = json({ ok: false, error: "Something went wrong. Try again." }, 500);
@@ -64,7 +72,7 @@ export default {
   },
 };
 
-async function route(request, env) {
+async function route(request, env, ctx) {
   const url = new URL(request.url);
   const p = url.pathname.replace(/\/+$/, "") || "/";
   const m = request.method;
@@ -155,6 +163,12 @@ async function route(request, env) {
     return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie() });
   }
 
+  // ---- the roster's public columns and the beer log, for the site ----
+  if (m === "GET" && p === "/public") {
+    const data = await publicData(env, ctx, url.searchParams.get("fresh") === "1");
+    return json(Object.assign({ ok: true }, data));
+  }
+
   // ---- who's in and out, one season at a time ----
   if (m === "GET" && p === "/rsvp") {
     const season = String(url.searchParams.get("season") || "").trim();
@@ -233,32 +247,46 @@ async function whoami(request, env) {
 
 /* ---------------- the roster sheet ---------------- */
 
-// email -> "First Last" from the Email column; the sheet is read through
-// /export (the underlying data), never /gviz (whatever filter is on).
-async function fetchRoster() {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${ROSTER_GID}`;
-  const r = await fetch(url, { cf: { cacheTtl: 0 }, redirect: "follow" });
-  if (!r.ok) throw new Error("roster sheet " + r.status);
-  const rows = parseCSV(await r.text());
-  const head = (rows[ROSTER_HEADER_ROW - 1] || []).map((h) => String(h).trim());
-  const iE = head.indexOf("Email"), iF = head.indexOf("First"), iL = head.indexOf("Last");
-  if (iE < 0 || iF < 0 || iL < 0) throw new Error("roster sheet is missing Email, First or Last");
-  const emails = {}, names = [];
-  for (let i = ROSTER_HEADER_ROW; i < rows.length; i++) {
-    const row = rows[i] || [];
-    const name = `${row[iF] || ""} ${row[iL] || ""}`.replace(/\s+/g, " ").trim();
-    if (!name) continue;
-    if (!names.includes(name)) names.push(name);
-    // a cell may hold more than one address
-    for (const e of String(row[iE] || "").split(/[\s,;]+/).map(normEmail).filter(emailish)) {
-      if (!(e in emails)) emails[e] = name;
-    }
-  }
+// {emails: {email: "First Last"}, names} from the private roster, through the Apps Script
+async function fetchRoster(env) {
+  if (!env.SHEET_KEY) throw new Error("SHEET_KEY secret is not set");
+  const body = await sheetApi({ what: "emails", key: env.SHEET_KEY });
+  const emails = body.emails || {}, names = body.names || [];
   for (const [e, n] of Object.entries(EXTRA_EMAILS)) {
     if (!(e in emails)) emails[e] = n;
     if (!names.includes(n)) names.push(n);
   }
   return { emails, names };
+}
+
+// Apps Script answers with a redirect to script.googleusercontent.com; a cold start can take 30 s
+async function sheetApi(params) {
+  const r = await fetch(SHEET_API + "?" + new URLSearchParams(params), { redirect: "follow" });
+  if (!r.ok) throw new Error("sheet api " + r.status);
+  let body;
+  try { body = await r.json(); } catch (_) { throw new Error("sheet api sent something other than JSON"); }
+  if (!body.ok) throw new Error("sheet api: " + (body.error || "not ok"));
+  return body;
+}
+
+// Served from KV so a page load never waits on Apps Script. A copy older than a minute is
+// still served, and refreshed behind the response; fresh=1 (the page checking whether a
+// Beer Man save landed) waits for the sheet.
+async function publicData(env, ctx, fresh) {
+  const cached = fresh ? null : await env.SC_KV.get("cache:public", "json");
+  const refresh = async () => {
+    const body = await sheetApi({ what: "public" });
+    const data = { roster: body.roster || [], schedule: body.schedule || [] };
+    await env.SC_KV.put("cache:public", JSON.stringify({ data, at: Date.now() }));
+    return data;
+  };
+  if (cached && cached.data) {
+    if (Date.now() - (cached.at || 0) > PUBLIC_STALE_MS) {
+      ctx.waitUntil(refresh().catch((e) => console.error("public refresh", String(e))));
+    }
+    return cached.data;
+  }
+  return refresh();
 }
 
 // {emails, names, cached}; the sheet is read at most every five minutes
@@ -267,7 +295,7 @@ async function roster(env, fresh) {
     const cached = await env.SC_KV.get("cache:roster2", "json");
     if (cached && cached.emails) return Object.assign(cached, { cached: true });
   }
-  const r = await fetchRoster();
+  const r = await fetchRoster(env);
   await env.SC_KV.put("cache:roster2", JSON.stringify(r), { expirationTtl: 300 });
   return Object.assign(r, { cached: false });
 }
@@ -407,22 +435,4 @@ function json(obj, status = 200, headers = {}) {
     status,
     headers: Object.assign({ "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }, headers),
   });
-}
-
-// Minimal RFC-4180 CSV parser (quoted fields, embedded commas and newlines)
-function parseCSV(text) {
-  const rows = [[]]; let field = "", inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (inQ) {
-      if (ch === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQ = false; }
-      else field += ch;
-    } else if (ch === '"') inQ = true;
-    else if (ch === ",") { rows[rows.length - 1].push(field); field = ""; }
-    else if (ch === "\n") { rows[rows.length - 1].push(field); field = ""; rows.push([]); }
-    else if (ch !== "\r") field += ch;
-  }
-  rows[rows.length - 1].push(field);
-  if (rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === "") rows.pop();
-  return rows;
 }

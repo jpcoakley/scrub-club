@@ -11,7 +11,16 @@
    - the date is an unplayed game in the site's schedule.json, today or later,
    - nobody already has beer for that date on the Schedule tab.
    It fills Beer Duty on that date's Schedule row, adding the row in date order if there isn't one.
-   Changing or clearing a Beer Man is done by hand in the sheet. */
+   Changing or clearing a Beer Man is done by hand in the sheet.
+
+   Team data (since Sep 17, 2026, when the sheet stopped being public):
+   GET ?what=public          the roster tab with only names, jersey numbers, USA Hockey numbers
+                             and season statuses filled in, plus the Schedule tab. The site loads
+                             this through api.scrubclubhockeyteam.com, which caches it.
+   GET ?what=emails&key=...  {emails: {email: name}, names} for the sign-in Worker. The key is the
+                             WORKER_KEY script property (Project Settings > Script properties), the
+                             same value as the Worker's SHEET_KEY secret. It is never in this file,
+                             because the repo is public. */
 
 const ROSTER_GID = 901229563;
 const SCHEDULE_GID = 1678597741;
@@ -21,8 +30,55 @@ const SEASON_NAMES = ["Winter", "Spring", "Summer", "Fall"];
 // Statuses that count as on the team; keep in step with ON_TEAM in index.html
 const ON_TEAM = ["in", "paid", "half", "goalie"];
 
-function doGet() {
+function doGet(e) {
+  const p = (e && e.parameter) || {};
+  if (p.what === "public") return reply(publicData());
+  if (p.what === "emails") {
+    const key = PropertiesService.getScriptProperties().getProperty("WORKER_KEY");
+    if (!key || p.key !== key) return reply({ ok: false, error: "Not allowed." });
+    return reply(Object.assign({ ok: true }, emailMap()));
+  }
   return reply({ ok: true, message: "Scrub Club beer requests are running." });
+}
+
+// The roster keeps its shape (header row, column positions) so the site finds columns the way it
+// always has, but every cell outside the allowed columns comes back empty: no emails, phones,
+// Venmo, payments, balances, or the notes and totals above the header.
+function publicData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const rows = sheetById(ss, ROSTER_GID).getDataRange().getDisplayValues();
+  const head = (rows[ROSTER_HEADER_ROW - 1] || []).map(h => String(h).trim());
+  const iLast = head.indexOf("Last");
+  const keep = new Set();
+  head.forEach((h, i) => {
+    if (h === "First" || h === "Last" || h === "Jersey #" || /^USA Hockey\b/.test(h)) keep.add(i);
+    // A season's status column sits right of the names. The same header further left
+    // labels that season's fee, so only the rightmost one, past Last, is a status.
+    if (iLast >= 0 && i > iLast && /^(Winter|Spring|Summer|Fall)\b/.test(h) && head.lastIndexOf(h) === i) keep.add(i);
+  });
+  const roster = rows.map((row, r) => row.map((v, i) =>
+    r === ROSTER_HEADER_ROW - 1 || (r >= ROSTER_HEADER_ROW && keep.has(i)) ? v : ""));
+  const schedule = sheetById(ss, SCHEDULE_GID).getDataRange().getDisplayValues();
+  return { ok: true, roster, schedule, at: Date.now() };
+}
+
+// Every roster email (a cell can hold more than one) and every roster name
+function emailMap() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const rows = sheetById(ss, ROSTER_GID).getDataRange().getDisplayValues();
+  const head = (rows[ROSTER_HEADER_ROW - 1] || []).map(h => String(h).trim());
+  const iE = head.indexOf("Email"), iF = head.indexOf("First"), iL = head.indexOf("Last");
+  if (iE < 0 || iF < 0 || iL < 0) throw new Error("roster tab is missing Email, First or Last");
+  const emails = {}, names = [];
+  for (let r = ROSTER_HEADER_ROW; r < rows.length; r++) {
+    const name = `${rows[r][iF] || ""} ${rows[r][iL] || ""}`.replace(/\s+/g, " ").trim();
+    if (!name) continue;
+    if (!names.includes(name)) names.push(name);
+    for (const e of String(rows[r][iE] || "").split(/[\s,;]+/).map(norm)) {
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && !(e in emails)) emails[e] = name;
+    }
+  }
+  return { emails, names };
 }
 
 function doPost(e) {
