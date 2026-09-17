@@ -1,6 +1,6 @@
 # scrubclubhockeyteam.com (Scrub Club)
 
-Beer-league hockey team site. Static SPA, design tokens inline in index.html (burgundy/oatmeal, Graduate/Archivo/Big Shoulders).
+Beer-league hockey team site. Static SPA, design tokens inline in index.html (burgundy/oatmeal, Rokkitt/Archivo/Big Shoulders). Graduate was the display font until Sep 17, 2026; its zero has a dot in it, which JP will not have, so Rokkitt 700 (plain zero) replaced it in index.html, privacy/index.html and beer-review.html.
 
 ## Deploy
 
