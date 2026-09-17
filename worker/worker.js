@@ -22,8 +22,14 @@
  *   sess:<token>            {email, at, renewed}              a year, renewed weekly by /me
  *   otp:<email>             {hash, tries}                     10 minutes
  *   rl:<what>:<who>         counter                           rate limits
- *   cache:roster2           {emails: {email: name}, names}    5 minutes
- *   cache:public            {data: {roster, schedule}, at}    no expiry, refreshed after a minute
+ *   cache:roster2           {emails: {email: name}, names, at}   no expiry
+ *   cache:public            {data: {roster, schedule}, at}       no expiry
+ *
+ * Both caches are filled by the cron below every five minutes, so neither sign-in nor a page
+ * load waits on Apps Script, which can take 30 to 80 seconds or fail outright when Google is
+ * having a slow patch (seen Sep 17, 2026). A refresh only writes KV when the data changed or
+ * the copy is half an hour old, which keeps the cron to a few dozen of the free plan's 1,000
+ * daily writes. Requests fall back to the last good copy whenever Apps Script fails.
  *
  * The roster sheet is private (since Sep 17, 2026). Both roster reads go through the
  * Apps Script web app bound to it (apps-script/beer-request.gs, SHEET_API below), which
@@ -41,8 +47,14 @@
  */
 
 const SHEET_API = "https://script.google.com/macros/s/AKfycbwhXIOvklsm7Ay4Egc3pR83EYe6HvnWcjirOoa0qLrfnn1n40IcHAqgFbKlAlz23yQ/exec";
-// How old the cached public roster can get before a visit refreshes it in the background
-const PUBLIC_STALE_MS = 60 * 1000;
+// Apps Script gets this long before a request gives up and uses the last good copy
+const SHEET_TIMEOUT_MS = 20 * 1000;
+// The cron rewrites an unchanged copy this often, so its age shows the cron is still running
+const REWRITE_MS = 30 * 60 * 1000;
+// Past this age a copy means the cron has stopped, and requests refresh it themselves
+const CACHE_OLD_MS = 45 * 60 * 1000;
+// An email that isn't on the cached roster re-reads the sheet at most this often
+const RECHECK_MS = 60 * 1000;
 const SCHEDULE_URL = "https://scrubclubhockeyteam.com/schedule.json";
 // Emails that sign in even when the sheet doesn't list them, and who they are
 const EXTRA_EMAILS = { "jpcoakley@gmail.com": "JP Coakley" };
@@ -57,6 +69,14 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 const enc = new TextEncoder();
 
 export default {
+  // Every five minutes (wrangler.toml [triggers])
+  async scheduled(event, env, ctx) {
+    const results = await Promise.allSettled([refreshRoster(env), refreshPublic(env)]);
+    results.forEach((r, i) => {
+      if (r.status === "rejected") console.error(i ? "cron public" : "cron roster", String(r.reason));
+    });
+  },
+
   async fetch(request, env, ctx) {
     const cors = corsHeaders(request.headers.get("Origin") || "");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
@@ -262,63 +282,96 @@ async function fetchRoster(env) {
   return { emails, names };
 }
 
-// Apps Script answers with a redirect to script.googleusercontent.com; a cold start can take 30 s
+// Apps Script answers with a redirect to script.googleusercontent.com. It is usually a second or
+// two, but a slow patch at Google can run past a minute, so give up after SHEET_TIMEOUT_MS.
 async function sheetApi(params) {
-  const r = await fetch(SHEET_API + "?" + new URLSearchParams(params), { redirect: "follow" });
-  if (!r.ok) throw new Error("sheet api " + r.status);
-  let body;
-  try { body = await r.json(); } catch (_) { throw new Error("sheet api sent something other than JSON"); }
-  if (!body.ok) throw new Error("sheet api: " + (body.error || "not ok"));
-  return body;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), SHEET_TIMEOUT_MS);
+  try {
+    const r = await fetch(SHEET_API + "?" + new URLSearchParams(params), { redirect: "follow", signal: ctl.signal });
+    if (!r.ok) throw new Error("sheet api " + r.status);
+    let body;
+    try { body = await r.json(); } catch (_) { throw new Error("sheet api sent something other than JSON"); }
+    if (!body.ok) throw new Error("sheet api: " + (body.error || "not ok"));
+    return body;
+  } catch (e) {
+    if (ctl.signal.aborted) throw new Error(`sheet api took over ${SHEET_TIMEOUT_MS / 1000} s`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-// Served from KV so a page load never waits on Apps Script. A copy older than a minute is
-// still served, and refreshed behind the response; fresh=1 (the page checking whether a
-// Beer Man save landed) waits for the sheet.
+// Write a cache copy only when it changed or is due a rewrite; returns the copy now in KV
+async function saveCopy(env, key, fields) {
+  const old = await env.SC_KV.get(key, "json");
+  const same = old && JSON.stringify(Object.assign({}, old, { at: 0 })) === JSON.stringify(Object.assign({}, fields, { at: 0 }));
+  if (same && Date.now() - (old.at || 0) < REWRITE_MS) return old;
+  const copy = Object.assign({}, fields, { at: Date.now() });
+  await env.SC_KV.put(key, JSON.stringify(copy));
+  return copy;
+}
+
+async function refreshRoster(env) {
+  return saveCopy(env, "cache:roster2", await fetchRoster(env));
+}
+
+async function refreshPublic(env) {
+  const body = await sheetApi({ what: "public" });
+  // An older script deployment answers with just its greeting; never cache that as an empty roster
+  if (!Array.isArray(body.roster) || !body.roster.length || !Array.isArray(body.schedule)) {
+    throw new Error("sheet api returned no roster (is the updated script deployed?)");
+  }
+  return saveCopy(env, "cache:public", { data: { roster: body.roster, schedule: body.schedule } });
+}
+
+// Read a cache copy, refreshing it first when `stale(age)` says so. A failed refresh falls back
+// to the copy we have; only a cold cache with Apps Script down is an error.
+async function cached(env, key, refresh, stale, ctx) {
+  const copy = await env.SC_KV.get(key, "json");
+  const age = copy ? Date.now() - (copy.at || 0) : Infinity;
+  if (copy && !stale(age)) return { copy, fresh: false };
+  // A copy the cron should have refreshed: answer with it now and refresh behind the response
+  if (copy && ctx && age > CACHE_OLD_MS) {
+    ctx.waitUntil(refresh(env).catch((e) => console.error(key, "refresh", String(e))));
+    return { copy, fresh: false };
+  }
+  try {
+    return { copy: await refresh(env), fresh: true };
+  } catch (e) {
+    if (!copy) throw e;
+    console.error(key, "refresh failed, using the copy from", Math.round(age / 1000), "s ago:", String(e));
+    return { copy, fresh: false };
+  }
+}
+
+// Served from KV so a page load never waits on Apps Script; fresh=1 (the page checking whether a
+// Beer Man save landed) reads the sheet, falling back to the copy if Apps Script fails.
 async function publicData(env, ctx, fresh) {
-  const cached = fresh ? null : await env.SC_KV.get("cache:public", "json");
-  const refresh = async () => {
-    const body = await sheetApi({ what: "public" });
-    // An older script deployment answers with just its greeting; never cache that as an empty roster
-    if (!Array.isArray(body.roster) || !body.roster.length || !Array.isArray(body.schedule)) {
-      throw new Error("sheet api returned no roster (is the updated script deployed?)");
-    }
-    const data = { roster: body.roster, schedule: body.schedule };
-    await env.SC_KV.put("cache:public", JSON.stringify({ data, at: Date.now() }));
-    return data;
-  };
-  if (cached && cached.data) {
-    if (Date.now() - (cached.at || 0) > PUBLIC_STALE_MS) {
-      ctx.waitUntil(refresh().catch((e) => console.error("public refresh", String(e))));
-    }
-    return cached.data;
-  }
-  return refresh();
+  const { copy } = await cached(env, "cache:public", refreshPublic,
+    (age) => fresh || age > CACHE_OLD_MS, fresh ? null : ctx);
+  return copy.data;
 }
 
-// {emails, names, cached}; the sheet is read at most every five minutes
-async function roster(env, fresh) {
-  if (!fresh) {
-    const cached = await env.SC_KV.get("cache:roster2", "json");
-    if (cached && cached.emails) return Object.assign(cached, { cached: true });
-  }
-  const r = await fetchRoster(env);
-  await env.SC_KV.put("cache:roster2", JSON.stringify(r), { expirationTtl: 300 });
-  return Object.assign(r, { cached: false });
+// {emails, names, fresh}. recheck asks for a read newer than RECHECK_MS, for an email JP may
+// have just added to the sheet.
+async function roster(env, recheck) {
+  const { copy, fresh } = await cached(env, "cache:roster2", refreshRoster,
+    (age) => (recheck ? age > RECHECK_MS : age > CACHE_OLD_MS));
+  return { emails: copy.emails || {}, names: copy.names || [], fresh };
 }
 
-// An email JP just added to the sheet shouldn't wait out the cache
 async function nameForEmail(env, email) {
   const r = await roster(env, false);
   if (r.emails[email]) return r.emails[email];
-  if (!r.cached) return "";
+  if (r.fresh) return "";
   return (await roster(env, true)).emails[email] || "";
 }
 
 async function isRosterName(env, name) {
   const r = await roster(env, false);
   if (r.names.includes(name)) return true;
-  if (!r.cached) return false;
+  if (r.fresh) return false;
   return (await roster(env, true)).names.includes(name);
 }
 

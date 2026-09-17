@@ -10,6 +10,10 @@ routes = [
   { pattern = "api.scrubclubhockeyteam.com", custom_domain = true }
 ]
 
+# Refresh the roster copies from the sheet's Apps Script so sign-in and page loads never wait on it
+[triggers]
+crons = ["*/5 * * * *"]
+
 [[kv_namespaces]]
 binding = "SC_KV"
 id = "1ed90cad12c94c33917afab4fd90716f"
