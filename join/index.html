@@ -249,6 +249,7 @@ header.site{position:relative}
 .nx-sec{border-top:1px solid var(--burgundy-400);padding-top:var(--space-4);display:flex;flex-direction:column;gap:8px}
 .nx-line{display:flex;gap:10px;align-items:baseline;font-family:var(--font-condensed);font-size:16px;line-height:1.35}
 .nx-line b{font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-300);flex:none;width:72px}
+.nx-line .nx-n{font-style:normal;color:var(--white);margin-left:6px}
 .nx-line span{font-weight:600;color:var(--oatmeal-100)}
 .nx-line.muted span{color:var(--burgundy-200)}
 .nx-row{display:flex;flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap}
@@ -1179,10 +1180,16 @@ function heroCard(entry,g,num,ds){
     ask.appendChild(io);
     main.appendChild(ask);
     const sec=el("div","nx-sec nx-who");
-    const line=(cls,label,text,muted)=>{ const l=el("div","nx-line"+(muted?" muted":"")); l.appendChild(el("b",null,label)); l.appendChild(el("span",null,text)); return l; };
-    sec.appendChild(line("in",`In (${ins.length})`,ins.length?ins.join(", "):"Nobody yet",!ins.length));
-    sec.appendChild(line("out",`Out (${outs.length})`,outs.length?outs.join(", "):"Nobody yet",!outs.length));
-    sec.appendChild(line("quiet","Quiet",quiet.length?`${quiet.length} haven't said`:"Everyone has answered",true));
+    // The label carries the count, in white: "IN 3"
+    const line=(cls,label,count,text,muted)=>{
+      const l=el("div","nx-line"+(muted?" muted":""));
+      const b=el("b",null,label);
+      if(count!=null) b.appendChild(el("i","nx-n",String(count)));
+      l.appendChild(b); l.appendChild(el("span",null,text)); return l;
+    };
+    sec.appendChild(line("in","In",ins.length,ins.length?ins.join(", "):"Nobody yet",!ins.length));
+    sec.appendChild(line("out","Out",outs.length,outs.length?outs.join(", "):"Nobody yet",!outs.length));
+    sec.appendChild(line("quiet","Quiet",null,quiet.length?`${quiet.length} haven't said`:"Everyone has answered",true));
     if(rsvpSession){
       const add=el("div","nx-row");
       add.appendChild(el("span","nx-lbl","For a teammate"));
