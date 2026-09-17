@@ -317,6 +317,12 @@ header.site{position:relative}
 .sg-req:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:3px}
 .br{margin:auto;padding:0;border:none;background:transparent;width:min(420px,calc(100vw - 32px));max-width:none;color:var(--text-body)}
 .br::backdrop{background:rgba(63,21,35,.55)}
+/* Sign-in opens with show(), not showModal(). A modal dialog makes everything outside it inert,
+   and password managers (Dashlane, 1Password) draw their autofill list outside the dialog, so the
+   list lost focus and closed the moment it appeared. This scrim and fixed position stand in for
+   the modal backdrop; the managers stack their list above any z-index used here. */
+.br-scrim{position:fixed;inset:0;background:rgba(63,21,35,.55);z-index:90}
+#io-dlg[open]{position:fixed;inset:0;height:fit-content;z-index:91}
 .br-card{background:var(--surface-card);clip-path:var(--clip-patch);padding:var(--space-6);display:flex;flex-direction:column;gap:var(--space-2);border-top:4px solid var(--burgundy-600)}
 .br-k{font-family:var(--font-condensed);font-weight:700;font-size:13px;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--burgundy-600)}
 .br-game{font-family:var(--font-display);font-size:20px;line-height:1.15;color:var(--text-strong);text-transform:uppercase;margin-bottom:var(--space-3)}
@@ -543,7 +549,8 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
     </div>
   </form>
 </dialog>
-<dialog id="io-dlg" class="br" aria-labelledby="io-title">
+<div class="br-scrim" id="io-scrim" hidden></div>
+<dialog id="io-dlg" class="br" aria-labelledby="io-title" aria-modal="true">
   <form id="io-form" class="br-card" novalidate>
     <h2 id="io-title" class="br-game">Sign in</h2>
     <p class="io-help" id="io-help" hidden></p>
@@ -1317,8 +1324,21 @@ function openSignIn(){
   help.hidden=true;
   ioMessage("");
   ioBusy(false);
-  dlg.showModal();
+  ioOpener=document.activeElement;
+  document.getElementById("io-scrim").hidden=false;
+  dlg.show();
   email.focus();
+}
+let ioOpener=null;
+// Every way out of sign-in comes through here, so the scrim and pending answer are cleared even
+// where the dialog's own close event is late or doesn't fire
+function closeSignIn(){
+  const dlg=document.getElementById("io-dlg");
+  if(dlg.open) dlg.close();
+  rsvpPending=null;
+  document.getElementById("io-scrim").hidden=true;
+  if(ioOpener && document.contains(ioOpener)) ioOpener.focus();
+  ioOpener=null;
 }
 function ioBusy(on,label){
   const btn=document.getElementById("io-send");
@@ -1362,17 +1382,17 @@ async function ioSubmit(ev){
   if(!res){ ioMessage("Couldn't reach the sign-in service. Try again."); return; }
   if(!res.ok){ ioMessage(res.error||"That code didn't work."); return; }
   saveSession({token:res.token,name:res.name,email});
-  document.getElementById("io-dlg").close();
   const p=rsvpPending;
-  rsvpPending=null;
+  closeSignIn();
   if(p) answer(p.entry,p.ds,p.a,p.who); else renderSchedule();
 }
 function wireSignIn(){
   const dlg=document.getElementById("io-dlg");
   document.getElementById("io-form").addEventListener("submit",ioSubmit);
-  document.getElementById("io-cancel").addEventListener("click",()=>dlg.close());
-  dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
-  dlg.addEventListener("close",()=>{ rsvpPending=null; });
+  document.getElementById("io-cancel").addEventListener("click",closeSignIn);
+  // A non-modal dialog gets no backdrop click or Escape from the browser, so wire both here
+  document.getElementById("io-scrim").addEventListener("click",closeSignIn);
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape" && dlg.open){ e.preventDefault(); closeSignIn(); } });
 }
 async function renderSchedule(){
   const box=document.getElementById("sched"), note=document.querySelector("#view-schedule .league-note");
