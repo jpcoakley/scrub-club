@@ -121,6 +121,19 @@ header.site{position:relative}
 .st th{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500);padding:14px 8px 6px;
   position:sticky;top:calc(var(--freeze-h,0px) + var(--sect-h,0px));z-index:5;background:var(--surface-page);border-bottom:none;box-shadow:inset 0 -2px 0 var(--burgundy-600)}
 .st th.st-name,.st td.st-name{text-align:left}
+/* Column headers sort the table: click once for the natural order, again to flip it */
+.st-sort{font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;white-space:nowrap}
+.st-sort:hover{color:var(--burgundy-600)}
+.st-sort:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
+.st th[aria-sort] .st-sort{color:var(--burgundy-600)}
+.st th[aria-sort] .st-sort::after{content:"";display:inline-block;margin-left:5px;border-left:4px solid transparent;border-right:4px solid transparent;vertical-align:middle}
+.st th[aria-sort="descending"] .st-sort::after{border-top:5px solid currentColor}
+.st th[aria-sort="ascending"] .st-sort::after{border-bottom:5px solid currentColor}
+/* Your own USA Hockey number gets an Add or Edit link once you're signed in */
+.st-usah-btn{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-600);background:none;border:none;padding:0;margin-left:8px;cursor:pointer}
+.st-usah-btn:hover{text-decoration:underline;text-underline-offset:3px}
+.st-usah-btn:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
+.team-bar{padding:var(--space-4) 0 0}
 .st th:first-child,.st td:first-child{padding-left:0}
 .st th:last-child,.st td:last-child{padding-right:0}
 .st td{font-family:var(--font-numeral);font-weight:700;font-size:18px;color:var(--ink-700)}
@@ -505,6 +518,7 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
 
 <main class="container">
   <p class="league-note" id="roster-note" hidden></p>
+  <div class="sg-bar team-bar" id="team-bar" hidden></div>
   <div class="roster-tabs" id="roster-tabs" hidden></div>
   <section class="block" id="st-skaters-sec" hidden>
     <div class="section-head"><h2>SKATERS</h2><span class="count" id="st-skaters-count"></span></div>
@@ -615,6 +629,20 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
     <div class="br-actions">
       <button type="button" id="io-cancel" class="br-cancel">Cancel</button>
       <button type="submit" id="io-send" class="br-send">Send code</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="usah-dlg" class="br" aria-labelledby="usah-title">
+  <form id="usah-form" class="br-card" novalidate>
+    <div class="br-k" id="usah-kind">USA Hockey</div>
+    <h2 id="usah-title" class="br-game">Your number</h2>
+    <p class="io-help" id="usah-help"></p>
+    <label class="br-label" for="usah-value">USA Hockey #</label>
+    <input id="usah-value" class="br-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" placeholder="Digits, then letters">
+    <div id="usah-msg" class="br-msg" role="alert" hidden></div>
+    <div class="br-actions">
+      <button type="button" id="usah-cancel" class="br-cancel">Cancel</button>
+      <button type="submit" id="usah-send" class="br-send">Save</button>
     </div>
   </form>
 </dialog>
@@ -1459,10 +1487,11 @@ function loadRsvpFor(entries){
 async function checkSession(){
   try{
     const {status,res}=await api("/me");
-    if(status===401){ if(rsvpSession){ saveSession(null); renderSchedule(); } return; }
+    if(status===401){ if(rsvpSession){ saveSession(null); renderSchedule(); renderTeam(); } return; }
     if(res?.ok && res.name && (!rsvpSession || rsvpSession.name!==res.name || rsvpSession.email!==res.email)){
       saveSession({token:rsvpSession?.token||"",name:res.name,email:res.email});
       renderSchedule();
+      renderTeam();
     }
   }catch(e){ /* offline: keep the session, the next tap will tell */ }
 }
@@ -1538,6 +1567,7 @@ async function signOut(){
   try{ await api("/auth/signout",{}); }catch(e){}
   saveSession(null);
   renderSchedule();
+  renderTeam();
 }
 let ioStep="email";
 function openSignIn(){
@@ -1613,6 +1643,7 @@ async function ioSubmit(ev){
   const p=rsvpPending;
   closeSignIn();
   if(p) answer(p.entry,p.ds,p.a,p.who); else renderSchedule();
+  renderTeam();
 }
 function wireSignIn(){
   const dlg=document.getElementById("io-dlg");
@@ -1750,9 +1781,28 @@ function beerRunsFor(entry){
 const statCell=(v,cls)=>{ const none=v==null||v===""; return el("td",(cls||"")+(none?" st-none":""),none?"–":String(v)); };
 const svpText=v=>v==null?null:Number(v).toFixed(3).replace(/^0/,"");
 const gaaText=v=>v==null?null:Number(v).toFixed(2);
-function statsTable(table,cols,rows){
+// Which column each table is sorted by; -1 is descending. Clicking a header sorts by it, in the
+// order that reads naturally for that column; clicking it again flips.
+const teamSort={sk:{key:"pts",dir:-1},go:{key:"gp",dir:-1}};
+const SORT_ASC_FIRST=new Set(["num","name","usah","gaa"]);
+function statsTable(table,cols,rows,which){
   const thead=el("thead"), tr=el("tr");
-  cols.forEach(([t,cls])=>tr.appendChild(el("th",cls,t)));
+  const sort=teamSort[which];
+  cols.forEach(([t,cls,key])=>{
+    const th=el("th",cls);
+    if(key){
+      const b=el("button","st-sort",t);
+      b.type="button";
+      if(sort.key===key) th.setAttribute("aria-sort",sort.dir<0?"descending":"ascending");
+      b.addEventListener("click",()=>{
+        if(sort.key===key) sort.dir=-sort.dir;
+        else { sort.key=key; sort.dir=SORT_ASC_FIRST.has(key)?1:-1; }
+        renderTeam();
+      });
+      th.appendChild(b);
+    } else th.textContent=t;
+    tr.appendChild(th);
+  });
   thead.appendChild(tr);
   const tbody=el("tbody");
   rows.forEach(r=>tbody.appendChild(r));
@@ -1778,11 +1828,104 @@ function nameCell(name,p){
   const td=el("td","st-name",name);
   const letter=p && (holdsLetter(CAPTAINS,p.name)?["C","Captain"]:holdsLetter(ALTERNATES,p.name)?["A","Alternate captain"]:null);
   if(letter){ const b=el("span","st-sub",letter[0]); b.title=letter[1]; b.setAttribute("aria-label",letter[1]); td.appendChild(b); }
-  if(p && p.usah) td.appendChild(el("span","st-usah-sm","USA Hockey "+p.usah));
+  // On phones the number rides under the name; your own row gets its Add or Edit link there
+  if(p && (p.usah || isMe(p))){
+    const sm=el("span","st-usah-sm",p.usah?"USA Hockey "+p.usah:"USA Hockey");
+    if(isMe(p)) sm.appendChild(usahButton(p));
+    td.appendChild(sm);
+  }
   return td;
 }
 const numCell=(p,l)=>statCell((p&&p.jersey)||(l&&l.num)||null,"st-num");
-const usahCell=p=>statCell((p&&p.usah)||null,"st-usah st-hide-sm");
+// The signed-in player's own sheet row (names match the sheet's First + Last)
+const isMe=p=>!!(p && rsvpSession && p.name===rsvpSession.name);
+function usahButton(p){
+  const b=el("button","st-usah-btn",p.usah?"Edit":"Add");
+  b.type="button";
+  b.setAttribute("aria-label",(p.usah?"Edit":"Add")+" your USA Hockey number");
+  b.addEventListener("click",()=>openUsah(p));
+  return b;
+}
+function usahCell(p){
+  const td=statCell((p&&p.usah)||null,"st-usah st-hide-sm");
+  if(isMe(p)){ if(!p.usah) td.textContent=""; td.appendChild(usahButton(p)); }
+  return td;
+}
+/* ---------- Your USA Hockey number ----------
+   A signed-in player writes their own number; the Worker checks the session and the Apps Script
+   puts it in the roster's newest "USA Hockey, <year>" column, which is the one the site shows. */
+let usahFor=null;
+function openUsah(p){
+  usahFor=p;
+  const dlg=document.getElementById("usah-dlg");
+  document.getElementById("usah-help").textContent=`${p.name}, the number on your USA Hockey registration for this season.`;
+  const inp=document.getElementById("usah-value");
+  inp.value=p.usah||"";
+  inp.disabled=false;
+  usahMessage("");
+  document.getElementById("usah-send").disabled=false;
+  document.getElementById("usah-send").textContent="Save";
+  dlg.showModal();
+  inp.focus();
+  inp.select();
+}
+function usahMessage(text){
+  const m=document.getElementById("usah-msg");
+  m.textContent=text||"";
+  m.hidden=!text;
+}
+async function usahSubmit(ev){
+  ev.preventDefault();
+  if(!usahFor || !rsvpSession) return;
+  const inp=document.getElementById("usah-value"), btn=document.getElementById("usah-send");
+  const value=inp.value.toUpperCase().replace(/[\s-]/g,"");
+  if(value && !/^[0-9A-Z]{4,24}$/.test(value)){ usahMessage("That doesn't look like a USA Hockey number."); return; }
+  btn.disabled=true; btn.textContent="Saving…"; inp.disabled=true;
+  let status=0, res=null;
+  try{ ({status,res}=await api("/usah",{value})); }catch(e){}
+  if(!res?.ok){
+    btn.disabled=false; btn.textContent="Save"; inp.disabled=false;
+    if(status===401){ saveSession(null); document.getElementById("usah-dlg").close(); renderTeam(); return; }
+    usahMessage(res?.error||"Couldn't reach the team sheet. Try again.");
+    return;
+  }
+  // Put it in our copy of the sheet so the table shows it now; the Worker refreshes the real copy
+  if(allRows){
+    const header=allRows[HEADER_ROW-1]||[];
+    const iF=resolveCol(COL_FIRST,header), iL=resolveCol(COL_LAST,header), iU=resolveCol(COL_USAH,header);
+    for(let r=DATA_START-1;r<allRows.length;r++){
+      const row=allRows[r]||[];
+      if(((row[iF]||"").trim()+" "+(row[iL]||"").trim()).trim()===usahFor.name){ row[iU]=res.value||""; break; }
+    }
+  }
+  document.getElementById("usah-dlg").close();
+  renderTeam();
+}
+function wireUsah(){
+  const dlg=document.getElementById("usah-dlg");
+  document.getElementById("usah-form").addEventListener("submit",usahSubmit);
+  document.getElementById("usah-cancel").addEventListener("click",()=>dlg.close());
+  dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
+}
+// Signed in as / Sign in, above the roster, so a player can add their number
+function teamBar(entry){
+  const bar=document.getElementById("team-bar");
+  if(!RSVP_API || !entry.col){ bar.hidden=true; return; }
+  bar.replaceChildren();
+  const link=el("button","sg-link");
+  link.type="button";
+  if(rsvpSession){
+    const who=el("span"); who.append("Signed in as ",el("b",null,rsvpSession.name));
+    link.textContent="Sign out";
+    link.addEventListener("click",signOut);
+    bar.append(who,link);
+  }else{
+    link.textContent="Sign in";
+    link.addEventListener("click",()=>{ rsvpPending=null; openSignIn(); });
+    bar.append(link);
+  }
+  bar.hidden=false;
+}
 const jerseyVal=p=>{ const n=parseInt(p.jersey,10); return isNaN(n)?Infinity:n; };
 
 /* Team: the season's roster as stats tables. Rows are GameSheet lines joined to the sheet, plus
@@ -1795,7 +1938,7 @@ async function renderTeam(){
   const skT=document.getElementById("st-skaters"), goT=document.getElementById("st-goalies");
   const foot=document.getElementById("st-foot"), gsFoot=document.querySelector("main .gs-foot");
   const clear=()=>{ skT.replaceChildren(); goT.replaceChildren(); skSec.hidden=true; goSec.hidden=true;
-    tabs.hidden=true; foot.hidden=true; gsFoot.hidden=true; };
+    tabs.hidden=true; foot.hidden=true; gsFoot.hidden=true; document.getElementById("team-bar").hidden=true; };
   if(!statsData){
     // Without stats the roster still shows, just with empty stat columns
     try{ statsData=await (await fetch("stats.json",{cache:"no-store"})).json(); }
@@ -1820,15 +1963,36 @@ async function renderTeam(){
   const goalies=((season&&season.goalies)||[]).map(l=>Object.assign({},l));
   joinStats(skaters,sheet); joinStats(goalies,sheet);
   const label=l=>l.player?l.player.name:l.gs.label;
-  skaters.sort((a,b)=>(b.pts-a.pts)||(b.g-a.g)||(b.gp-a.gp)||label(a).localeCompare(label(b)));
-  goalies.sort((a,b)=>(b.gp-a.gp)||(b.w-a.w)||label(a).localeCompare(label(b)));
   const matched=new Set(skaters.concat(goalies).map(l=>l.player).filter(Boolean));
   const bench=tracked ? sheet.filter(p=>p.status && !matched.has(p))
     .sort((a,b)=>jerseyVal(a)-jerseyVal(b)||a.last.localeCompare(b.last)) : [];
 
   const groupOf=p=>!tracked?"in":(p&&statusGroup(p.status))||"sub";
-  const skList=[...skaters.map(l=>({l,p:l.player})), ...bench.filter(p=>p.status!=="goalie").map(p=>({p}))];
-  const goList=[...goalies.map(l=>({l,p:l.player})), ...bench.filter(p=>p.status==="goalie").map(p=>({p}))];
+  // A row's value for each sortable column; null (no GameSheet line yet) always sorts last
+  const rowName=r=>r.l?label(r.l):r.p.name;
+  const val=(r,key)=>{
+    switch(key){
+      case "num": { const n=parseInt((r.p&&r.p.jersey)||(r.l&&r.l.num),10); return isNaN(n)?null:n; }
+      case "name": return rowName(r);
+      case "usah": return (r.p&&r.p.usah)||null;
+      case "beer": return (r.p&&runs[r.p.name])||0;
+      default: return r.l&&r.l[key]!=null?r.l[key]:null;
+    }
+  };
+  const bySort=(which,tie)=>(a,b)=>{
+    const {key,dir}=teamSort[which];
+    const va=val(a,key), vb=val(b,key);
+    if(va==null&&vb==null) return tie(a,b);
+    if(va==null) return 1;
+    if(vb==null) return -1;
+    const c=typeof va==="number"&&typeof vb==="number"?va-vb:String(va).localeCompare(String(vb));
+    return c?c*dir:tie(a,b);
+  };
+  const byName=(a,b)=>rowName(a).localeCompare(rowName(b));
+  const skTie=(a,b)=>(a.l&&b.l?((b.l.pts-a.l.pts)||(b.l.g-a.l.g)||(b.l.gp-a.l.gp)):0)||byName(a,b);
+  const goTie=(a,b)=>(a.l&&b.l?((b.l.gp-a.l.gp)||(b.l.w-a.l.w)):0)||byName(a,b);
+  const skList=[...skaters.map(l=>({l,p:l.player})), ...bench.filter(p=>p.status!=="goalie").map(p=>({p}))].sort(bySort("sk",skTie));
+  const goList=[...goalies.map(l=>({l,p:l.player})), ...bench.filter(p=>p.status==="goalie").map(p=>({p}))].sort(bySort("go",goTie));
 
   // Picker: only groups that have someone in them
   const count=id=>skList.concat(goList).filter(r=>groupOf(r.p)===id).length;
@@ -1843,6 +2007,7 @@ async function renderTeam(){
     return b;
   }));
   tabs.hidden=!tracked || !avail.length;
+  teamBar(entry);
   const inView=r=>!tracked || groupOf(r.p)===rosterSection;
 
   // No GameSheet line yet: dashes, greyed once the season has stats to compare against
@@ -1858,10 +2023,10 @@ async function renderTeam(){
         statCell(gaaText(l.gaa)), statCell(svpText(l.svp)), statCell(l.so,"st-hide-sm"), beerCell(p)])
     : statsRow([numCell(p), nameCell(p.name,p), usahCell(p), ...dashes(["","","st-hide-sm","","","st-hide-sm"]), beerCell(p)],season?"st-off":""));
 
-  statsTable(skT,[["#","st-num"],["Player","st-name"],["USA Hockey #","st-hide-sm"],["GP"],["G"],["A"],["PTS"],["PIM","st-hide-sm"],["Beer"]],skRows);
+  statsTable(skT,[["#","st-num","num"],["Player","st-name","name"],["USA Hockey #","st-hide-sm","usah"],["GP","","gp"],["G","","g"],["A","","a"],["PTS","","pts"],["PIM","st-hide-sm","pim"],["Beer","","beer"]],skRows,"sk");
   document.getElementById("st-skaters-count").textContent=skRows.length+(skRows.length===1?" skater":" skaters");
   skSec.hidden=!skRows.length;
-  statsTable(goT,[["#","st-num"],["Goalie","st-name"],["USA Hockey #","st-hide-sm"],["GP"],["W-L-T"],["GA","st-hide-sm"],["GAA"],["SV%"],["SO","st-hide-sm"],["Beer"]],goRows);
+  statsTable(goT,[["#","st-num","num"],["Goalie","st-name","name"],["USA Hockey #","st-hide-sm","usah"],["GP","","gp"],["W-L-T","","w"],["GA","st-hide-sm","ga"],["GAA","","gaa"],["SV%","","svp"],["SO","st-hide-sm","so"],["Beer","","beer"]],goRows,"go");
   document.getElementById("st-goalies-count").textContent=goRows.length+(goRows.length===1?" goalie":" goalies");
   goSec.hidden=!goRows.length;
 
@@ -1973,6 +2138,7 @@ setFreezeH();
 document.getElementById("refresh").addEventListener("click",e=>{e.preventDefault();load();});
 wireBeerRequest();
 wireSignIn();
+wireUsah();
 loadSession();
 checkSession();
 load().then(setFreezeH);

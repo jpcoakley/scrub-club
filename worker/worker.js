@@ -12,6 +12,8 @@
  *   POST /auth/verify       {email, code}  -> {token, name}; the token is a Bearer token
  *   GET  /me                Bearer         -> {name, email}
  *   POST /auth/signout      Bearer         drops the session
+ *   POST /usah              Bearer, {value} writes your USA Hockey number to the roster sheet
+ *                                          (through the Apps Script, into its newest USA Hockey column)
  *   GET  /public[?fresh=1]                 -> {roster, schedule}: the sheet's public columns
  *   GET  /rsvp?season=W                    -> {games: {"Sep 22, 2026": {"JP Coakley": {a, t}}}}
  *   POST /rsvp              Bearer, {season, date, answer: "in" | "out" | "", name?}
@@ -183,6 +185,27 @@ async function route(request, env, ctx) {
     return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie() });
   }
 
+  // ---- your USA Hockey number, onto your own roster row ----
+  if (m === "POST" && p === "/usah") {
+    const me = await whoami(request, env);
+    if (!me) return json({ ok: false, error: "Not signed in." }, 401);
+    const body = await readJson(request);
+    const value = String(body.value || "").toUpperCase().replace(/[\s-]/g, "");
+    if (value && !/^[0-9A-Z]{4,24}$/.test(value)) {
+      return json({ ok: false, error: "That doesn't look like a USA Hockey number." }, 400);
+    }
+    if (!env.SHEET_KEY) return json({ ok: false, error: "The sheet isn't set up for this yet." }, 500);
+    let res;
+    try { res = await sheetPost({ what: "usah", key: env.SHEET_KEY, name: me.name, value }); }
+    catch (e) {
+      console.error("usah", me.name, String(e));
+      return json({ ok: false, error: "Couldn't reach the team sheet. Try again." }, 502);
+    }
+    // The site's copy of the roster shows it once this lands
+    ctx.waitUntil(refreshPublic(env).catch((e) => console.error("public refresh after usah", String(e))));
+    return json({ ok: true, name: me.name, value: res.value, column: res.column });
+  }
+
   // ---- the roster's public columns and the beer log, for the site ----
   if (m === "GET" && p === "/public") {
     const data = await publicData(env, ctx, url.searchParams.get("fresh") === "1");
@@ -293,6 +316,25 @@ async function sheetApi(params) {
     try { body = await r.json(); } catch (_) { throw new Error("sheet api sent something other than JSON"); }
     if (!body.ok) throw new Error("sheet api: " + (body.error || "not ok"));
     return body;
+  } catch (e) {
+    if (ctl.signal.aborted) throw new Error(`sheet api took over ${SHEET_TIMEOUT_MS / 1000} s`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// A write to the sheet through the Apps Script (it answers by redirect like the reads)
+async function sheetPost(body) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), SHEET_TIMEOUT_MS);
+  try {
+    const r = await fetch(SHEET_API, { method: "POST", body: JSON.stringify(body), redirect: "follow", signal: ctl.signal });
+    if (!r.ok) throw new Error("sheet api " + r.status);
+    let out;
+    try { out = await r.json(); } catch (_) { throw new Error("sheet api sent something other than JSON"); }
+    if (!out.ok) throw new Error(out.error || "sheet api: not ok");
+    return out;
   } catch (e) {
     if (ctl.signal.aborted) throw new Error(`sheet api took over ${SHEET_TIMEOUT_MS / 1000} s`);
     throw e;

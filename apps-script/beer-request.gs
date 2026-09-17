@@ -22,7 +22,11 @@
    GET ?what=emails&key=...  {emails: {email: name}, names} for the sign-in Worker. The key is the
                              WORKER_KEY script property (Project Settings > Script properties), the
                              same value as the Worker's SHEET_KEY secret. It is never in this file,
-                             because the repo is public. */
+                             because the repo is public.
+   POST {what:"usah", key, name, value}
+                             writes a player's USA Hockey number into the newest "USA Hockey, <year>"
+                             column of their roster row. Only the Worker calls this (it has checked
+                             the player is signed in as that name), so it needs the key. */
 
 const ROSTER_GID = 901229563;
 const SCHEDULE_GID = 1678597741;
@@ -91,7 +95,7 @@ function doPost(e) {
   catch (err) { return reply({ ok: false, error: "Bad request." }); }
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return reply({ ok: false, error: "The sheet is busy. Try again in a moment." });
-  try { return reply(request(req)); }
+  try { return reply(req.what === "usah" ? usahUpdate(req) : request(req)); }
   catch (err) { console.error(err); return reply({ ok: false, error: "Something went wrong. Try again." }); }
   finally { lock.releaseLock(); }
 }
@@ -173,6 +177,31 @@ function request(req) {
     else if (h in values) cell.setValue(values[h]);
   });
   return { ok: true, name, date: req.date, award: kind === "beer" ? undefined : kind };
+}
+
+// A player's USA Hockey number for the newest registration year on the roster tab
+function usahUpdate(req) {
+  const key = PropertiesService.getScriptProperties().getProperty("WORKER_KEY");
+  if (!key || req.key !== key) return { ok: false, error: "Not allowed." };
+  const value = String(req.value || "").toUpperCase().replace(/[\s-]/g, "");
+  if (value && !/^[0-9A-Z]{4,24}$/.test(value)) return { ok: false, error: "That doesn't look like a USA Hockey number." };
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = sheetById(ss, ROSTER_GID);
+  const rows = sheet.getDataRange().getDisplayValues();
+  const head = (rows[ROSTER_HEADER_ROW - 1] || []).map(h => String(h).trim());
+  // The newest "USA Hockey, 2026"-style column; a new season means JP adds the next year's
+  let iU = -1, best = -1;
+  head.forEach((h, i) => { const m = h.match(/^USA Hockey,?\s*(\d{4})$/); if (m && +m[1] > best) { best = +m[1]; iU = i; } });
+  if (iU < 0) return { ok: false, error: "The roster tab has no USA Hockey column." };
+  const iF = head.indexOf("First"), iL = head.indexOf("Last");
+  const want = norm(req.name);
+  for (let r = ROSTER_HEADER_ROW; r < rows.length; r++) {
+    const n = norm(`${rows[r][iF] || ""} ${rows[r][iL] || ""}`);
+    if (!n || n !== want) continue;
+    sheet.getRange(r + 1, iU + 1).setValue(value);
+    return { ok: true, name: req.name, value, column: head[iU] };
+  }
+  return { ok: false, error: "That name isn't on the roster sheet." };
 }
 
 // Players whose status in the season's column counts as on the team. Season headers repeat on the
