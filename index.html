@@ -263,7 +263,41 @@ header.site{position:relative}
   .sg-beer::before{content:"Beer · ";color:var(--ink-300)}
   .sg-head .sg-beer{display:none}
   .sched-list{width:100%}
+  /* In/Out follows Beer Man onto its own line */
+  .sg-rsvp{width:100%;padding-left:calc(18px + 50px + 20px);gap:12px}
+  /* span.sg-rsvp outranks the desktop .sg-head .sg-rsvp rule below, which comes later in the file */
+  .sg-rsvp:empty,.sg-head span.sg-rsvp{display:none}
+  .sg-names{padding-left:calc(18px + 50px + 20px)}
+  .sg-bar{flex-wrap:wrap}
 }
+/* In/Out: a two-button toggle in each upcoming row; the count beside it opens the names */
+.sg-rsvp{width:190px;flex:none;display:flex;align-items:center;gap:12px;align-self:center}
+.sg-head .sg-rsvp{display:block}
+.sg-io{display:inline-flex;border:1px solid var(--oatmeal-600);border-radius:var(--radius-sm);overflow:hidden;flex:none;background:var(--white)}
+.sg-io button{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);background:transparent;border:none;padding:5px 11px;cursor:pointer;line-height:1.2}
+.sg-io button+button{border-left:1px solid var(--oatmeal-600)}
+.sg-io button:hover{color:var(--burgundy-600)}
+.sg-io button.on-in{background:var(--status-win);color:var(--white)}
+.sg-io button.on-out{background:var(--penalty-500);color:var(--white)}
+.sg-io button.on-in:hover,.sg-io button.on-out:hover{color:var(--white)}
+.sg-io button:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
+.sg-count{font-family:var(--font-condensed);font-weight:600;font-size:14px;letter-spacing:.04em;color:var(--ink-500);background:none;border:none;padding:0;cursor:pointer;white-space:nowrap}
+.sg-count:hover{color:var(--burgundy-600);text-decoration:underline;text-underline-offset:3px}
+.sg-count b{font-family:var(--font-numeral);font-weight:800;color:var(--ink-900)}
+/* The names, on a row of their own under the game */
+.sg-names{display:flex;flex-direction:column;gap:var(--space-2);padding:6px 0 14px calc(44px + 16px);border-bottom:1px solid var(--oatmeal-500);font-family:var(--font-condensed);font-size:15px;line-height:1.5;color:var(--ink-500);max-width:640px}
+.sg-names .grp b{font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-300);margin-right:6px}
+.sg-names .grp.in b{color:var(--status-win)}
+.sg-names .grp.out b{color:var(--penalty-500)}
+/* Who's signed in, above the list */
+.sg-bar{display:flex;align-items:baseline;gap:var(--space-4);padding-top:var(--space-6);font-family:var(--font-condensed);font-weight:600;font-size:15px;letter-spacing:.04em;color:var(--ink-500)}
+.sg-bar b{color:var(--ink-900)}
+.sg-bar+.sched-list{padding-top:var(--space-3)}
+.sg-bar-msg{color:var(--penalty-500)}
+.sg-link{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-600);background:none;border:none;padding:0;cursor:pointer}
+.sg-link:hover{text-decoration:underline;text-underline-offset:3px}
+.io-help{margin:0 0 var(--space-2);font-size:15px;line-height:1.45;color:var(--text-body)}
+#io-code{letter-spacing:.3em;font-variant-numeric:tabular-nums}
 /* Beer Man assignment: a small patch button in an empty Beer Man cell, and the pop-up it opens */
 /* Same gray as an assigned name, so an open slot reads as part of the column; burgundy on hover says it's a button */
 .sg-req{font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);background:none;border:none;padding:0;cursor:pointer;line-height:1.2}
@@ -495,6 +529,24 @@ footer.site .fine{margin-left:auto}
     </div>
   </form>
 </dialog>
+<dialog id="io-dlg" class="br" aria-labelledby="io-title">
+  <form id="io-form" class="br-card" novalidate>
+    <div class="br-k">In or Out</div>
+    <h2 id="io-title" class="br-game">Sign in</h2>
+    <p class="io-help" id="io-help">Use the email on your row of the roster sheet. We'll send you a code.</p>
+    <label class="br-label" for="io-email">Email</label>
+    <input id="io-email" class="br-input" type="email" autocomplete="email" inputmode="email" spellcheck="false">
+    <div id="io-code-wrap" hidden>
+      <label class="br-label" for="io-code">Code</label>
+      <input id="io-code" class="br-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 digits">
+    </div>
+    <div id="io-msg" class="br-msg" role="alert" hidden></div>
+    <div class="br-actions">
+      <button type="button" id="io-cancel" class="br-cancel">Cancel</button>
+      <button type="submit" id="io-send" class="br-send">Send code</button>
+    </div>
+  </form>
+</dialog>
 <div id="view-swag" hidden>
   <div class="container">
     <section class="block">
@@ -575,6 +627,8 @@ const BEER_GID   = "1678597741"; // the "Schedule" tab (renamed from "Beer" 2026
 // Beer Man assignments: the web app URL of apps-script/beer-request.gs, deployed from the sheet.
 // Empty hides the schedule's Assign buttons.
 const BEER_REQUEST_URL = "https://script.google.com/macros/s/AKfycbwhXIOvklsm7Ay4Egc3pR83EYe6HvnWcjirOoa0qLrfnn1n40IcHAqgFbKlAlz23yQ/exec";
+// In/Out: the Worker in worker/ (email-code sign-in, who's coming to each game). Empty hides the column.
+const RSVP_API = "https://api.scrubclubhockeyteam.com";
 const HEADER_ROW = 7;   // 1-based row holding "First / Last / <season>" headers
 const DATA_START = 8;   // 1-based first player row
 /* Column lookups resolve by header text first and fall back to the letter the column
@@ -915,6 +969,7 @@ function schedHeadRow(anyPlayed){
   r.appendChild(el("span","sg-opp","Opponent"));
   r.appendChild(el("span","sg-res","W/L"));
   r.appendChild(el("span","sg-beer","Beer Man"));
+  if(RSVP_API) r.appendChild(el("span","sg-rsvp","In/Out"));
   return r;
 }
 function seasonHeadRow(label){
@@ -946,7 +1001,19 @@ function schedRow(g,entry,num){
     beer.appendChild(b);
   }
   r.appendChild(beer);
+  if(RSVP_API){
+    // In/Out only for a game still to come in a season the sheet has a team for
+    if(ds && !played && entry.col) r.appendChild(rsvpCell(g,entry,ds));
+    else r.appendChild(el("span","sg-rsvp"));
+  }
   return r;
+}
+// The row, plus the names row when someone has opened that game's In/Out list
+function schedRows(g,entry,num){
+  const rows=[schedRow(g,entry,num)];
+  const year=gameYear(entry,g.date), ds=year?`${g.date}, ${year}`:"";
+  if(RSVP_API && ds && g.us==null && entry.col && rsvpOpen.has(entry.key+"|"+ds)) rows.push(rsvpNamesRow(entry,ds));
+  return rows;
 }
 
 /* ---------- Beer Man assignments ----------
@@ -1051,6 +1118,215 @@ function wireBeerRequest(){
   // A click on the backdrop lands on the dialog itself, outside the card
   dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
 }
+
+/* ---------- In / Out ----------
+   Players say whether they're coming to each upcoming game. Sign-in is a code emailed to the
+   address on their roster row (the Worker in worker/ reads the same sheet), so nobody can answer
+   for anyone else. Answers live in the Worker's store, one per player per game; the session token
+   stays in localStorage for a year. The names list is public, like the roster. */
+let rsvpSession=null;      // {token, name, email}
+let rsvpBySeason={};       // season key -> {"Sep 22, 2026" -> {"JP Coakley" -> {a:"in"|"out", t}}}
+const rsvpOpen=new Set();  // "<season key>|<date>" of games whose names are showing
+let rsvpPending=null;      // {entry, ds, a}: a tap that waits on a sign-in
+let rsvpMsg="", rsvpMsgTimer=null;
+const SESSION_KEY="scrub.session";
+function loadSession(){
+  try{ rsvpSession=JSON.parse(localStorage.getItem(SESSION_KEY)||"null"); }catch(e){ rsvpSession=null; }
+  if(rsvpSession && !(rsvpSession.token && rsvpSession.name)) rsvpSession=null;
+}
+function saveSession(s){
+  rsvpSession=s;
+  try{ if(s) localStorage.setItem(SESSION_KEY,JSON.stringify(s)); else localStorage.removeItem(SESSION_KEY); }catch(e){}
+}
+// {status, res}; res is null when the reply wasn't JSON
+async function api(path,body){
+  const headers={"Content-Type":"application/json"};
+  if(rsvpSession?.token) headers.Authorization="Bearer "+rsvpSession.token;
+  const r=await fetch(RSVP_API+path,{method:body?"POST":"GET",headers,body:body?JSON.stringify(body):undefined});
+  let res=null;
+  try{ res=await r.json(); }catch(e){}
+  return {status:r.status,res};
+}
+function rsvpNote(text){
+  rsvpMsg=text||"";
+  clearTimeout(rsvpMsgTimer);
+  if(rsvpMsg) rsvpMsgTimer=setTimeout(()=>{ rsvpMsg=""; renderSchedule(); },6000);
+  renderSchedule();
+}
+// Fetch a season's answers the first time it shows, then redraw
+function loadRsvpFor(entries){
+  const need=entries.filter(e=>e.col && !(e.key in rsvpBySeason) && schedData.seasons[e.key]?.games?.some(g=>g.us==null));
+  if(!need.length) return;
+  need.forEach(e=>{ rsvpBySeason[e.key]={}; });
+  Promise.all(need.map(async e=>{
+    try{
+      const {res}=await api("/rsvp?season="+encodeURIComponent(e.key));
+      if(res?.ok) rsvpBySeason[e.key]=res.games||{};
+    }catch(err){ delete rsvpBySeason[e.key]; }
+  })).then(renderSchedule);
+}
+// On load, make sure a remembered session still works (JP can revoke one by clearing the email in the sheet)
+async function checkSession(){
+  if(!rsvpSession) return;
+  try{
+    const {status,res}=await api("/me");
+    if(status===401 || (res && !res.ok)){ saveSession(null); renderSchedule(); }
+    else if(res?.name && res.name!==rsvpSession.name){ saveSession({...rsvpSession,name:res.name}); renderSchedule(); }
+  }catch(e){ /* offline: keep the session, the next tap will tell */ }
+}
+function rsvpBar(entries){
+  if(!RSVP_API || !entries.some(e=>e.col && schedData.seasons[e.key]?.games?.some(g=>g.us==null))) return null;
+  const bar=el("div","sg-bar");
+  const who=el("span","sg-bar-who");
+  const link=el("button","sg-link");
+  link.type="button";
+  if(rsvpSession){
+    who.append("Signed in as ",el("b",null,rsvpSession.name));
+    link.textContent="Sign out";
+    link.addEventListener("click",signOut);
+  }else{
+    who.textContent="Tap In or Out on a game to say if you're coming.";
+    link.textContent="Sign in";
+    link.addEventListener("click",()=>{ rsvpPending=null; openSignIn(); });
+  }
+  bar.append(who,link);
+  if(rsvpMsg) bar.appendChild(el("span","sg-bar-msg",rsvpMsg));
+  return bar;
+}
+function rsvpCell(g,entry,ds){
+  const cell=el("span","sg-rsvp");
+  const answers=(rsvpBySeason[entry.key]||{})[ds]||{};
+  const mine=rsvpSession ? (answers[rsvpSession.name]?.a||"") : "";
+  const io=el("span","sg-io");
+  [["in","In"],["out","Out"]].forEach(([a,label])=>{
+    const b=el("button",mine===a?"on-"+a:"",label);
+    b.type="button";
+    b.setAttribute("aria-pressed",mine===a?"true":"false");
+    b.setAttribute("aria-label",`${label} for ${g.date} against ${g.opponent}`);
+    b.addEventListener("click",()=>{ if(mine!==a) answer(entry,ds,a); });
+    io.appendChild(b);
+  });
+  cell.appendChild(io);
+  const n={in:0,out:0};
+  Object.values(answers).forEach(v=>{ if(v.a in n) n[v.a]++; });
+  const id=entry.key+"|"+ds;
+  const c=el("button","sg-count");
+  c.type="button";
+  c.append(el("b",null,String(n.in))," in · ",el("b",null,String(n.out))," out");
+  c.setAttribute("aria-expanded",rsvpOpen.has(id)?"true":"false");
+  c.setAttribute("aria-label",`${n.in} in, ${n.out} out for ${g.date}. Show who.`);
+  c.addEventListener("click",()=>{ if(rsvpOpen.has(id)) rsvpOpen.delete(id); else rsvpOpen.add(id); renderSchedule(); });
+  cell.appendChild(c);
+  return cell;
+}
+// In, Out, and the season's team members who haven't said
+function rsvpNamesRow(entry,ds){
+  const answers=(rsvpBySeason[entry.key]||{})[ds]||{};
+  const ins=[], outs=[];
+  Object.entries(answers).forEach(([name,v])=>{ if(v.a==="in") ins.push(name); else if(v.a==="out") outs.push(name); });
+  const said=new Set([...ins,...outs]);
+  const quiet=teamNames(entry).filter(nm=>!said.has(nm));
+  const row=el("div","sg-names");
+  [["in","In",ins],["out","Out",outs],["quiet","No answer",quiet]].forEach(([cls,label,names])=>{
+    if(!names.length) return;
+    const grp=el("div","grp "+cls);
+    grp.appendChild(el("b",null,`${label} (${names.length})`));
+    grp.append(names.slice().sort((a,b)=>a.localeCompare(b)).join(", "));
+    row.appendChild(grp);
+  });
+  if(!row.childElementCount) row.appendChild(el("span",null,"Nobody has answered yet."));
+  return row;
+}
+async function answer(entry,ds,a){
+  if(!rsvpSession){ rsvpPending={entry,ds,a}; openSignIn(); return; }
+  const name=rsvpSession.name;
+  const games=rsvpBySeason[entry.key]=rsvpBySeason[entry.key]||{};
+  const before=games[ds]?.[name];
+  games[ds]=games[ds]||{};
+  // Show it at once; put it back if the save fails
+  if(a) games[ds][name]={a,t:Date.now()}; else delete games[ds][name];
+  renderSchedule();
+  let error="";
+  try{
+    const {status,res}=await api("/rsvp",{season:entry.key,date:ds,answer:a});
+    if(res?.ok) return;
+    if(status===401) saveSession(null);
+    error=res?.error||"";
+  }catch(e){}
+  if(before) games[ds][name]=before; else delete games[ds][name];
+  rsvpNote(error||"Couldn't save that. Try again.");
+}
+async function signOut(){
+  try{ await api("/auth/signout",{}); }catch(e){}
+  saveSession(null);
+  renderSchedule();
+}
+let ioStep="email";
+function openSignIn(){
+  const dlg=document.getElementById("io-dlg");
+  ioStep="email";
+  const email=document.getElementById("io-email");
+  email.readOnly=false;
+  document.getElementById("io-code").value="";
+  document.getElementById("io-code-wrap").hidden=true;
+  document.getElementById("io-help").textContent="Use the email on your row of the roster sheet. We'll send you a code.";
+  ioMessage("");
+  ioBusy(false);
+  dlg.showModal();
+  email.focus();
+}
+function ioBusy(on,label){
+  const btn=document.getElementById("io-send");
+  btn.disabled=on;
+  btn.textContent=on?label:(ioStep==="email"?"Send code":"Sign in");
+}
+function ioMessage(text){
+  const msg=document.getElementById("io-msg");
+  msg.textContent=text||"";
+  msg.hidden=!text;
+}
+async function ioSubmit(ev){
+  ev.preventDefault();
+  const emailEl=document.getElementById("io-email");
+  const email=emailEl.value.trim().toLowerCase();
+  ioMessage("");
+  if(ioStep==="email"){
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ ioMessage("Enter your email address."); emailEl.focus(); return; }
+    ioBusy(true,"Sending…");
+    let res=null;
+    try{ res=(await api("/auth/start",{email})).res; }catch(e){}
+    if(!res){ ioBusy(false); ioMessage("Couldn't reach the sign-in service. Try again."); return; }
+    if(res.unknown){ ioBusy(false); ioMessage("That email isn't on the roster sheet. Text JP to add it, then try again."); return; }
+    if(!res.ok){ ioBusy(false); ioMessage(res.error||"Couldn't send the code. Try again."); return; }
+    ioStep="code";
+    ioBusy(false);
+    emailEl.readOnly=true;
+    document.getElementById("io-help").textContent=`We emailed a code to ${email}. It works for 10 minutes.`;
+    document.getElementById("io-code-wrap").hidden=false;
+    document.getElementById("io-code").focus();
+    return;
+  }
+  const code=document.getElementById("io-code").value.replace(/\D/g,"");
+  if(code.length!==6){ ioMessage("Enter the 6-digit code from the email."); return; }
+  ioBusy(true,"Signing in…");
+  let res=null;
+  try{ res=(await api("/auth/verify",{email,code})).res; }catch(e){}
+  ioBusy(false);
+  if(!res){ ioMessage("Couldn't reach the sign-in service. Try again."); return; }
+  if(!res.ok){ ioMessage(res.error||"That code didn't work."); return; }
+  saveSession({token:res.token,name:res.name,email});
+  document.getElementById("io-dlg").close();
+  const p=rsvpPending;
+  rsvpPending=null;
+  if(p) answer(p.entry,p.ds,p.a); else renderSchedule();
+}
+function wireSignIn(){
+  const dlg=document.getElementById("io-dlg");
+  document.getElementById("io-form").addEventListener("submit",ioSubmit);
+  document.getElementById("io-cancel").addEventListener("click",()=>dlg.close());
+  dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
+  dlg.addEventListener("close",()=>{ rsvpPending=null; });
+}
 async function renderSchedule(){
   const box=document.getElementById("sched"), note=document.querySelector("#view-schedule .league-note");
   const oppSel=document.getElementById("opp-select");
@@ -1091,11 +1367,14 @@ async function renderSchedule(){
       .filter(({g})=>!oppFilter||g.opponent===oppFilter);
     if(!games.length) return;
     if(multi) body.push(seasonHeadRow(entryLabel(e,sheetHeader)));
-    games.forEach(({g,num})=>{ if(g.us!=null) anyPlayed=true; body.push(schedRow(g,e,num)); shown++; });
+    games.forEach(({g,num})=>{ if(g.us!=null) anyPlayed=true; body.push(...schedRows(g,e,num)); shown++; });
   });
   list.appendChild(schedHeadRow(anyPlayed));
   body.forEach(n=>list.appendChild(n));
+  const bar=rsvpBar(entries);
+  if(bar) box.appendChild(bar);
   box.appendChild(list);
+  loadRsvpFor(entries);
   if(!shown) box.appendChild(el("div","sched-empty","No games against "+oppFilter+" this season."));
   setFreezeH();
 }
@@ -1389,6 +1668,9 @@ setFreezeH();
 
 document.getElementById("refresh").addEventListener("click",e=>{e.preventDefault();load();});
 wireBeerRequest();
+wireSignIn();
+loadSession();
+checkSession();
 load().then(setFreezeH);
 </script>
 </body>

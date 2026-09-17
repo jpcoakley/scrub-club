@@ -1,0 +1,30 @@
+# In/Out for scrubclubhockeyteam.com: email-code sign-in and who's coming to each game.
+# Deploy: cd worker && npx wrangler deploy (wrangler is signed in by OAuth on JP's Mac).
+name = "scrub-club-api"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+account_id = "4b65c3e179376d3874d25be52073276d"
+
+# The site itself stays on GitHub Pages; only this hostname reaches the Worker.
+routes = [
+  { pattern = "api.scrubclubhockeyteam.com", custom_domain = true }
+]
+
+[[kv_namespaces]]
+binding = "SC_KV"
+id = "1ed90cad12c94c33917afab4fd90716f"
+
+# Cloudflare Email Service; the sender's domain must be one the account is set up to send from
+[[send_email]]
+name = "EMAIL"
+
+# keep Worker logs so a failed sign-in can be traced after the fact
+[observability]
+enabled = true
+
+[vars]
+# familytree.jpcoakley.com is the account's verified sending domain. To send from
+# scrubclubhockeyteam.com instead, add it under Email Service in the Cloudflare dashboard
+# (it writes the DKIM and SPF records) and change this to something@scrubclubhockeyteam.com.
+MAIL_FROM = "scrubclub@familytree.jpcoakley.com"
+MAIL_FROM_NAME = "Scrub Club Hockey"
