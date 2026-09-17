@@ -20,7 +20,7 @@
 <link rel="apple-touch-icon" href="soap-icon.png">
 <style>
 /* ============ Scrub Club Design System tokens ============ */
-@import url("https://fonts.googleapis.com/css2?family=Graduate&family=Big+Shoulders+Display:wght@600;700;800&family=Archivo:ital,wght@0,400..700;1,400..600&family=Barlow+Condensed:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Rokkitt:wght@700&family=Big+Shoulders+Display:wght@600;700;800&family=Archivo:ital,wght@0,400..700;1,400..600&family=Barlow+Condensed:wght@500;600;700&display=swap");
 :root{
   --burgundy-900:#3F1523;--burgundy-800:#571C2E;--burgundy-700:#68223A;--burgundy-600:#7A2842;
   --burgundy-500:#8F3A54;--burgundy-400:#A85A71;--burgundy-300:#C68C9C;--burgundy-200:#E2C3CD;--burgundy-100:#F4E5EA;
@@ -36,9 +36,9 @@
   --status-win:var(--turf-500);--status-loss:var(--penalty-500);--status-warning:var(--whistle-500);
   --focus-ring:var(--whistle-500);
 
-  --font-display:"Graduate","Archivo",Georgia,serif;
+  --font-display:"Rokkitt","Archivo",Georgia,serif;
   --font-body:"Archivo","Helvetica Neue",Arial,sans-serif;
-  --font-numeral:"Big Shoulders Display","Graduate",Impact,sans-serif;
+  --font-numeral:"Big Shoulders Display","Rokkitt",Impact,sans-serif;
   --font-condensed:"Barlow Condensed","Archivo Narrow",Arial,sans-serif;
   --text-display-2:clamp(40px,5vw,68px);--text-display-3:34px;--text-heading:20px;
   --tracking-eyebrow:0.18em;
@@ -1288,16 +1288,31 @@ async function sendBeerRequest(ev){
   if(!names.includes(name)){ beerReqMessage("Pick a teammate from the list."); return; }
   beerReqBusy(true);
   let res=null;
-  try{
-    // text/plain keeps this a simple request, so the Apps Script endpoint needs no CORS preflight.
-    // seasonHeader names the roster column the script checks team status against.
-    const r=await fetch(BEER_REQUEST_URL,{method:"POST",body:JSON.stringify({date:ds,name,
-      season:(entryLabel(entry,sheetHeader)||"").split(/[ ,]/)[0],seasonHeader:entry.header,
-      seasonKey:entry.key,award:kind==="beer"?undefined:kind})});
-    res=await r.json();
-  }catch(e){ /* no readable reply; the sheet check below decides */ }
-  // The script turned it down and said why
+  // Google sometimes answers a POST with the script's GET greeting or one of its own HTML pages
+  // instead of the script's reply (it comes in bursts and hits beer and awards alike), so a request
+  // is sent up to three times until a real answer comes back: a refusal with a reason, or a name.
+  // Sending twice is safe: a second write of the same name is refused as already taken.
+  for(let attempt=0;attempt<3;attempt++){
+    if(attempt) await new Promise(r=>setTimeout(r,1500));
+    try{
+      // text/plain keeps this a simple request, so the Apps Script endpoint needs no CORS preflight.
+      // seasonHeader names the roster column the script checks team status against.
+      const r=await fetch(BEER_REQUEST_URL,{method:"POST",body:JSON.stringify({date:ds,name,
+        season:(entryLabel(entry,sheetHeader)||"").split(/[ ,]/)[0],seasonHeader:entry.header,
+        seasonKey:entry.key,award:kind==="beer"?undefined:kind})});
+      res=await r.json();
+    }catch(e){ res=null; /* no readable reply; try again, then the sheet check below decides */ }
+    if(res && ((!res.ok && res.error) || (res.ok && res.name))) break;
+  }
+  // The script turned it down and said why. "Already taken" by the very name we sent means an
+  // earlier try was written but its reply got lost, so that one counts as saved.
   if(res && !res.ok && res.error){
+    if(res.taken===name){
+      noteAssigned(ds,kind,name);
+      document.getElementById("beer-req").close();
+      renderSchedule();
+      return;
+    }
     beerReqBusy(false);
     if(res.taken){ noteAssigned(ds,kind,res.taken); renderSchedule(); }
     beerReqMessage(res.error);
