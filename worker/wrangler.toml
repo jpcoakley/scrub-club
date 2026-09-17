@@ -23,8 +23,9 @@ name = "EMAIL"
 enabled = true
 
 [vars]
-# familytree.jpcoakley.com is the account's verified sending domain. To send from
-# scrubclubhockeyteam.com instead, add it under Email Service in the Cloudflare dashboard
-# (it writes the DKIM and SPF records) and change this to something@scrubclubhockeyteam.com.
-MAIL_FROM = "scrubclub@familytree.jpcoakley.com"
+# scrubclubhockeyteam.com was onboarded under Email Service > Email Sending on
+# Sep 17, 2026 (that wrote the cf-bounce MX, SPF and DKIM records). waturi@ is
+# also the team's real mailbox: Cloudflare Email Routing forwards it to JP's Gmail,
+# so replies to a code email land somewhere a person reads.
+MAIL_FROM = "waturi@scrubclubhockeyteam.com"
 MAIL_FROM_NAME = "Scrub Club Hockey"
