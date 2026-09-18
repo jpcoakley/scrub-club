@@ -309,12 +309,7 @@ header.site{position:relative}
 .sg-beer,.sg-award{min-width:0;font-family:var(--font-condensed);font-weight:600;font-size:15px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sg-cnt{display:none}
 .sg-you{text-align:right;white-space:nowrap}
-.sg-you button{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;background:none;border:none;padding:0;cursor:pointer}
-.sg-you .yes{color:var(--status-win)}
-.sg-you .no{color:var(--burgundy-600)}
-.sg-you .ask{font-size:13px;letter-spacing:.1em;color:var(--burgundy-600);border:1px solid var(--burgundy-300);padding:5px 10px;clip-path:var(--clip-patch-sm)}
-.sg-you .ask:hover{background:var(--burgundy-100)}
-.sg-you button:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
+.sg-you .sg-io{vertical-align:middle}
 .sg-openable{cursor:pointer}
 .sg-io{display:inline-flex;border:1px solid var(--oatmeal-600);border-radius:var(--radius-sm);overflow:hidden;flex:none;background:var(--white)}
 .sg-io button{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);background:transparent;border:none;padding:5px 11px;cursor:pointer}
@@ -368,7 +363,7 @@ header.site{position:relative}
   .sg-time{font-size:12px}
   .sg-res{font-size:18px}
   .sg-res.next{display:none}
-  .sg-you .ask{font-size:12px;padding:5px 7px}
+  .sg-you .sg-io button{font-size:11px;padding:5px 7px}
   .sg-names{padding-left:calc(22px + 56px + 20px)}
 }
 .io-help{margin:0 0 var(--space-2);font-size:15px;line-height:1.45;color:var(--text-body)}
@@ -1147,7 +1142,11 @@ function ioToggle(entry,ds,mine,forName){
     const b=el("button",mine===a?"on-"+a:"",label);
     b.type="button";
     b.setAttribute("aria-pressed",mine===a?"true":"false");
-    b.addEventListener("click",()=>{ const who=forName?forName():undefined; if(forName&&!who) return; if(mine!==a||who) answer(entry,ds,a,who); });
+    // Tapping your own answer again clears it; answering for a teammate always sets theirs
+    b.addEventListener("click",()=>{
+      if(forName){ const who=forName(); if(who) answer(entry,ds,a,who); return; }
+      answer(entry,ds,mine===a?"":a);
+    });
     io.appendChild(b);
   });
   return io;
@@ -1167,18 +1166,9 @@ function teammatePicker(entry){
 }
 function youCell(g,entry,ds){
   const cell=el("span","sg-you");
+  cell.setAttribute("aria-label",`Your answer for ${g.date} against ${g.opponent}`);
   const {mine}=rsvpSplit(entry,ds);
-  const b=el("button", mine==="in"?"yes":mine==="out"?"no":"ask", mine==="in"?"In ✓":mine==="out"?"Out":"Answer");
-  b.type="button";
-  b.setAttribute("aria-label",(mine?`You're ${mine} for`:"Answer for")+` ${g.date} against ${g.opponent}`);
-  const id=entry.key+"|"+ds;
-  b.setAttribute("aria-expanded",rsvpOpen.has(id)?"true":"false");
-  b.addEventListener("click",()=>{
-    if(!rsvpSession){ rsvpPending=null; openSignIn(); return; }
-    if(rsvpOpen.has(id)) rsvpOpen.delete(id); else rsvpOpen.add(id);
-    renderSchedule();
-  });
-  cell.appendChild(b);
+  cell.appendChild(ioToggle(entry,ds,mine));
   return cell;
 }
 function schedRow(g,entry,num,isNext){
