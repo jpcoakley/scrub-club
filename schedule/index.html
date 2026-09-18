@@ -1528,15 +1528,7 @@ function rsvpNamesRow(entry,ds){
     row.appendChild(grp);
   });
   if(!ins.length && !outs.length) row.appendChild(el("span",null,"Nobody has answered yet."));
-  // Anyone signed in can answer for a teammate
-  if(rsvpSession){
-    const add=el("div","grp add");
-    add.appendChild(el("b",null,"For a teammate"));
-    const sel=teammatePicker(entry);
-    add.appendChild(sel);
-    add.appendChild(ioToggle(entry,ds,"",()=>{ if(!sel.value){ sel.focus(); return ""; } return sel.value; }));
-    row.appendChild(add);
-  }
+  // Answering for a teammate lives on the next-game card only
   return row;
 }
 async function answer(entry,ds,a,who){
