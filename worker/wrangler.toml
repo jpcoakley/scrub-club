@@ -1,4 +1,5 @@
-# In/Out for scrubclubhockeyteam.com: email-code sign-in and who's coming to each game.
+# The site's API: team data from the Scrub Club Airtable base, email-code sign-in, In/Out,
+# Beer Man and award assignments. Secrets: AIRTABLE_TOKEN (wrangler secret put).
 # Deploy: cd worker && npx wrangler deploy (wrangler is signed in by OAuth on JP's Mac).
 name = "scrub-club-api"
 main = "worker.js"
@@ -9,10 +10,6 @@ account_id = "4b65c3e179376d3874d25be52073276d"
 routes = [
   { pattern = "api.scrubclubhockeyteam.com", custom_domain = true }
 ]
-
-# Refresh the roster copies from the sheet's Apps Script so sign-in and page loads never wait on it
-[triggers]
-crons = ["*/5 * * * *"]
 
 [[kv_namespaces]]
 binding = "SC_KV"

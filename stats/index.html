@@ -722,15 +722,14 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
 <script>
 /* ================= CONFIG =================
    Update these if the sheet layout changes.  */
-// The roster sheet is private. The site gets its public columns (names, jersey, USA Hockey,
-// season statuses) and the Schedule tab's beer log from the In/Out Worker, which reads them
-// through the sheet's Apps Script and never passes along emails, phones, Venmo or dues.
+// The team's data lives in a private Airtable base. The Worker in worker/ serves the site its
+// public columns (names, jersey, USA Hockey, season statuses) and the game log, shaped like the
+// old roster sheet, and never passes along emails, phones, Venmo or dues.
 const TEAM_DATA_URL = "https://api.scrubclubhockeyteam.com/public";
-// Beer Man assignments: the web app URL of apps-script/beer-request.gs, deployed from the sheet.
-// Empty hides the schedule's Assign buttons.
-const BEER_REQUEST_URL = "https://script.google.com/macros/s/AKfycbwhXIOvklsm7Ay4Egc3pR83EYe6HvnWcjirOoa0qLrfnn1n40IcHAqgFbKlAlz23yQ/exec";
-// In/Out: the Worker in worker/ (email-code sign-in, who's coming to each game). Empty hides the column.
+// In/Out: the same Worker (email-code sign-in, who's coming to each game). Empty hides the column.
 const RSVP_API = "https://api.scrubclubhockeyteam.com";
+// Beer Man and award assignments go to the Worker too. Empty hides the schedule's Assign buttons.
+const BEER_REQUEST_URL = "https://api.scrubclubhockeyteam.com/assign";
 const HEADER_ROW = 7;   // 1-based row holding "First / Last / <season>" headers
 const DATA_START = 8;   // 1-based first player row
 /* Column lookups resolve by header text first and fall back to the letter the column
@@ -1284,8 +1283,8 @@ function heroCard(entry,g,num,ds){
 /* ---------- Beer Man assignments ----------
    Anyone can put a teammate on beer for an unplayed game nobody has claimed yet. The pick list is
    that season's team (the ON_TEAM statuses in the season's column), so subs, the unsure and people
-   sitting out can't be picked. The Apps Script behind BEER_REQUEST_URL checks the same thing
-   before it writes to the sheet's Schedule tab. */
+   sitting out can't be picked. The Worker behind BEER_REQUEST_URL checks the same thing
+   before it writes to the Games table. */
 function teamNames(entry){
   if(!entry.col) return [];
   return [...new Set(sheetPlayers(entry).filter(p=>ON_TEAM.includes(p.status)).map(p=>p.name))]
@@ -1340,7 +1339,7 @@ function beerReqMessage(text){
   msg.textContent=text||"";
   msg.hidden=!text;
 }
-// Who the sheet's Schedule tab has for a date and kind, read fresh ("" if nobody)
+// Who the Games table has for a date and kind, read fresh ("" if nobody)
 async function beerOnSheet(ds,kind){
   await loadBeer(true);
   if(kind&&kind!=="beer") return (awardsByDate[ds]||{})[kind]||"";
@@ -1360,15 +1359,12 @@ async function sendBeerRequest(ev){
   if(!names.includes(name)){ beerReqMessage("Pick a teammate from the list."); return; }
   beerReqBusy(true);
   let res=null;
-  // Google sometimes answers a POST with the script's GET greeting or one of its own HTML pages
-  // instead of the script's reply (it comes in bursts and hits beer and awards alike), so a request
-  // is sent up to three times until a real answer comes back: a refusal with a reason, or a name.
-  // Sending twice is safe: a second write of the same name is refused as already taken.
+  // A request is sent up to three times until a real answer comes back: a refusal with a reason,
+  // or a name. Sending twice is safe: a second write of the same name is refused as already taken.
   for(let attempt=0;attempt<3;attempt++){
     if(attempt) await new Promise(r=>setTimeout(r,1500));
     try{
-      // text/plain keeps this a simple request, so the Apps Script endpoint needs no CORS preflight.
-      // seasonHeader names the roster column the script checks team status against.
+      // seasonHeader names the roster season field the Worker checks team status against.
       const r=await fetch(BEER_REQUEST_URL,{method:"POST",body:JSON.stringify({date:ds,name,
         season:(entryLabel(entry,sheetHeader)||"").split(/[ ,]/)[0],seasonHeader:entry.header,
         seasonKey:entry.key,award:kind==="beer"?undefined:kind})});
@@ -1390,10 +1386,9 @@ async function sendBeerRequest(ev){
     beerReqMessage(res.error);
     return;
   }
-  // A saved assignment echoes the name. Without that, the save can still have happened: Google
-  // hands the reply back from a second address that a browser or extension can block, and right
-  // after a deployment change the POST can come back as the script's GET greeting. So ask the
-  // sheet, giving it a moment to catch up before calling it a failure.
+  // A saved assignment echoes the name. Without that (a dropped connection after the write), the
+  // save can still have happened, so ask for a fresh copy, giving it a moment to catch up before
+  // calling it a failure.
   let saved=res && res.ok && res.name ? res.name : "";
   for(let i=0;!saved && i<2;i++){
     if(i) await new Promise(r=>setTimeout(r,2500));
@@ -1852,8 +1847,8 @@ function usahCell(p){
   return td;
 }
 /* ---------- Your USA Hockey number ----------
-   A signed-in player writes their own number; the Worker checks the session and the Apps Script
-   puts it in the roster's newest "USA Hockey, <year>" column, which is the one the site shows. */
+   A signed-in player writes their own number; the Worker checks the session and puts it in the
+   roster's newest "USA Hockey, <year>" field, which is the one the site shows. */
 let usahFor=null;
 function openUsah(p){
   usahFor=p;

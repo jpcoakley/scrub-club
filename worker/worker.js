@@ -1,63 +1,85 @@
-/* Scrub Club In/Out: api.scrubclubhockeyteam.com
+/* Scrub Club API: api.scrubclubhockeyteam.com
  *
- * Players say whether they're coming to each upcoming game. Sign-in is a
- * six-digit code emailed to the address on their row of the Scrub Club
- * Roster sheet, so nobody can answer for anyone else and there is no
- * password to forget. The roster sheet is the allowlist: to let someone
- * sign in, put their email in the Email column of their row; to lock them
- * out, clear it (their session stops working within five minutes).
+ * The team's data lives in the Scrub Club Airtable base (Roster and Games tables). This
+ * Worker is the only thing that holds the Airtable token: it serves the site the public
+ * columns, runs the email-code sign-in for In/Out, and writes the site's Beer Man, award
+ * and USA Hockey entries.
+ *
+ * Sign-in is a six-digit code emailed to the address on a player's Roster row, so nobody
+ * can answer for anyone else and there is no password to forget. The Roster is the
+ * allowlist: to let someone sign in, fill in the Email field on their row; to lock them
+ * out, clear it (their session stops working the next time the roster copy refreshes).
  *
  *   GET  /                  greeting
  *   POST /auth/start        {email}        emails a code if the email is on the roster
  *   POST /auth/verify       {email, code}  -> {token, name}; the token is a Bearer token
  *   GET  /me                Bearer         -> {name, email}
  *   POST /auth/signout      Bearer         drops the session
- *   POST /usah              Bearer, {value} writes your USA Hockey number to the roster sheet
- *                                          (through the Apps Script, into its newest USA Hockey column)
- *   GET  /public[?fresh=1]                 -> {roster, schedule}: the sheet's public columns
+ *   POST /usah              Bearer, {value} writes your USA Hockey number to your Roster row
+ *                                          (the newest "USA Hockey, <year>" field)
+ *   GET  /public[?fresh=1]                 -> {roster, schedule}: the public columns, shaped like
+ *                                          the old sheet (row arrays) so the site reads them as before
+ *   POST /assign            {date, name, season, seasonHeader, seasonKey, award?}
+ *                                          puts a teammate on Beer Duty (or gives Third Beer /
+ *                                          Scrub Daddy, award: "third" | "daddy") for a game
  *   GET  /rsvp?season=W                    -> {games: {"Sep 22, 2026": {"JP Coakley": {a, t}}}}
  *   POST /rsvp              Bearer, {season, date, answer: "in" | "out" | "", name?}
- *                           name = a teammate on the sheet, to answer for them
+ *                           name = a teammate on the roster, to answer for them
  *
  * Storage (KV):
  *   sess:<token>            {email, at, renewed}              a year, renewed weekly by /me
  *   otp:<email>             {hash, tries}                     10 minutes
  *   rl:<what>:<who>         counter                           rate limits
+ *   lock:assign:<ymd>       "1"                               a minute, while an assignment writes
+ *   cache:schema            {usah: [...], seasons: [...], at}  the Roster's year and season fields (a day)
  *   cache:roster2           {emails: {email: name}, names, at}   no expiry
  *   cache:public            {data: {roster, schedule}, at}       no expiry
- *
- * Both caches are filled by the cron below every five minutes, so neither sign-in nor a page
- * load waits on Apps Script, which can take 30 to 80 seconds or fail outright when Google is
- * having a slow patch (seen Sep 17, 2026). A refresh only writes KV when the data changed or
- * the copy is half an hour old, which keeps the cron to a few dozen of the free plan's 1,000
- * daily writes. Requests fall back to the last good copy whenever Apps Script fails.
- *
- * The roster sheet is private (since Sep 17, 2026). Both roster reads go through the
- * Apps Script web app bound to it (apps-script/beer-request.gs, SHEET_API below), which
- * runs as JP: ?what=public blanks every column but names, jersey, USA Hockey and season
- * status, and ?what=emails needs the SHEET_KEY secret (set with `wrangler secret put
- * SHEET_KEY`; the same value is the script's WORKER_KEY property).
  *   rsvp:<season>:<ymd>:<name>   value "in" | "out", metadata {a, t, d}
  *
- * One key per player per game means two people tapping at once can't
- * overwrite each other, and a season's answers come back from one
- * list() call because the answer rides in the key's metadata.
+ * Airtable's free plan allows about 1,000 API calls a month per workspace, so the copies in
+ * KV are the normal source and Airtable is read only when a copy is older than PUBLIC_MAX_AGE_MS
+ * (in the background, after answering from the copy), right after the site writes something,
+ * for ?fresh=1 at most once a minute, and when an unknown email tries to sign in (at most once
+ * a minute). A failed read falls back to the last good copy.
  *
- * A game is only answerable while it is on schedule.json, unplayed, and
+ * One rsvp key per player per game means two people tapping at once can't overwrite each
+ * other, and a season's answers come back from one list() call because the answer rides in
+ * the key's metadata. A game is only answerable while it is on schedule.json, unplayed, and
  * today or later (Eastern time).
  */
 
-const SHEET_API = "https://script.google.com/macros/s/AKfycbwhXIOvklsm7Ay4Egc3pR83EYe6HvnWcjirOoa0qLrfnn1n40IcHAqgFbKlAlz23yQ/exec";
-// Apps Script gets this long before a request gives up and uses the last good copy
-const SHEET_TIMEOUT_MS = 20 * 1000;
-// The cron rewrites an unchanged copy this often, so its age shows the cron is still running
-const REWRITE_MS = 30 * 60 * 1000;
-// Past this age a copy means the cron has stopped, and requests refresh it themselves
-const CACHE_OLD_MS = 45 * 60 * 1000;
-// An email that isn't on the cached roster re-reads the sheet at most this often
+const AT_BASE = "appCz1cVjdb97VIH3";
+const AT_ROSTER = "tblFtcC4EtRuKsONI";
+const AT_GAMES = "tblmugGYBH1Y3bsHa";
+// Airtable answers in well under a second; past this a request uses the last good copy
+const AT_TIMEOUT_MS = 10 * 1000;
+// Field names in the base. Renaming a field there means renaming it here.
+const F = {
+  name: "Name", first: "First", last: "Last", jersey: "Jersey #", email: "Email",
+  date: "Date", season: "Season", type: "Type", opponent: "Opponent", us: "Us", them: "Them",
+  outcome: "Outcome", beer: "Beer Duty", third: "Third Beer", daddy: "Scrub Daddy",
+};
+// Roster fields the site gets: the newest USA Hockey year and every season status column
+const USAH_RE = /^USA Hockey,?\s*(\d{4})$/;
+const SEASON_RE = /^(Winter|Spring|Summer|Fall),\s*\d{2}(-\d{2})?$/;
+const SEASON_NAMES = ["Winter", "Spring", "Summer", "Fall"];
+// Statuses that count as on the team; keep in step with ON_TEAM in index.html
+const ON_TEAM = ["in", "paid", "half", "goalie"];
+// What the site may fill in on a Games row, by the site's kind name
+const ASSIGN_FIELDS = { beer: F.beer, third: F.third, daddy: F.daddy };
+// Where the site's column fallbacks expect the roster columns (0-based, from the old sheet)
+const GRID = { usahEnd: 9, jersey: 11, first: 14, last: 15, seasonsFrom: 20, headerRow: 6 };
+
+// A public copy older than this is refreshed behind the response
+const PUBLIC_MAX_AGE_MS = 4 * 60 * 60 * 1000;
+// The roster copy (sign-in) refreshes on the same schedule
+const ROSTER_MAX_AGE_MS = PUBLIC_MAX_AGE_MS;
+// ?fresh=1, or an email that isn't on the copy, re-reads Airtable at most this often
 const RECHECK_MS = 60 * 1000;
+// The field list is nearly static; re-read it this often
+const SCHEMA_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const SCHEDULE_URL = "https://scrubclubhockeyteam.com/schedule.json";
-// Emails that sign in even when the sheet doesn't list them, and who they are
+// Emails that sign in even when the roster doesn't list them, and who they are
 const EXTRA_EMAILS = { "jpcoakley@gmail.com": "JP Coakley" };
 // Pages allowed to call this (the site, plus the local preview)
 const ORIGINS = [
@@ -70,14 +92,6 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 const enc = new TextEncoder();
 
 export default {
-  // Every five minutes (wrangler.toml [triggers])
-  async scheduled(event, env, ctx) {
-    const results = await Promise.allSettled([refreshRoster(env), refreshPublic(env)]);
-    results.forEach((r, i) => {
-      if (r.status === "rejected") console.error(i ? "cron public" : "cron roster", String(r.reason));
-    });
-  },
-
   async fetch(request, env, ctx) {
     const cors = corsHeaders(request.headers.get("Origin") || "");
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
@@ -98,7 +112,7 @@ async function route(request, env, ctx) {
   const p = url.pathname.replace(/\/+$/, "") || "/";
   const m = request.method;
 
-  if (m === "GET" && p === "/") return json({ ok: true, message: "Scrub Club In/Out is running." });
+  if (m === "GET" && p === "/") return json({ ok: true, message: "Scrub Club API is running." });
 
   // ---- sign-in: ask for a code ----
   if (m === "POST" && p === "/auth/start") {
@@ -157,7 +171,7 @@ async function route(request, env, ctx) {
     }
     await env.SC_KV.delete("otp:" + email);
     const name = await nameForEmail(env, email);
-    if (!name) return json({ ok: false, error: "That email isn't on the roster sheet any more." }, 403);
+    if (!name) return json({ ok: false, error: "That email isn't on the roster any more." }, 403);
     const token = randomToken();
     await env.SC_KV.put("sess:" + token, JSON.stringify({ email, at: Date.now() }),
       { expirationTtl: SESSION_TTL });
@@ -185,7 +199,7 @@ async function route(request, env, ctx) {
     return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie() });
   }
 
-  // ---- your USA Hockey number, onto your own roster row ----
+  // ---- your USA Hockey number, onto your own Roster row ----
   if (m === "POST" && p === "/usah") {
     const me = await whoami(request, env);
     if (!me) return json({ ok: false, error: "Not signed in." }, 401);
@@ -194,22 +208,46 @@ async function route(request, env, ctx) {
     if (value && !/^[0-9A-Z]{4,24}$/.test(value)) {
       return json({ ok: false, error: "That doesn't look like a USA Hockey number." }, 400);
     }
-    if (!env.SHEET_KEY) return json({ ok: false, error: "The sheet isn't set up for this yet." }, 500);
-    let res;
-    try { res = await sheetPost({ what: "usah", key: env.SHEET_KEY, name: me.name, value }); }
-    catch (e) {
+    let out;
+    try {
+      const schema = await schemaFields(env);
+      const field = schema.usah[schema.usah.length - 1];
+      if (!field) return json({ ok: false, error: "The roster has no USA Hockey column." }, 500);
+      const rec = (await atList(env, AT_ROSTER)).find((r) => norm(playerName(r)) === norm(me.name));
+      if (!rec) return json({ ok: false, error: "That name isn't on the roster." }, 400);
+      await at(env, `${AT_BASE}/${AT_ROSTER}`, { method: "PATCH",
+        body: JSON.stringify({ records: [{ id: rec.id, fields: { [field]: value || null } }] }) });
+      out = { ok: true, name: me.name, value, column: field };
+    } catch (e) {
       console.error("usah", me.name, String(e));
-      return json({ ok: false, error: "Couldn't reach the team sheet. Try again." }, 502);
+      return json({ ok: false, error: "Couldn't reach the team roster. Try again." }, 502);
     }
     // The site's copy of the roster shows it once this lands
     ctx.waitUntil(refreshPublic(env).catch((e) => console.error("public refresh after usah", String(e))));
-    return json({ ok: true, name: me.name, value: res.value, column: res.column });
+    return json(out);
   }
 
-  // ---- the roster's public columns and the beer log, for the site ----
+  // ---- the roster's public columns and the game log, for the site ----
   if (m === "GET" && p === "/public") {
     const data = await publicData(env, ctx, url.searchParams.get("fresh") === "1");
     return json(Object.assign({ ok: true }, data));
+  }
+
+  // ---- Beer Man and awards: fill one empty cell on a game's row ----
+  if (m === "POST" && p === "/assign") {
+    const body = await readJson(request);
+    const ip = request.headers.get("CF-Connecting-IP") || "?";
+    if (await overLimit(env, "assign:" + ip, 30, 3600)) {
+      return json({ ok: false, error: "Too many requests. Try again in an hour." }, 429);
+    }
+    let out;
+    try { out = await assign(env, body); }
+    catch (e) {
+      console.error("assign", String(e));
+      return json({ ok: false, error: "Couldn't reach the team roster. Try again." }, 502);
+    }
+    if (out.ok) ctx.waitUntil(refreshPublic(env).catch((e) => console.error("public refresh after assign", String(e))));
+    return json(out, out.ok ? 200 : 400);
   }
 
   // ---- who's in and out, one season at a time ----
@@ -228,10 +266,10 @@ async function route(request, env, ctx) {
     if (!["in", "out", ""].includes(answer)) return json({ ok: false, error: "Answer In or Out." }, 400);
     const game = await gameCheck(season, String(body.date || "").trim());
     if (game.error) return json({ ok: false, error: game.error }, 400);
-    // Anyone signed in can answer for a teammate; the sheet says who counts as one
+    // Anyone signed in can answer for a teammate; the roster says who counts as one
     const name = String(body.name || "").replace(/\s+/g, " ").trim() || me.name;
     if (name !== me.name && !(await isRosterName(env, name))) {
-      return json({ ok: false, error: "That name isn't on the roster sheet." }, 400);
+      return json({ ok: false, error: "That name isn't on the roster." }, 400);
     }
     const key = `rsvp:${season}:${game.ymd}:${name}`;
     if (answer) {
@@ -276,7 +314,7 @@ function clearSessionCookie() {
   return "scrub=; Domain=scrubclubhockeyteam.com; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax";
 }
 
-// A live session whose email is still on the roster; the sheet can revoke anyone
+// A live session whose email is still on the roster; the roster can revoke anyone
 async function whoami(request, env) {
   const token = bearer(request);
   if (!token) return null;
@@ -287,16 +325,84 @@ async function whoami(request, env) {
   return { email: sess.email, name, token, at: sess.at || Date.now(), renewed: sess.renewed || 0 };
 }
 
-/* ---------------- the roster sheet ---------------- */
+/* ---------------- Airtable ---------------- */
 
-// {emails: {email: "First Last"}, names} from the private roster, through the Apps Script
-async function fetchRoster(env) {
-  if (!env.SHEET_KEY) throw new Error("SHEET_KEY secret is not set");
-  const body = await sheetApi({ what: "emails", key: env.SHEET_KEY });
-  if (!body.emails || !Array.isArray(body.names)) {
-    throw new Error("sheet api returned no emails (is the updated script deployed?)");
+async function at(env, path, init = {}) {
+  if (!env.AIRTABLE_TOKEN) throw new Error("AIRTABLE_TOKEN secret is not set");
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), AT_TIMEOUT_MS);
+  try {
+    const r = await fetch("https://api.airtable.com/v0/" + path, Object.assign({}, init, {
+      signal: ctl.signal,
+      headers: Object.assign({ "Authorization": "Bearer " + env.AIRTABLE_TOKEN, "Content-Type": "application/json" }, init.headers || {}),
+    }));
+    let body = null;
+    try { body = await r.json(); } catch (_) {}
+    if (!r.ok) {
+      const why = body && body.error ? (body.error.message || body.error.type || String(body.error)) : "";
+      throw new Error("airtable " + r.status + (why ? ": " + why : ""));
+    }
+    return body || {};
+  } catch (e) {
+    if (ctl.signal.aborted) throw new Error(`airtable took over ${AT_TIMEOUT_MS / 1000} s`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  const emails = body.emails, names = body.names;
+}
+
+// Every record of a table (Airtable pages 100 at a time)
+async function atList(env, table, params = {}) {
+  const out = [];
+  let offset;
+  do {
+    const q = new URLSearchParams(Object.assign({ pageSize: "100" }, params));
+    if (offset) q.set("offset", offset);
+    const body = await at(env, `${AT_BASE}/${table}?${q}`);
+    out.push(...(body.records || []));
+    offset = body.offset;
+  } while (offset);
+  return out;
+}
+
+// The Roster's USA Hockey fields (oldest to newest year) and season status fields, in the
+// base's own field order; cached a day because the list only changes when JP adds a season
+async function schemaFields(env, force) {
+  const copy = await env.SC_KV.get("cache:schema", "json");
+  if (copy && !force && Date.now() - (copy.at || 0) < SCHEMA_MAX_AGE_MS) return copy;
+  let fields;
+  try {
+    const tables = (await at(env, `meta/bases/${AT_BASE}/tables`)).tables || [];
+    fields = (tables.find((t) => t.id === AT_ROSTER) || {}).fields || [];
+  } catch (e) {
+    if (copy) { console.error("schema refresh failed, using the copy:", String(e)); return copy; }
+    throw e;
+  }
+  const usah = fields.map((f) => f.name).filter((n) => USAH_RE.test(n))
+    .sort((a, b) => +a.match(USAH_RE)[1] - +b.match(USAH_RE)[1]);
+  const seasons = fields.filter((f) => f.type === "singleSelect" && SEASON_RE.test(f.name)).map((f) => f.name);
+  const fresh = { usah, seasons, at: Date.now() };
+  await env.SC_KV.put("cache:schema", JSON.stringify(fresh));
+  return fresh;
+}
+
+function playerName(rec) {
+  const f = rec.fields || {};
+  return String(f[F.name] || `${f[F.first] || ""} ${f[F.last] || ""}`).replace(/\s+/g, " ").trim();
+}
+
+// {emails: {email: "First Last"}, names} from the Roster
+async function fetchRoster(env) {
+  const recs = await atList(env, AT_ROSTER, { "fields[]": [F.name, F.first, F.last, F.email] });
+  const emails = {}, names = [];
+  for (const r of recs) {
+    const name = playerName(r);
+    if (!name) continue;
+    if (!names.includes(name)) names.push(name);
+    for (const e of String((r.fields || {})[F.email] || "").split(/[\s,;]+/).map(normEmail)) {
+      if (emailish(e) && !(e in emails)) emails[e] = name;
+    }
+  }
   for (const [e, n] of Object.entries(EXTRA_EMAILS)) {
     if (!(e in emails)) emails[e] = n;
     if (!names.includes(n)) names.push(n);
@@ -304,51 +410,140 @@ async function fetchRoster(env) {
   return { emails, names };
 }
 
-// Apps Script answers with a redirect to script.googleusercontent.com. It is usually a second or
-// two, but a slow patch at Google can run past a minute, so give up after SHEET_TIMEOUT_MS.
-async function sheetApi(params) {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), SHEET_TIMEOUT_MS);
-  try {
-    const r = await fetch(SHEET_API + "?" + new URLSearchParams(params), { redirect: "follow", signal: ctl.signal });
-    if (!r.ok) throw new Error("sheet api " + r.status);
-    let body;
-    try { body = await r.json(); } catch (_) { throw new Error("sheet api sent something other than JSON"); }
-    if (!body.ok) throw new Error("sheet api: " + (body.error || "not ok"));
-    return body;
-  } catch (e) {
-    if (ctl.signal.aborted) throw new Error(`sheet api took over ${SHEET_TIMEOUT_MS / 1000} s`);
-    throw e;
-  } finally {
-    clearTimeout(timer);
-  }
+// {roster, schedule}: row arrays shaped like the old sheet. The roster keeps the header row where
+// the site expects it (HEADER_ROW 7) with only names, jersey numbers, USA Hockey numbers and
+// season statuses filled in: no emails, phones, Venmo or dues. The schedule is the Games table.
+async function fetchPublic(env, force) {
+  const schema = await schemaFields(env, force);
+  const [players, games] = await Promise.all([atList(env, AT_ROSTER), atList(env, AT_GAMES)]);
+  return { roster: rosterGrid(schema, players), schedule: scheduleGrid(players, games) };
 }
 
-// A write to the sheet through the Apps Script (it answers by redirect like the reads)
-async function sheetPost(body) {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), SHEET_TIMEOUT_MS);
-  try {
-    const r = await fetch(SHEET_API, { method: "POST", body: JSON.stringify(body), redirect: "follow", signal: ctl.signal });
-    if (!r.ok) throw new Error("sheet api " + r.status);
-    let out;
-    try { out = await r.json(); } catch (_) { throw new Error("sheet api sent something other than JSON"); }
-    if (!out.ok) throw new Error(out.error || "sheet api: not ok");
-    return out;
-  } catch (e) {
-    if (ctl.signal.aborted) throw new Error(`sheet api took over ${SHEET_TIMEOUT_MS / 1000} s`);
-    throw e;
-  } finally {
-    clearTimeout(timer);
+function rosterGrid(schema, players) {
+  const header = [];
+  const put = (i, name) => { header[i] = name; };
+  schema.usah.forEach((n, k) => put(Math.max(0, GRID.usahEnd - (schema.usah.length - 1 - k)), n));
+  put(GRID.jersey, F.jersey); put(GRID.first, F.first); put(GRID.last, F.last);
+  schema.seasons.forEach((n, k) => put(GRID.seasonsFrom + k, n));
+  const width = header.length;
+  for (let i = 0; i < width; i++) if (header[i] == null) header[i] = "";
+  const blank = () => new Array(width).fill("");
+  const rows = [];
+  for (let i = 0; i < GRID.headerRow; i++) rows.push(blank());
+  rows.push(header);
+  const col = (name) => header.indexOf(name);
+  const sorted = players.slice().sort((a, b) => playerName(a).localeCompare(playerName(b)));
+  for (const p of sorted) {
+    const f = p.fields || {};
+    if (!playerName(p)) continue;
+    const row = blank();
+    row[col(F.first)] = str(f[F.first]);
+    row[col(F.last)] = str(f[F.last]);
+    row[col(F.jersey)] = str(f[F.jersey]);
+    for (const n of schema.usah) row[col(n)] = str(f[n]);
+    for (const n of schema.seasons) row[col(n)] = str(f[n]);
+    rows.push(row);
   }
+  return rows;
 }
 
-// Write a cache copy only when it changed or is due a rewrite; returns the copy now in KV
+function scheduleGrid(players, games) {
+  const nameOf = {};
+  for (const p of players) nameOf[p.id] = playerName(p);
+  const linked = (v) => Array.isArray(v) && v.length ? (nameOf[v[0]] || "") : "";
+  const head = ["Season", "Type", "Month", "Year", "Date", "Beer Duty", "Opponent", "Us", "Them", "Outcome", "Third Beer", "Scrub Daddy"];
+  const rows = games.filter((g) => /^\d{4}-\d{2}-\d{2}$/.test(String((g.fields || {})[F.date] || "")))
+    .sort((a, b) => a.fields[F.date] < b.fields[F.date] ? -1 : a.fields[F.date] > b.fields[F.date] ? 1 : 0)
+    .map((g) => {
+      const f = g.fields;
+      const [y, mo, d] = f[F.date].split("-").map(Number);
+      return [str(f[F.season]), str(f[F.type]), String(mo), String(y), `${MONTHS[mo - 1]} ${d}, ${y}`,
+        linked(f[F.beer]), str(f[F.opponent]), str(f[F.us]), str(f[F.them]), str(f[F.outcome]),
+        linked(f[F.third]), linked(f[F.daddy])];
+    });
+  return [head].concat(rows);
+}
+
+function str(v) { return v == null ? "" : String(v).trim(); }
+
+/* ---------------- Beer Man and awards ---------------- */
+
+// {date:"Sep 15, 2026", name, season:"Winter", seasonHeader:"Winter, 26-27", seasonKey:"W", award?}
+// An assignment goes through only when the name is on that season's team (status In, Paid, Half
+// or Goalie in the seasonHeader field), the date is a game on schedule.json (beer: unplayed and
+// today or later; an award: today or earlier), and that field on the game's row is still empty.
+// It fills the row for that date, adding one if there isn't one. Changing or clearing a name is
+// done by hand in Airtable.
+async function assign(env, req) {
+  const kind = req.award ? String(req.award) : "beer";
+  const field = ASSIGN_FIELDS[kind];
+  if (!field) return { ok: false, error: "Bad request." };
+  const what = kind === "beer" ? "beer" : field;
+
+  const m = String(req.date || "").match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/);
+  const mon = m ? MONTHS.indexOf(m[1]) : -1;
+  if (mon < 0) return { ok: false, error: "Bad game date." };
+  const day = +m[2], year = +m[3];
+  if (day < 1 || day > 31) return { ok: false, error: "Bad game date." };
+  const ymd = `${year}-${String(mon + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const today = todayYmd();
+  if (Math.abs(year - +today.slice(0, 4)) > 1) return { ok: false, error: "Bad game date." };
+  const sched = await schedule();
+  const seasons = sched.seasons || {};
+  const seasonKey = String(req.seasonKey || "");
+  const picked = seasonKey && seasons[seasonKey] ? [seasons[seasonKey]] : Object.values(seasons);
+  const game = picked.flatMap((s) => s.games || []).find((g) => g.date === `${m[1]} ${day}`);
+  if (!game) return { ok: false, error: "That game isn't on the schedule." };
+  const played = game.us != null;
+  if (kind === "beer" && (ymd < today || played)) return { ok: false, error: "That game has already been played." };
+  if (kind !== "beer" && ymd > today) return { ok: false, error: "That game hasn't been played yet." };
+
+  const seasonHeader = String(req.seasonHeader || "").trim();
+  const players = await atList(env, AT_ROSTER);
+  if (!seasonHeader || !players.some((p) => seasonHeader in (p.fields || {}))) {
+    return { ok: false, error: "There's no team list for that season yet." };
+  }
+  const player = players.find((p) => ON_TEAM.includes(norm((p.fields || {})[seasonHeader])) && norm(playerName(p)) === norm(req.name));
+  if (!player) return { ok: false, error: "Only players on this season's team can be assigned beer." };
+  const nameOf = {};
+  for (const p of players) nameOf[p.id] = playerName(p);
+
+  // One write per game at a time, so two taps can't both fill the same empty cell
+  const lockKey = "lock:assign:" + ymd;
+  if (await env.SC_KV.get(lockKey)) return { ok: false, error: "Someone else is assigning this game. Try again in a moment." };
+  await env.SC_KV.put(lockKey, "1", { expirationTtl: 60 });
+  try {
+    const existing = await atList(env, AT_GAMES, { filterByFormula: `DATETIME_FORMAT({${F.date}},'YYYY-MM-DD')='${ymd}'` });
+    if (existing.length) {
+      const row = existing[0];
+      const current = ((row.fields || {})[field] || []).map((id) => nameOf[id] || "").join(", ");
+      if (current) return { ok: false, taken: current, error: `${current} already has ${what} for this game.` };
+      await at(env, `${AT_BASE}/${AT_GAMES}`, { method: "PATCH",
+        body: JSON.stringify({ records: [{ id: row.id, fields: { [field]: [player.id] } }] }) });
+    } else {
+      const fields = {
+        [F.date]: ymd,
+        [F.type]: game.opponent === "TBD" ? "Playoffs" : "Regular Season",
+        [F.opponent]: game.opponent === "TBD" ? "" : String(game.opponent || ""),
+        [field]: [player.id],
+      };
+      if (SEASON_NAMES.includes(req.season)) fields[F.season] = req.season;
+      await at(env, `${AT_BASE}/${AT_GAMES}`, { method: "POST", body: JSON.stringify({ records: [{ fields }] }) });
+    }
+  } finally {
+    await env.SC_KV.delete(lockKey);
+  }
+  return { ok: true, name: playerName(player), date: req.date, award: kind === "beer" ? undefined : kind };
+}
+
+/* ---------------- the cached copies ---------------- */
+
+// Write a cache copy only when it changed; returns the copy now in KV
 async function saveCopy(env, key, fields) {
   const old = await env.SC_KV.get(key, "json");
   const same = old && JSON.stringify(Object.assign({}, old, { at: 0 })) === JSON.stringify(Object.assign({}, fields, { at: 0 }));
-  if (same && Date.now() - (old.at || 0) < REWRITE_MS) return old;
   const copy = Object.assign({}, fields, { at: Date.now() });
+  if (same) copy.at = Math.max(old.at || 0, copy.at);
   await env.SC_KV.put(key, JSON.stringify(copy));
   return copy;
 }
@@ -357,23 +552,22 @@ async function refreshRoster(env) {
   return saveCopy(env, "cache:roster2", await fetchRoster(env));
 }
 
-async function refreshPublic(env) {
-  const body = await sheetApi({ what: "public" });
-  // An older script deployment answers with just its greeting; never cache that as an empty roster
-  if (!Array.isArray(body.roster) || !body.roster.length || !Array.isArray(body.schedule)) {
-    throw new Error("sheet api returned no roster (is the updated script deployed?)");
-  }
-  return saveCopy(env, "cache:public", { data: { roster: body.roster, schedule: body.schedule } });
+// force re-reads the field list too, so ?fresh=1 picks up a season or year JP just added
+async function refreshPublic(env, force) {
+  const data = await fetchPublic(env, force);
+  // Never cache an empty roster, whatever Airtable answered
+  if (data.roster.length <= GRID.headerRow + 1) throw new Error("airtable returned no players");
+  return saveCopy(env, "cache:public", { data });
 }
 
-// Read a cache copy, refreshing it first when `stale(age)` says so. A failed refresh falls back
-// to the copy we have; only a cold cache with Apps Script down is an error.
-async function cached(env, key, refresh, stale, ctx) {
+// Read a cache copy, refreshing it first when `stale(age)` says so. A copy past its age is answered
+// with straight away and refreshed behind the response (needs ctx). A failed refresh falls back to
+// the copy we have; only a cold cache with Airtable down is an error.
+async function cached(env, key, refresh, stale, maxAge, ctx) {
   const copy = await env.SC_KV.get(key, "json");
   const age = copy ? Date.now() - (copy.at || 0) : Infinity;
   if (copy && !stale(age)) return { copy, fresh: false };
-  // A copy the cron should have refreshed: answer with it now and refresh behind the response
-  if (copy && ctx && age > CACHE_OLD_MS) {
+  if (copy && ctx && age > maxAge) {
     ctx.waitUntil(refresh(env).catch((e) => console.error(key, "refresh", String(e))));
     return { copy, fresh: false };
   }
@@ -386,19 +580,19 @@ async function cached(env, key, refresh, stale, ctx) {
   }
 }
 
-// Served from KV so a page load never waits on Apps Script; fresh=1 (the page checking whether a
-// Beer Man save landed) reads the sheet, falling back to the copy if Apps Script fails.
+// Served from KV so a page load never waits on Airtable. fresh=1 (the page checking whether an
+// assignment landed, or JP nudging the site after editing the base) re-reads at most once a minute.
 async function publicData(env, ctx, fresh) {
-  const { copy } = await cached(env, "cache:public", refreshPublic,
-    (age) => fresh || age > CACHE_OLD_MS, fresh ? null : ctx);
+  const { copy } = await cached(env, "cache:public", fresh ? (e) => refreshPublic(e, true) : refreshPublic,
+    (age) => (fresh ? age > RECHECK_MS : age > PUBLIC_MAX_AGE_MS), PUBLIC_MAX_AGE_MS, fresh ? null : ctx);
   return copy.data;
 }
 
 // {emails, names, fresh}. recheck asks for a read newer than RECHECK_MS, for an email JP may
-// have just added to the sheet.
+// have just added to the roster.
 async function roster(env, recheck) {
   const { copy, fresh } = await cached(env, "cache:roster2", refreshRoster,
-    (age) => (recheck ? age > RECHECK_MS : age > CACHE_OLD_MS));
+    (age) => (recheck ? age > RECHECK_MS : age > ROSTER_MAX_AGE_MS), ROSTER_MAX_AGE_MS, null);
   return { emails: copy.emails || {}, names: copy.names || [], fresh };
 }
 
@@ -509,6 +703,7 @@ function randomToken() {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+function norm(s) { return String(s || "").replace(/\s+/g, " ").trim().toLowerCase(); }
 function normEmail(s) { return String(s || "").trim().toLowerCase(); }
 function emailish(s) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
 
