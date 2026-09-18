@@ -648,7 +648,6 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
       <div class="ab-body">
         <div class="ab-tiles" id="ab-tiles"></div>
         <div class="ab-cards">
-          <div class="ab-card" id="ab-next" hidden></div>
           <div class="ab-card" id="ab-last" hidden></div>
         </div>
       </div>
@@ -1096,16 +1095,6 @@ async function renderAbout(){
   box2.replaceChildren(...tiles.map(([v,k])=>{
     const d=el("div","ab-tile"); d.appendChild(el("b",null,String(v))); d.appendChild(el("span",null,k)); return d;
   }));
-
-  const next=games.find(g=>typeof g.us!=="number");
-  const nb=document.getElementById("ab-next");
-  if(next){
-    nb.replaceChildren();
-    nb.appendChild(el("div","ab-k","Next game"));
-    nb.appendChild(el("div","ab-opp",next.opponent));
-    nb.appendChild(el("div","ab-meta",[next.date,next.time,next.rink].filter(Boolean).join(" · ")));
-    nb.hidden=false;
-  } else nb.hidden=true;
 
   const last=played[played.length-1];
   const lb=document.getElementById("ab-last");
