@@ -1158,9 +1158,20 @@ function nextGame(entry,games){
   }
   return null;
 }
+// Every name in the beer log and the awards, so "Adam" gets an initial on every game when two
+// Adams have ever had duty, not only on the games where both appear
+function dutyPool(){
+  const pool=Object.values(beerByDate);
+  Object.values(awardsByDate).forEach(a=>{ if(a.third) pool.push(a.third); if(a.daddy) pool.push(a.daddy); });
+  return pool;
+}
+// Duty columns show first names, with a last initial when two players share one (JP, Sep 18, 2026)
+function dutyName(who,entry){ return who?shortNames([who],entry,dutyPool())[0]:""; }
 // Beer duty, then the two awards, each its own column: a name, an Assign button, or nothing
 function dutyCells(g,entry,ds,played){
-  const beer=el("span","sg-beer",(ds&&beerByDate[ds])||"");
+  const beerWho=(ds&&beerByDate[ds])||"";
+  const beer=el("span","sg-beer",dutyName(beerWho,entry));
+  if(beerWho) beer.title=beerWho;
   if(ds && !played && !beerByDate[ds] && canRequestBeer(ds,entry)){
     const b=el("button","sg-req","Assign");
     b.type="button";
@@ -1170,7 +1181,8 @@ function dutyCells(g,entry,ds,played){
   }
   const aw=(ds&&awardsByDate[ds])||{};
   const awards=[["third","3rd Beer",aw.third],["daddy","Scrub Daddy",aw.daddy]].map(([kind,label,who])=>{
-    const c=el("span","sg-award "+kind,who||"");
+    const c=el("span","sg-award "+kind,dutyName(who,entry));
+    if(who) c.title=who;
     if(!who && played && canAssignAward(ds,entry)){
       const b=el("button","sg-req","Assign");
       b.type="button";
@@ -1185,9 +1197,9 @@ function dutyCells(g,entry,ds,played){
 // Who has said In or Out for a game, and who on the season's team hasn't
 // Lists show first names: "Adam Davis" -> "Adam", or "Adam D." when another player on the
 // roster shares the first name (JP's call, Sep 17, 2026)
-function shortNames(names,entry){
+function shortNames(names,entry,pool=[]){
   const count={};
-  new Set([...sheetPlayers(entry).map(p=>p.name),...names]).forEach(n=>{ const f=n.split(" ")[0].toLowerCase(); count[f]=(count[f]||0)+1; });
+  new Set([...sheetPlayers(entry).map(p=>p.name),...names,...pool]).forEach(n=>{ const f=n.split(" ")[0].toLowerCase(); count[f]=(count[f]||0)+1; });
   return names.map(n=>{ const parts=n.trim().split(/\s+/); const f=parts[0]; return count[f.toLowerCase()]>1 && parts[1] ? `${f} ${parts[1][0].toUpperCase()}.` : f; });
 }
 function rsvpSplit(entry,ds){
@@ -1486,7 +1498,7 @@ function heroCard(entry,g,num,ds){
   const beer=el("div","nx-sec nx-row nx-beer");
   beer.appendChild(el("span","nx-lbl","Beer"));
   const who=beerByDate[ds]||"";
-  if(who) beer.appendChild(el("span","nx-val",who));
+  if(who){ const v=el("span","nx-val",dutyName(who,entry)); v.title=who; beer.appendChild(v); }
   if(!who && canRequestBeer(ds,entry)){
     beer.appendChild(el("span","grow"));
     const b=el("button","nx-btn","Assign");
