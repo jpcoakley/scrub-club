@@ -354,14 +354,18 @@ header.site{position:relative}
 .sg-time{font-family:var(--font-condensed);font-weight:600;font-size:13px;color:var(--ink-300);white-space:nowrap}
 .sg-upcoming .sg-time{color:var(--ink-500)}
 .sg-opp{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sg-opp-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;min-width:0}
 .sg-opp-name{font-family:var(--font-display);font-size:16px;line-height:1.2;color:var(--text-strong);text-transform:uppercase}
+/* How many have answered, right beside the opponent name so it reads while scrolling the list */
+.sg-io-cnt{display:flex;gap:8px;font-family:var(--font-condensed);font-weight:700;font-size:12px;text-transform:uppercase;white-space:nowrap}
+.sg-io-cnt .in{color:var(--status-win)}
+.sg-io-cnt .out{color:var(--burgundy-600)}
 .sg-res{font-family:var(--font-numeral);font-weight:800;font-size:19px;white-space:nowrap}
 .sg-res.win{color:var(--turf-500)}
 .sg-res.loss{color:var(--penalty-500)}
 .sg-res.tie{color:var(--ink-500)}
 .sg-res.next{font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--whistle-500)}
 .sg-beer,.sg-award{min-width:0;font-family:var(--font-condensed);font-weight:600;font-size:15px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sg-cnt{display:none}
 .sg-you{text-align:left;white-space:nowrap}
 .sg-openable{cursor:pointer}
 /* Who's in, opened by tapping a game */
@@ -412,7 +416,8 @@ header.site{position:relative}
   .sg-beer{grid-area:2/3;font-size:13px;color:var(--ink-300);white-space:normal}
   .sg-beer::before{content:"Beer · "}
   .sg-beer:empty{display:none}
-  .sg-cnt{display:inline}
+  .sg-opp-top{gap:6px}
+  .sg-io-cnt{font-size:11px;gap:5px}
   .sg-beer .sg-req{font-size:13px}
   .sg-date{font-size:14px;letter-spacing:.06em}
   .sg-time{font-size:12px}
@@ -1229,7 +1234,9 @@ function schedRow(g,entry,num,isNext){
   when.appendChild(el("span","sg-date",g.date));
   if(g.time) when.appendChild(el("span","sg-time",g.time));
   const opp=el("span","sg-opp");
-  opp.appendChild(el("span","sg-opp-name",g.opponent));
+  const oppTop=el("span","sg-opp-top");
+  oppTop.appendChild(el("span","sg-opp-name",g.opponent));
+  opp.appendChild(oppTop);
   if(g.rink) opp.appendChild(el("span","sg-time",g.rink));
   let res;
   if(played){
@@ -1241,11 +1248,16 @@ function schedRow(g,entry,num,isNext){
   const [beer,third,daddy]=dutyCells(g,entry,ds,played);
   // In/Out only for a game still to come in a season the sheet has a team for
   const rsvpable=!!(RSVP_API && ds && !played && entry.col);
-  // The event's Beer cell has nothing in it (JP: no beer/award duty for Rontoberfest), so it
-  // shouldn't carry the "N in" badge either; that would misread as "Beer" on phones
-  if(rsvpable && !g.event){
-    const {ins}=rsvpSplit(entry,ds);
-    beer.appendChild(el("span","sg-cnt",(beer.textContent?" · ":"")+`${ins.length} in`));
+  // Counts sit right next to the opponent name, so they're visible while scrolling the list
+  // instead of only after tapping the row open; they're silent until someone has answered
+  if(rsvpable){
+    const {ins,outs}=rsvpSplit(entry,ds);
+    if(ins.length||outs.length){
+      const cnt=el("span","sg-io-cnt");
+      if(ins.length) cnt.appendChild(el("span","in",`In ${ins.length}`));
+      if(outs.length) cnt.appendChild(el("span","out",`Out ${outs.length}`));
+      oppTop.appendChild(cnt);
+    }
   }
   const you=rsvpable?youCell(g,entry,ds):el("span","sg-you");
   r.append(you,when,opp,res,beer,third,daddy,gm);
