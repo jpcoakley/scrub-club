@@ -363,22 +363,12 @@ header.site{position:relative}
 .sg-beer,.sg-award{min-width:0;font-family:var(--font-condensed);font-weight:600;font-size:15px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sg-cnt{display:none}
 .sg-you{text-align:left;white-space:nowrap}
-.sg-you .sg-io{vertical-align:middle}
 .sg-openable{cursor:pointer}
-.sg-io{display:inline-flex;border:1px solid var(--oatmeal-600);border-radius:var(--radius-sm);overflow:hidden;flex:none;background:var(--white)}
-.sg-io button{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);background:transparent;border:none;padding:5px 11px;cursor:pointer}
-.sg-io button+button{border-left:1px solid var(--oatmeal-600)}
-.sg-io button:hover{color:var(--burgundy-600)}
-.sg-io button.on-in{background:var(--status-win);color:var(--white)}
-.sg-io button.on-out{background:var(--burgundy-600);color:var(--white)}
-.sg-io button.on-in:hover,.sg-io button.on-out:hover{color:var(--white)}
-.sg-io button:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
 /* Who's in, opened by tapping a game */
 .sg-names{display:flex;flex-direction:column;gap:8px;padding:6px 0 14px calc(44px + 14px);border-bottom:1px solid var(--oatmeal-500);font-family:var(--font-condensed);font-size:15px;line-height:1.45;color:var(--ink-700)}
 .sg-names .grp b{font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-300);margin-right:6px}
 .sg-names .grp.in b{color:var(--status-win)}
 .sg-names .grp.out b{color:var(--burgundy-600)}
-.sg-names .grp.you,.sg-names .grp.add{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 /* Wide screens: the card is a band above the list, its three parts side by side */
 @media (min-width:900px){
   .nx{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:var(--space-8);row-gap:8px;align-items:start}
@@ -428,7 +418,6 @@ header.site{position:relative}
   .sg-time{font-size:12px}
   .sg-res{font-size:18px}
   .sg-res.next{display:none}
-  .sg-you .sg-io button{font-size:11px;padding:5px 7px}
   .sg-you .pk-stage{margin-left:auto}
   .sg-names{padding-left:calc(22px + 56px + 20px)}
 }
@@ -1222,18 +1211,6 @@ function rsvpSplit(entry,ds){
   const sortNames=a=>a.slice().sort((x,y)=>x.localeCompare(y));
   return { ins:sortNames(ins), outs:sortNames(outs), quiet:sortNames(quiet), mine:rsvpSession?(answers[rsvpSession.name]?.a||""):"" };
 }
-function ioToggle(entry,ds,mine){
-  const io=el("span","sg-io");
-  [["in","In"],["out","Out"]].forEach(([a,label])=>{
-    const b=el("button",mine===a?"on-"+a:"",label);
-    b.type="button";
-    b.setAttribute("aria-pressed",mine===a?"true":"false");
-    // Tapping your own answer again clears it
-    b.addEventListener("click",()=>answer(entry,ds,mine===a?"":a));
-    io.appendChild(b);
-  });
-  return io;
-}
 function youCell(g,entry,ds){
   const cell=el("span","sg-you");
   const {mine}=rsvpSplit(entry,ds);
@@ -1798,15 +1775,10 @@ document.addEventListener("keydown",e=>{
   box.querySelector(".acct-btn").focus();
 });
 // Your answer, then In, Out, and the season's team members who haven't said
+// Your own answer already shows on the puck in the You column, so the names row starts at In
 function rsvpNamesRow(entry,ds){
-  const {ins,outs,quiet,mine}=rsvpSplit(entry,ds);
+  const {ins,outs,quiet}=rsvpSplit(entry,ds);
   const row=el("div","sg-names");
-  if(rsvpSession){
-    const you=el("div","grp you");
-    you.appendChild(el("b",null,"You"));
-    you.appendChild(ioToggle(entry,ds,mine));
-    row.appendChild(you);
-  }
   [["in","In",ins],["out","Out",outs],["quiet","No answer",quiet]].forEach(([cls,label,names])=>{
     if(!names.length) return;
     const grp=el("div","grp "+cls);
