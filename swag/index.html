@@ -106,6 +106,28 @@ header.site{position:relative}
 .tab{font-family:var(--font-condensed);font-weight:700;font-size:17px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-on-inverse-muted);background:transparent;border:none;border-bottom:3px solid transparent;padding:4px 2px 6px;cursor:pointer;transition:color var(--dur-med) var(--ease-out),transform 320ms var(--ease-spring)}
 .tab:hover{color:var(--oatmeal-300)}
 .tab.active{color:var(--oatmeal-300);border-bottom-color:var(--whistle-500,#E8B93E)}
+/* Account, at the end of the nav (sign-in lives here, not on the pages): Sign in, or your first
+   name, which opens a small card with your full name and Sign out. In the phone drawer it sits at
+   the bottom and the card opens in place. */
+.acct{position:relative;display:flex;align-items:center}
+.acct[hidden]{display:none}
+.acct-btn{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-family:var(--font-condensed);font-weight:700;font-size:17px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-on-inverse-muted);background:transparent;border:none;padding:4px 2px 6px;cursor:pointer;transition:color var(--dur-med) var(--ease-out)}
+.acct-btn:hover,.acct-btn[aria-expanded="true"]{color:var(--oatmeal-300)}
+.acct-btn svg{width:11px;height:8px;flex:none;transition:transform var(--dur-med) var(--ease-out)}
+.acct-btn[aria-expanded="true"] svg{transform:rotate(180deg)}
+.acct-card{position:absolute;right:0;top:calc(100% + 6px);min-width:190px;padding:12px 16px 14px;background:var(--surface-card);color:var(--ink-900);border-radius:var(--radius-md);box-shadow:var(--shadow-raised),0 18px 44px rgba(25,20,19,.28);display:flex;flex-direction:column;align-items:flex-start;gap:8px;z-index:60}
+.acct-card[hidden]{display:none}
+.acct-who{font-family:var(--font-condensed);font-weight:700;font-size:18px;letter-spacing:.02em;white-space:nowrap}
+.acct-out{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-600);background:none;border:none;padding:0;cursor:pointer}
+.acct-out:hover{text-decoration:underline;text-underline-offset:3px}
+@media (min-width:861px){
+  .acct{padding-left:var(--space-6);border-left:1px solid rgba(241,233,210,.22)}
+}
+@media (max-width:860px){
+  .acct{margin-top:auto;padding-top:14px;border-top:1px solid rgba(241,233,210,.22);flex-direction:column;align-items:stretch}
+  .acct-btn{width:100%;justify-content:space-between}
+  .acct-card{position:static;margin-top:6px;box-shadow:var(--shadow-card)}
+}
 /* One underline for the whole nav that rides to whatever the pointer is over and springs
    back to the active tab on the way out. It only takes over the active tab's own border
    once JS has measured it (.has-ink), so with no JS the static underline still shows. */
@@ -139,7 +161,6 @@ header.site{position:relative}
 .st-usah-btn{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-600);background:none;border:none;padding:0;margin-left:8px;cursor:pointer}
 .st-usah-btn:hover{text-decoration:underline;text-underline-offset:3px}
 .st-usah-btn:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
-.team-bar{padding:var(--space-4) 0 0}
 .st th:first-child,.st td:first-child{padding-left:0}
 .st th:last-child,.st td:last-child{padding-right:0}
 .st td{font-family:var(--font-numeral);font-weight:700;font-size:18px;color:var(--ink-700)}
@@ -259,11 +280,8 @@ header.site{position:relative}
 /* ---------- Schedule: the next game as a card, then the season as a list ---------- */
 .sched-c{display:flex;flex-direction:column;gap:var(--space-6);padding-top:var(--space-6)}
 .sched-list{width:100%}
-.sg-bar{display:flex;align-items:baseline;gap:var(--space-4);flex-wrap:wrap;font-family:var(--font-condensed);font-weight:600;font-size:15px;letter-spacing:.04em;color:var(--ink-500)}
-.sg-bar b{color:var(--ink-900)}
-.sg-bar-msg{color:var(--penalty-500)}
-.sg-link{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-600);background:none;border:none;padding:0;cursor:pointer}
-.sg-link:hover{text-decoration:underline;text-underline-offset:3px}
+/* A save that failed shows here for a few seconds (rsvpNote) */
+.sg-note{font-family:var(--font-condensed);font-weight:600;font-size:15px;letter-spacing:.04em;color:var(--penalty-500)}
 /* Next game card */
 .nx{background:var(--surface-inverse);color:var(--text-on-inverse);clip-path:var(--clip-patch);padding:var(--space-6) var(--space-8);display:flex;flex-direction:column;gap:var(--space-6)}
 .nx-k{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--whistle-500)}
@@ -531,6 +549,7 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
       <button class="tab" data-view="schedule" type="button">Schedule</button>
       <button class="tab" data-view="swag" type="button">Swag</button>
       <button class="tab" data-view="join" type="button">Join</button>
+      <div class="acct" id="acct" hidden></div>
     </nav>
   </div>
 </header>
@@ -545,7 +564,6 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
 
 <main class="container">
   <p class="league-note" id="roster-note" hidden></p>
-  <div class="sg-bar team-bar" id="team-bar" hidden></div>
   <div class="roster-tabs" id="roster-tabs" hidden></div>
   <section class="block" id="st-skaters-sec" hidden>
     <div class="section-head"><h2>SKATERS</h2><span class="count" id="st-skaters-count"></span></div>
@@ -1644,6 +1662,7 @@ function loadSession(){
 function saveSession(s){
   rsvpSession=s;
   try{ if(s) localStorage.setItem(SESSION_KEY,JSON.stringify(s)); else localStorage.removeItem(SESSION_KEY); }catch(e){}
+  renderAccount();
 }
 // {status, res}; res is null when the reply wasn't JSON
 async function api(path,body){
@@ -1700,26 +1719,68 @@ async function checkSession(){
     }
   }catch(e){ /* offline: keep the session, the next tap will tell */ }
 }
-function rsvpBar(entries){
-  if(!RSVP_API || !entries.some(e=>e.col && schedData.seasons[e.key]?.games?.some(g=>g.us==null))) return null;
-  const bar=el("div","sg-bar");
-  const who=el("span","sg-bar-who");
-  const link=el("button","sg-link");
-  link.type="button";
+/* Account, at the end of the nav (JP wants no Signed in / Sign out line on the pages themselves).
+   Signed out it is a Sign in button; signed in it is your first name, which opens a small card
+   with your full name and Sign out. saveSession redraws it on every change of session. */
+function renderAccount(){
+  const box=document.getElementById("acct");
+  if(!box) return;
+  const hadFocus=box.contains(document.activeElement);
+  const openedSignIn=!!ioOpener && box.contains(ioOpener);
+  box.replaceChildren();
+  box.hidden=!RSVP_API;
+  if(!RSVP_API) return;
+  const btn=el("button","acct-btn");
+  btn.type="button";
   if(rsvpSession){
-    who.append("Signed in as ",el("b",null,rsvpSession.name));
-    link.textContent="Sign out";
-    link.addEventListener("click",signOut);
-    bar.append(who,link);
+    btn.append(rsvpSession.name.split(" ")[0]);
+    btn.insertAdjacentHTML("beforeend",'<svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>');
+    btn.setAttribute("aria-haspopup","true");
+    btn.setAttribute("aria-expanded","false");
+    btn.setAttribute("aria-label",rsvpSession.name+", account menu");
+    const card=el("div","acct-card");
+    card.hidden=true;
+    card.appendChild(el("span","acct-who",rsvpSession.name));
+    const out=el("button","acct-out","Sign out");
+    out.type="button";
+    // Focus moves to the name first, so the Sign in button that replaces it gets the focus back
+    out.addEventListener("click",()=>{ btn.focus(); closeMenu(); signOut(); });
+    card.appendChild(out);
+    btn.addEventListener("click",()=>toggleAccount(card.hidden));
+    box.append(btn,card);
   }else{
-    // Signed out: just the link (JP asked for no explanatory line)
-    link.textContent="Sign in";
-    link.addEventListener("click",()=>{ rsvpPending=null; openSignIn(); });
-    bar.append(link);
+    btn.textContent="Sign in";
+    btn.addEventListener("click",()=>{
+      // From the phone drawer the dialog opens over the page, so focus doesn't go back into the drawer
+      const fromDrawer=tabsNav.classList.contains("open");
+      closeMenu();
+      rsvpPending=null;
+      openSignIn();
+      if(fromDrawer) ioOpener=null;
+    });
+    box.append(btn);
   }
-  if(rsvpMsg) bar.appendChild(el("span","sg-bar-msg",rsvpMsg));
-  return bar;
+  // The sign-in dialog hands focus back to whoever opened it, and that button was just rebuilt
+  if(openedSignIn) ioOpener=btn;
+  const drawerClosed=window.matchMedia("(max-width:860px)").matches && !tabsNav.classList.contains("open");
+  if(hadFocus && !drawerClosed) btn.focus();
 }
+function toggleAccount(open){
+  const box=document.getElementById("acct");
+  const btn=box&&box.querySelector(".acct-btn"), card=box&&box.querySelector(".acct-card");
+  if(!btn||!card) return;
+  card.hidden=!open;
+  btn.setAttribute("aria-expanded",String(!!open));
+}
+// The card closes on a click anywhere else, or on Escape (focus back on the name)
+document.addEventListener("click",e=>{ const t=e.target; if(!(t&&t.closest&&t.closest("#acct"))) toggleAccount(false); });
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape") return;
+  const box=document.getElementById("acct"), card=box&&box.querySelector(".acct-card");
+  if(!card||card.hidden) return;
+  toggleAccount(false);
+  box.querySelector(".acct-btn").focus();
+});
 // Your answer, then In, Out, and the season's team members who haven't said
 function rsvpNamesRow(entry,ds){
   const {ins,outs,quiet,mine}=rsvpSplit(entry,ds);
@@ -1883,8 +1944,7 @@ async function renderSchedule(){
   oppSel.hidden=opps.length<2;
 
   const wrap=el("div","sched-c");
-  const bar=rsvpBar(entries);
-  if(bar) wrap.appendChild(bar);
+  if(rsvpMsg) wrap.appendChild(el("div","sg-note",rsvpMsg));
   let hero=null;
   const body=[]; let shown=0;
   entries.forEach(e=>{
@@ -2107,25 +2167,6 @@ function wireUsah(){
   document.getElementById("usah-cancel").addEventListener("click",()=>dlg.close());
   dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
 }
-// Signed in as / Sign in, above the roster, so a player can add their number
-function teamBar(entry){
-  const bar=document.getElementById("team-bar");
-  if(!RSVP_API || !entry.col){ bar.hidden=true; return; }
-  bar.replaceChildren();
-  const link=el("button","sg-link");
-  link.type="button";
-  if(rsvpSession){
-    const who=el("span"); who.append("Signed in as ",el("b",null,rsvpSession.name));
-    link.textContent="Sign out";
-    link.addEventListener("click",signOut);
-    bar.append(who,link);
-  }else{
-    link.textContent="Sign in";
-    link.addEventListener("click",()=>{ rsvpPending=null; openSignIn(); });
-    bar.append(link);
-  }
-  bar.hidden=false;
-}
 const jerseyVal=p=>{ const n=parseInt(p.jersey,10); return isNaN(n)?Infinity:n; };
 
 /* Team: the season's roster as stats tables. Rows are GameSheet lines joined to the sheet, plus
@@ -2138,7 +2179,7 @@ async function renderTeam(){
   const skT=document.getElementById("st-skaters"), goT=document.getElementById("st-goalies");
   const foot=document.getElementById("st-foot"), gsFoot=document.querySelector("main .gs-foot");
   const clear=()=>{ skT.replaceChildren(); goT.replaceChildren(); skSec.hidden=true; goSec.hidden=true;
-    tabs.hidden=true; foot.hidden=true; gsFoot.hidden=true; document.getElementById("team-bar").hidden=true; };
+    tabs.hidden=true; foot.hidden=true; gsFoot.hidden=true; };
   if(!statsData){
     // Without stats the roster still shows, just with empty stat columns
     try{ statsData=await (await fetch("stats.json",{cache:"no-store"})).json(); }
@@ -2207,7 +2248,6 @@ async function renderTeam(){
     return b;
   }));
   tabs.hidden=!tracked || !avail.length;
-  teamBar(entry);
   const inView=r=>!tracked || groupOf(r.p)===rosterSection;
 
   // No GameSheet line yet: dashes, greyed once the season has stats to compare against
@@ -2307,7 +2347,7 @@ window.addEventListener("resize",()=>settleInk(false));
 // Condensed webfont lands after first paint and changes every tab's width
 if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>settleInk(false));
 requestAnimationFrame(()=>settleInk(false));
-function closeMenu(){ tabsNav.classList.remove("open"); scrim.classList.remove("show"); menuBtn.setAttribute("aria-expanded","false"); }
+function closeMenu(){ tabsNav.classList.remove("open"); scrim.classList.remove("show"); menuBtn.setAttribute("aria-expanded","false"); toggleAccount(false); }
 menuBtn.addEventListener("click",()=>{
   const open=tabsNav.classList.toggle("open");
   scrim.classList.toggle("show",open);
@@ -2340,6 +2380,7 @@ wireBeerRequest();
 wireSignIn();
 wireUsah();
 loadSession();
+renderAccount();
 checkSession();
 load().then(setFreezeH);
 </script>
