@@ -288,6 +288,7 @@ header.site{position:relative}
 .nx{background:var(--surface-inverse);color:var(--text-on-inverse);clip-path:var(--clip-patch);padding:var(--space-6) var(--space-8);display:flex;flex-direction:column;gap:var(--space-6)}
 .nx-k{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--whistle-500)}
 .nx-main{display:flex;flex-direction:column;gap:var(--space-6)}
+.nx-text{display:flex;flex-direction:column;gap:var(--space-6)}
 .nx-head{display:flex;flex-direction:column;gap:6px}
 .nx-opp{font-family:var(--font-display);font-size:clamp(28px,2.8vw,40px);line-height:1.05;text-transform:uppercase;color:var(--oatmeal-100)}
 .nx-when{font-family:var(--font-condensed);font-weight:600;font-size:18px;letter-spacing:.06em;text-transform:uppercase;color:var(--burgundy-200)}
@@ -378,7 +379,9 @@ header.site{position:relative}
   .nx-sec{border-top:none;border-left:1px solid var(--burgundy-400);padding:0 0 0 var(--space-8);align-self:stretch}
   .nx-beer{flex-direction:column;align-items:flex-start;min-width:150px}
   .nx-beer .grow{display:none}
-  .pk-wrap{align-items:flex-start;padding-left:12px}
+  /* The puck sits beside the opponent, not under it, so the card stays short (JP, Sep 18, 2026) */
+  .nx-main{flex-direction:row;align-items:center;justify-content:space-between;gap:var(--space-6)}
+  .pk-wrap{padding-right:var(--space-4)}
 }
 /* Tablets: the same columns, trimmed so Opponent keeps room */
 @media (min-width:761px) and (max-width:1040px){
@@ -1451,12 +1454,15 @@ function heroCard(entry,g,num,ds){
   card.setAttribute("aria-label","Next game");
   const main=el("div","nx-main");
   card.appendChild(main);
-  main.appendChild(el("div","nx-k",`Next game · Game ${num}`));
+  // Kicker and heading in one block, so wide screens can set the puck beside them
+  const text=el("div","nx-text");
+  main.appendChild(text);
+  text.appendChild(el("div","nx-k",`Next game · Game ${num}`));
   const head=el("div","nx-head");
   head.appendChild(el("div","nx-opp",g.opponent));
   const d=new Date(Date.parse(ds));
   head.appendChild(el("div","nx-when",[(isNaN(d)?"":WEEKDAYS[d.getDay()]+" ")+g.date,g.time,g.rink].filter(Boolean).join(" · ")));
-  main.appendChild(head);
+  text.appendChild(head);
   if(RSVP_API && entry.col){
     const {ins,outs,mine}=rsvpSplit(entry,ds);
     const ask=el("div","pk-wrap");
