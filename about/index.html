@@ -372,8 +372,6 @@ header.site{position:relative}
 .sg-names .grp.in b{color:var(--status-win)}
 .sg-names .grp.out b{color:var(--burgundy-600)}
 .sg-names .grp.you,.sg-names .grp.add{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.sg-pick{font-family:var(--font-body);font-size:15px;color:var(--ink-900);background:var(--white);border:1px solid var(--oatmeal-600);border-radius:var(--radius-sm);padding:5px 8px;max-width:220px}
-.sg-pick:focus{outline:none;border-color:var(--burgundy-600);box-shadow:0 0 0 3px var(--burgundy-100)}
 /* Wide screens: the card is a band above the list, its three parts side by side */
 @media (min-width:900px){
   .nx{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) auto;gap:var(--space-8);align-items:start}
@@ -1198,33 +1196,17 @@ function rsvpSplit(entry,ds){
   const sortNames=a=>a.slice().sort((x,y)=>x.localeCompare(y));
   return { ins:sortNames(ins), outs:sortNames(outs), quiet:sortNames(quiet), mine:rsvpSession?(answers[rsvpSession.name]?.a||""):"" };
 }
-function ioToggle(entry,ds,mine,forName){
+function ioToggle(entry,ds,mine){
   const io=el("span","sg-io");
   [["in","In"],["out","Out"]].forEach(([a,label])=>{
     const b=el("button",mine===a?"on-"+a:"",label);
     b.type="button";
     b.setAttribute("aria-pressed",mine===a?"true":"false");
-    // Tapping your own answer again clears it; answering for a teammate always sets theirs
-    b.addEventListener("click",()=>{
-      if(forName){ const who=forName(); if(who) answer(entry,ds,a,who); return; }
-      answer(entry,ds,mine===a?"":a);
-    });
+    // Tapping your own answer again clears it
+    b.addEventListener("click",()=>answer(entry,ds,mine===a?"":a));
     io.appendChild(b);
   });
   return io;
-}
-// Signed in: this season's team, subs and the unsure (the sheet's status column) to answer for
-function teammatePicker(entry){
-  const sel=document.createElement("select");
-  sel.className="sg-pick";
-  sel.setAttribute("aria-label","Teammate to answer for");
-  const prompt=new Option("Pick a teammate","");
-  prompt.disabled=true;
-  const names=[...new Set(sheetPlayers(entry).filter(p=>["in","sub","unsure"].includes(statusGroup(p.status))).map(p=>p.name))]
-    .sort((a,b)=>a.localeCompare(b));
-  sel.replaceChildren(prompt,...names.map(nm=>new Option(nm,nm)));
-  sel.value="";
-  return sel;
 }
 function youCell(g,entry,ds){
   const cell=el("span","sg-you");
@@ -1476,7 +1458,7 @@ function heroCard(entry,g,num,ds){
   head.appendChild(el("div","nx-when",[(isNaN(d)?"":WEEKDAYS[d.getDay()]+" ")+g.date,g.time,g.rink].filter(Boolean).join(" · ")));
   main.appendChild(head);
   if(RSVP_API && entry.col){
-    const {ins,outs,quiet,mine}=rsvpSplit(entry,ds);
+    const {ins,outs,mine}=rsvpSplit(entry,ds);
     const ask=el("div","pk-wrap");
     ask.appendChild(puckEl(entry,ds,mine));
     ask.appendChild(el("div","pk-status",puckStatus(mine,ds)));
@@ -1489,23 +1471,15 @@ function heroCard(entry,g,num,ds){
       if(count!=null) b.appendChild(el("i","nx-n",String(count)));
       l.appendChild(b); l.appendChild(el("span",null,text)); return l;
     };
-    sec.appendChild(line("in","In",ins.length,ins.length?shortNames(ins,entry).join(", "):"Nobody yet",!ins.length));
-    sec.appendChild(line("out","Out",outs.length,outs.length?shortNames(outs,entry).join(", "):"Nobody yet",!outs.length));
-    sec.appendChild(line("quiet","Quiet",null,quiet.length?`${quiet.length} haven't said`:"Everyone has answered",true));
-    if(rsvpSession){
-      const add=el("div","nx-row");
-      add.appendChild(el("span","nx-lbl","For a teammate"));
-      const sel=teammatePicker(entry);
-      add.appendChild(sel);
-      add.appendChild(ioToggle(entry,ds,"",()=>{ if(!sel.value){ sel.focus(); return ""; } return sel.value; }));
-      sec.appendChild(add);
-    }
+    // Just the counts and names: no "Nobody yet", no Quiet line, no teammate picker (JP, Sep 18, 2026)
+    sec.appendChild(line("in","In",ins.length,ins.length?shortNames(ins,entry).join(", "):"",!ins.length));
+    sec.appendChild(line("out","Out",outs.length,outs.length?shortNames(outs,entry).join(", "):"",!outs.length));
     card.appendChild(sec);
   }
   const beer=el("div","nx-sec nx-row nx-beer");
   beer.appendChild(el("span","nx-lbl","Beer"));
   const who=beerByDate[ds]||"";
-  beer.appendChild(el("span","nx-val"+(who?"":" muted"),who||"Nobody yet"));
+  if(who) beer.appendChild(el("span","nx-val",who));
   if(!who && canRequestBeer(ds,entry)){
     beer.appendChild(el("span","grow"));
     const b=el("button","nx-btn","Assign");
