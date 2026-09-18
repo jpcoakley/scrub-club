@@ -271,13 +271,22 @@ header.site{position:relative}
 .nx-head{display:flex;flex-direction:column;gap:6px}
 .nx-opp{font-family:var(--font-display);font-size:clamp(28px,2.8vw,40px);line-height:1.05;text-transform:uppercase;color:var(--oatmeal-100)}
 .nx-when{font-family:var(--font-condensed);font-weight:600;font-size:18px;letter-spacing:.06em;text-transform:uppercase;color:var(--burgundy-200)}
-.nx-ask{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--burgundy-300);margin-bottom:10px}
-.nx-io{display:flex;gap:10px}
-.nx-io button{flex:1;font-family:var(--font-condensed);font-weight:700;font-size:20px;letter-spacing:.14em;text-transform:uppercase;padding:16px 0;border:2px solid var(--burgundy-300);background:transparent;color:var(--oatmeal-300);cursor:pointer;clip-path:var(--clip-patch-sm)}
-.nx-io button:hover{border-color:var(--oatmeal-300);color:var(--white)}
-.nx-io button.on-in{background:var(--status-win);border-color:var(--status-win);color:var(--white)}
-.nx-io button.on-out{background:var(--burgundy-900);border-color:var(--burgundy-900);color:var(--white)}
-.nx-io button:focus-visible{outline:2px solid var(--whistle-500);outline-offset:2px}
+/* The puck: a CSS 3D cylinder (two faces and a ring of wall strips) seen from just above */
+.pk-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.pk-stage{position:relative;width:150px;height:150px;perspective:900px;perspective-origin:50% 35%;cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none;outline:none;border-radius:50%}
+.pk-stage:focus-visible{outline:2px solid var(--whistle-500);outline-offset:8px}
+.pk-stage.dragging{cursor:grabbing}
+.pk-ground{position:absolute;left:50%;top:50%;width:170px;height:136px;margin:-56px 0 0 -85px;border-radius:50%;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.5),rgba(0,0,0,.26) 55%,rgba(0,0,0,0) 72%);filter:blur(4px)}
+.pk-puck{position:absolute;inset:0;transform-style:preserve-3d}
+.pk-face{position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 36%,#56504a 0%,#3f3a35 62%,#2c2824 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),inset 0 0 12px rgba(0,0,0,.55)}
+.pk-top{transform:translateZ(25px)}
+.pk-bottom{transform:rotateY(180deg) translateZ(25px)}
+.pk-shade{position:absolute;inset:0;border-radius:50%;background:#000}
+.pk-sheen{position:absolute;inset:0;border-radius:50%;background:linear-gradient(155deg,rgba(255,255,255,.09),rgba(255,255,255,0) 48%)}
+.pk-label{position:relative;font-family:var(--font-condensed);font-weight:700;font-size:42px;letter-spacing:.12em;color:#EAE2CC;opacity:.9}
+.pk-strip{position:absolute;top:50%;left:50%;width:16px;height:50px;margin:-25px 0 0 -8px;backface-visibility:hidden}
+.pk-knurl{position:absolute;left:0;right:0;top:12%;bottom:12%;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px),repeating-linear-gradient(-45deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px)}
+.pk-status{font-family:var(--font-body);font-size:15px;color:var(--burgundy-200);min-height:20px;text-align:center}
 .nx-sec{border-top:1px solid var(--burgundy-400);padding-top:var(--space-4);display:flex;flex-direction:column;gap:8px}
 .nx-line{display:flex;gap:10px;align-items:baseline;font-family:var(--font-condensed);font-size:16px;line-height:1.35}
 .nx-line b{font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-300);flex:none;width:72px}
@@ -341,6 +350,11 @@ header.site{position:relative}
   .nx-sec{border-top:none;border-left:1px solid var(--burgundy-400);padding:0 0 0 var(--space-8);align-self:stretch}
   .nx-beer{flex-direction:column;align-items:flex-start;min-width:150px}
   .nx-beer .grow{display:none}
+  .pk-wrap{align-items:flex-start;padding-left:12px}
+}
+/* Tablets: the same columns, trimmed so Opponent keeps room */
+@media (min-width:761px) and (max-width:1040px){
+  .sg-row{grid-template-columns:84px 104px minmax(0,1fr) 72px 112px 100px 100px 32px;gap:10px}
 }
 /* Phones: the card is a full-width band; a row is number, date, opponent (beer under it), and
    the result or your answer at the right edge. The column headers go; the rows read on their own. */
@@ -348,7 +362,6 @@ header.site{position:relative}
   .sched-c{gap:var(--space-4);padding-top:var(--space-4)}
   .nx{clip-path:none;margin-inline:calc(-1*var(--gutter-inline));padding:var(--space-6) var(--gutter-inline)}
   .nx-opp{font-size:32px}
-  .nx-io button{font-size:19px;padding:15px 0}
   .sg-head{display:none}
   .sg-row{grid-template-columns:22px 56px minmax(0,1fr) 62px;gap:2px 10px;padding:12px 0;align-items:start}
   .sg-award{grid-column:3;font-size:13px;color:var(--ink-300);white-space:normal}
@@ -602,6 +615,7 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
 <div id="view-schedule" hidden>
   <p class="league-note" hidden></p>
   <div class="container" id="sched"></div>
+  <div id="sched-live" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)"></div>
 </div>
 <dialog id="beer-req" class="br" aria-labelledby="br-title">
   <form id="br-form" class="br-card" novalidate>
@@ -1227,6 +1241,177 @@ function schedRows(g,entry,num,isNext){
   if(RSVP_API && ds && g.us==null && entry.col && rsvpOpen.has(entry.key+"|"+ds)) rows.push(rsvpNamesRow(entry,ds));
   return rows;
 }
+/* ---------- The puck: the next game's In/Out control ----------
+   A CSS 3D hockey puck, IN on one face and OUT on the other, seen from just above the bench.
+   Tap it or flick it sideways to roll it over; flick it up to stand it on its edge (no answer);
+   standing, a flick left lands In and right lands Out, and a tap drops it back to the side it
+   came from. Its pose is kept per game in puckState across redraws, and the roll is a JS tween
+   that draws onto whatever element is the puck right now, so a redraw mid-roll doesn't jump.
+   Geometry: the puck is rotateX(TILT) rotateY(flip), rolled about its vertical diameter and then
+   tipped toward the viewer; a face normal ends with z = cos(flip) cos(tilt) and a wall strip at
+   angle th with z = -cos(th) sin(tilt) - sin(th) sin(flip) cos(tilt), and that z lights it. */
+const PUCK={D:150,H:50,TILT:30,N:32,MS:550};
+const WEEKDAY_FULL=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const puckState={};   // game key -> {angle, target, live, last, raf, node}
+function puckPose(a){ return ((Math.round(a/90)%4)+4)%4; }   // 0 In up, 2 Out up, 1 or 3 on edge
+function puckAnswer(a){ const p=puckPose(a); return p===0?"in":p===2?"out":""; }
+// The nearest resting angle to `from` that shows `mine`
+function puckNearest(mine,from){
+  const base=Math.round(from/90)*90;
+  let best=base, bestD=Infinity;
+  // The edge is always pose 1 (90, 450, -270 ...), never pose 3, so its left and right stay put
+  const fits=a=>mine===""?puckPose(a)===1:puckAnswer(a)===mine;
+  for(const d of [0,90,-90,180,-180]){ if(fits(base+d) && Math.abs(d)<bestD){ best=base+d; bestD=Math.abs(d); } }
+  return best;
+}
+function puckTone(t){
+  t=Math.max(0,Math.min(1,t));
+  const a=[12,11,10], b=[80,73,65];
+  return `rgb(${Math.round(a[0]+(b[0]-a[0])*t)},${Math.round(a[1]+(b[1]-a[1])*t)},${Math.round(a[2]+(b[2]-a[2])*t)})`;
+}
+// Draw the puck at an angle: the transform, every surface lit by how squarely it faces the
+// viewer, and a ground shadow that narrows to the puck's thickness as it stands up
+function puckDraw(stage,angle){
+  const F=angle*Math.PI/180, T=PUCK.TILT*Math.PI/180;
+  stage.querySelector(".pk-puck").style.transform=`rotateX(${PUCK.TILT}deg) rotateY(${angle}deg)`;
+  const facing=Math.cos(F)*Math.cos(T);
+  stage.querySelector(".pk-top .pk-shade").style.opacity=(0.6*(1-Math.max(0,facing))).toFixed(3);
+  stage.querySelector(".pk-bottom .pk-shade").style.opacity=(0.6*(1-Math.max(0,-facing))).toFixed(3);
+  stage.querySelectorAll(".pk-strip").forEach((strip,i)=>{
+    const a=(2*Math.PI/PUCK.N)*i;
+    const f=-Math.cos(a)*Math.sin(T)-Math.sin(a)*Math.sin(F)*Math.cos(T);
+    strip.style.backgroundColor=puckTone(0.08+0.55*Math.max(0,f));
+  });
+  const W=Math.round(1.14*(PUCK.H+(PUCK.D-PUCK.H)*Math.abs(Math.cos(F))));
+  const g=stage.querySelector(".pk-ground");
+  g.style.width=W+"px"; g.style.marginLeft=(-W/2)+"px";
+}
+function puckTween(key){
+  const st=puckState[key]; if(!st) return;
+  cancelAnimationFrame(st.raf); st.raf=0;
+  const from=st.angle, to=st.target;
+  if(from===to) return;
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches){ st.angle=to; if(st.node) puckDraw(st.node,to); return; }
+  const t0=performance.now(), ease=p=>1-Math.pow(1-p,3);
+  st.to=to;
+  const step=now=>{
+    const p=Math.min(1,(now-t0)/PUCK.MS);
+    st.angle=from+(to-from)*ease(p);
+    try{ if(st.node) puckDraw(st.node,st.angle+st.live); }catch(e){ console.error("puck", String(e)); }
+    st.raf=p<1?requestAnimationFrame(step):0;
+  };
+  st.raf=requestAnimationFrame(step);
+}
+function puckStatus(mine,ds){
+  if(mine==="in"){ const d=new Date(Date.parse(ds)); return isNaN(d)?"See you there.":`See you ${WEEKDAY_FULL[d.getDay()]}.`; }
+  if(mine==="out") return "You're out.";
+  return rsvpSession?"No answer yet.":"Tap the puck to answer.";
+}
+function puckEl(entry,ds,mine){
+  const key=entry.key+"|"+ds;
+  const st=puckState[key]||(puckState[key]={angle:puckNearest(mine,0),target:null,live:0,last:"in",raf:0,node:null});
+  // A target set by a flick carries its direction; anything else (first draw, a teammate answering
+  // for you, a save that failed and was put back) goes the short way to the pose the answer needs
+  if(st.target===null) st.target=st.angle;
+  if(puckAnswer(st.target)!==mine) st.target=puckNearest(mine,st.angle);
+  st.live=0;   // a drag in progress belonged to the element this one replaces
+  const stage=el("div","pk-stage");
+  stage.tabIndex=0;
+  stage.setAttribute("role","button");
+  stage.setAttribute("aria-label",`Your answer: ${mine==="in"?"In":mine==="out"?"Out":"no answer yet"}. Press to turn the puck over; Left arrow In, Right arrow Out, Up arrow or hold clears it.`);
+  stage.appendChild(el("div","pk-ground"));
+  const puck=el("div","pk-puck");
+  puck.setAttribute("aria-hidden","true");
+  for(let i=0;i<PUCK.N;i++){
+    const strip=el("div","pk-strip");
+    strip.style.transform=`rotateZ(${(360/PUCK.N)*i}deg) translateY(${-PUCK.D/2}px) rotateX(90deg)`;
+    strip.appendChild(el("div","pk-knurl"));
+    puck.appendChild(strip);
+  }
+  [["pk-top","IN"],["pk-bottom","OUT"]].forEach(([cls,text])=>{
+    const face=el("div","pk-face "+cls);
+    face.append(el("div","pk-shade"),el("div","pk-sheen"),el("div","pk-label",text));
+    puck.appendChild(face);
+  });
+  stage.appendChild(puck);
+  st.node=stage;
+  puckDraw(stage,st.angle+st.live);
+  if(st.angle!==st.target && !(st.raf && st.to===st.target)) puckTween(key);
+
+  // A move of `delta` degrees from where the puck is now; the answer is whatever face that leaves up
+  const go=delta=>{
+    const rest=Math.round(st.angle/90)*90;   // where it sits, before the finger tilted it
+    st.angle+=st.live; st.live=0;            // the roll starts from where the finger left it
+    if(!delta){ st.target=puckNearest(mine,rest); puckTween(key); return; }
+    st.target=rest+delta;
+    const a=puckAnswer(st.target);
+    if(a===mine){ puckTween(key); return; }
+    answer(entry,ds,a);
+    // Signed out: the sign-in opens and the answer waits on it, so the puck settles back for now
+    if(!rsvpSession){ st.target=puckNearest(mine,st.angle); puckTween(key); }
+  };
+  let drag=false, sx=0, sy=0, dx=0, dy=0, t0=0, hold=0, pointerAt=0;
+  const horiz=()=>Math.abs(dx)>=Math.abs(dy);
+  const standUp=()=>{ const pose=puckPose(st.angle); if(pose%2===1) return 0; st.last=pose===0?"in":"out"; return pose===0?90:-90; };
+  stage.addEventListener("pointerdown",e=>{
+    if(st.raf || e.button) return;
+    drag=true; sx=e.clientX; sy=e.clientY; dx=dy=0; t0=performance.now(); pointerAt=t0;
+    stage.classList.add("dragging");
+    try{ stage.setPointerCapture(e.pointerId); }catch(_){}
+    stage.focus({preventScroll:true});
+    e.preventDefault();
+    // Press and hold stands it on its edge (the way to clear on a phone, where an upward drag scrolls)
+    clearTimeout(hold);
+    hold=setTimeout(()=>{ if(!drag || Math.abs(dx)>8 || Math.abs(dy)>8) return; drag=false; stage.classList.remove("dragging"); go(standUp()); },450);
+  });
+  stage.addEventListener("pointermove",e=>{
+    if(!drag) return;
+    dx=e.clientX-sx; dy=e.clientY-sy;
+    const pose=puckPose(st.angle), onEdge=pose%2===1;
+    if(horiz()) st.live=Math.max(-120,Math.min(120,dx/1.3));
+    else if(onEdge) st.live=Math.max(-12,Math.min(12,dy/6));
+    else st.live=(pose===0?1:-1)*Math.min(90,Math.abs(dy)/1.5);
+    puckDraw(stage,st.angle+st.live);
+  });
+  stage.addEventListener("pointerup",()=>{
+    clearTimeout(hold);
+    if(!drag) return;
+    drag=false; stage.classList.remove("dragging"); pointerAt=performance.now();
+    const pose=puckPose(st.angle), onEdge=pose%2===1, h=horiz();
+    const quick=performance.now()-t0<350;
+    let delta;
+    if(onEdge){
+      if(h && Math.abs(dx)>=6) delta=dx>0?90:-90;
+      else if(h) delta=st.last==="out"?90:-90;
+      else delta=0;
+    }else if(!h){ delta=(quick && dy<=-40)?standUp():0; }   // only a real upward flick; a slow drag settles back
+    else delta=(dx<0)?-180:180;
+    go(delta);
+  });
+  const dropDrag=()=>{ clearTimeout(hold); if(!drag) return; drag=false; stage.classList.remove("dragging"); st.live=0; if(st.node) puckDraw(st.node,st.angle); };
+  // Assistive tech activates with a bare click, no pointer sequence: treat it like Enter
+  stage.addEventListener("click",()=>{
+    if(performance.now()-pointerAt<600 || st.raf) return;
+    const pose=puckPose(st.angle);
+    go(pose%2===1?(st.last==="out"?90:-90):180);
+  });
+  stage.addEventListener("pointercancel",dropDrag);
+  stage.addEventListener("lostpointercapture",dropDrag);
+  // Keyboard: Enter or Space turns it over, Left is In, Right is Out, Up (or Backspace) clears
+  stage.addEventListener("keydown",e=>{
+    const pose=puckPose(st.angle), onEdge=pose%2===1;
+    let delta=null;
+    if(e.key==="Enter"||e.key===" ") delta=onEdge?(st.last==="out"?90:-90):180;
+    else if(e.key==="ArrowLeft") delta=onEdge?-90:(pose===2?-180:0);
+    else if(e.key==="ArrowRight") delta=onEdge?90:(pose===0?180:0);
+    else if(e.key==="ArrowUp"||e.key==="Backspace"||e.key==="Delete"){ delta=onEdge?0:(pose===0?90:-90); if(!onEdge) st.last=pose===0?"in":"out"; }
+    if(delta===null) return;
+    e.preventDefault();
+    if(st.raf) return;
+    go(delta);
+  });
+  return stage;
+}
 // The next game, big: are you in, who is, and who has beer
 function heroCard(entry,g,num,ds){
   const card=el("section","nx");
@@ -1241,17 +1426,9 @@ function heroCard(entry,g,num,ds){
   main.appendChild(head);
   if(RSVP_API && entry.col){
     const {ins,outs,quiet,mine}=rsvpSplit(entry,ds);
-    const ask=el("div");
-    ask.appendChild(el("div","nx-ask","Are you in?"));
-    const io=el("div","nx-io");
-    [["in","In"],["out","Out"]].forEach(([a,label])=>{
-      const b=el("button",mine===a?"on-"+a:"",label);
-      b.type="button";
-      b.setAttribute("aria-pressed",mine===a?"true":"false");
-      b.addEventListener("click",()=>{ if(mine!==a) answer(entry,ds,a); });
-      io.appendChild(b);
-    });
-    ask.appendChild(io);
+    const ask=el("div","pk-wrap");
+    ask.appendChild(puckEl(entry,ds,mine));
+    ask.appendChild(el("div","pk-status",puckStatus(mine,ds)));
     main.appendChild(ask);
     const sec=el("div","nx-sec nx-who");
     // The label carries the count, in white: "IN 3"
@@ -1456,8 +1633,10 @@ async function api(path,body){
   try{ res=await r.json(); }catch(e){}
   return {status:r.status,res};
 }
+function schedLive(text){ const n=document.getElementById("sched-live"); if(n) n.textContent=text||""; }
 function rsvpNote(text){
   rsvpMsg=text||"";
+  if(rsvpMsg) schedLive(rsvpMsg);
   clearTimeout(rsvpMsgTimer);
   if(rsvpMsg) rsvpMsgTimer=setTimeout(()=>{ rsvpMsg=""; renderSchedule(); },6000);
   renderSchedule();
@@ -1549,6 +1728,7 @@ async function answer(entry,ds,a,who){
   // Show it at once; put it back if the save fails
   if(a) games[ds][name]=Object.assign({a,t:Date.now()},name!==rsvpSession.name?{by:rsvpSession.name}:{}); else delete games[ds][name];
   renderSchedule();
+  if(name===rsvpSession.name) schedLive(puckStatus(a,ds));
   let error="";
   try{
     const {status,res}=await api("/rsvp",{season:entry.key,date:ds,answer:a,name});
@@ -1662,6 +1842,7 @@ async function renderSchedule(){
   }
   const played=s=>schedData.seasons[s.key]?.games?.length;
   const multi=seasonCol===ALL_SEASONS;
+  const puckHadFocus=!!(document.activeElement && document.activeElement.classList && document.activeElement.classList.contains("pk-stage"));
   box.replaceChildren();
   if(!multi && !schedData.seasons[seasonCol]){
     if(!userPickedSeason && fallbackSeason(played)){ renderSchedule(); return; }
@@ -1701,6 +1882,7 @@ async function renderSchedule(){
   body.forEach(n=>list.appendChild(n));
   wrap.appendChild(list);
   box.appendChild(wrap);
+  if(puckHadFocus){ const pk=box.querySelector(".pk-stage"); if(pk) pk.focus({preventScroll:true}); }
   loadRsvpFor(entries);
   if(!shown) box.appendChild(el("div","sched-empty","No games against "+oppFilter+" this season."));
   setFreezeH();
