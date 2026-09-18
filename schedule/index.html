@@ -276,7 +276,7 @@ header.site{position:relative}
 .pk-stage{position:relative;width:150px;height:150px;perspective:900px;perspective-origin:50% 35%;cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none;outline:none;border-radius:50%}
 .pk-stage:focus-visible{outline:2px solid var(--whistle-500);outline-offset:8px}
 .pk-stage.dragging{cursor:grabbing}
-.pk-ground{position:absolute;left:50%;top:50%;width:170px;height:136px;margin:-56px 0 0 -85px;border-radius:50%;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.5),rgba(0,0,0,.26) 55%,rgba(0,0,0,0) 72%);filter:blur(4px)}
+.pk-ground{position:absolute;left:50%;top:50%;width:158px;height:132px;margin:-56px 0 0 -79px;border-radius:50%;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.55),rgba(0,0,0,.4) 62%,rgba(0,0,0,0) 76%);filter:blur(2.5px)}
 .pk-puck{position:absolute;inset:0;transform-style:preserve-3d}
 .pk-face{position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 36%,#56504a 0%,#3f3a35 62%,#2c2824 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),inset 0 0 12px rgba(0,0,0,.55)}
 .pk-top{transform:translateZ(25px)}
@@ -287,6 +287,17 @@ header.site{position:relative}
 .pk-strip{position:absolute;top:50%;left:50%;width:16px;height:50px;margin:-25px 0 0 -8px;backface-visibility:hidden}
 .pk-knurl{position:absolute;left:0;right:0;top:12%;bottom:12%;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px),repeating-linear-gradient(-45deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px)}
 .pk-status{font-family:var(--font-body);font-size:15px;color:var(--burgundy-200);min-height:20px;text-align:center}
+/* The rows' puck: the same thing at 44px, still a full touch target */
+.pk-stage.pk-mini{width:44px;height:44px;perspective:320px}
+.pk-stage.pk-mini:focus-visible{outline-offset:4px}
+.pk-mini .pk-ground{width:46px;height:39px;margin:-16px 0 0 -23px;filter:blur(1.5px)}
+.pk-mini .pk-top{transform:translateZ(7.5px)}
+.pk-mini .pk-bottom{transform:rotateY(180deg) translateZ(7.5px)}
+.pk-mini .pk-face{box-shadow:inset 0 0 0 .5px rgba(255,255,255,.08),inset 0 0 4px rgba(0,0,0,.5)}
+.pk-mini .pk-label{font-size:13px;letter-spacing:.08em}
+.pk-mini .pk-strip{width:8px;height:15px;margin:-7.5px 0 0 -4px}
+.pk-mini .pk-knurl{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.09) 0 1px,transparent 1px 2px),repeating-linear-gradient(-45deg,rgba(255,255,255,.09) 0 1px,transparent 1px 2px)}
+.sg-you .pk-stage{display:block}
 .nx-sec{border-top:1px solid var(--burgundy-400);padding-top:var(--space-4);display:flex;flex-direction:column;gap:8px}
 .nx-line{display:flex;gap:10px;align-items:baseline;font-family:var(--font-condensed);font-size:16px;line-height:1.35}
 .nx-line b{font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-300);flex:none;width:72px}
@@ -384,6 +395,7 @@ header.site{position:relative}
   .sg-res{font-size:18px}
   .sg-res.next{display:none}
   .sg-you .sg-io button{font-size:11px;padding:5px 7px}
+  .sg-you .pk-stage{margin-left:auto}
   .sg-names{padding-left:calc(22px + 56px + 20px)}
 }
 .io-help{margin:0 0 var(--space-2);font-size:15px;line-height:1.45;color:var(--text-body)}
@@ -1187,9 +1199,8 @@ function teammatePicker(entry){
 }
 function youCell(g,entry,ds){
   const cell=el("span","sg-you");
-  cell.setAttribute("aria-label",`Your answer for ${g.date} against ${g.opponent}`);
   const {mine}=rsvpSplit(entry,ds);
-  cell.appendChild(ioToggle(entry,ds,mine));
+  cell.appendChild(puckEl(entry,ds,mine,{mini:true,game:`${g.date} against ${g.opponent}`}));
   return cell;
 }
 function schedRow(g,entry,num,isNext){
@@ -1227,7 +1238,7 @@ function schedRow(g,entry,num,isNext){
     const id=entry.key+"|"+ds;
     r.classList.add("sg-openable");
     r.addEventListener("click",e=>{
-      if(e.target.closest("button,select,a")) return;
+      if(e.target.closest("button,select,a,.pk-stage")) return;
       if(rsvpOpen.has(id)) rsvpOpen.delete(id); else rsvpOpen.add(id);
       renderSchedule();
     });
@@ -1251,8 +1262,9 @@ function schedRows(g,entry,num,isNext){
    tipped toward the viewer; a face normal ends with z = cos(flip) cos(tilt) and a wall strip at
    angle th with z = -cos(th) sin(tilt) - sin(th) sin(flip) cos(tilt), and that z lights it. */
 const PUCK={D:150,H:50,TILT:30,N:32,MS:550};
+const PUCK_MINI={D:44,H:15,N:20};   // the rows' puck; tilt and timing come from PUCK
 const WEEKDAY_FULL=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const puckState={};   // game key -> {angle, target, live, last, raf, node}
+const puckState={};   // game key -> {angle, target, live, last, raf, nodes}
 function puckPose(a){ return ((Math.round(a/90)%4)+4)%4; }   // 0 In up, 2 Out up, 1 or 3 on edge
 function puckAnswer(a){ const p=puckPose(a); return p===0?"in":p===2?"out":""; }
 // The nearest resting angle to `from` that shows `mine`
@@ -1272,59 +1284,67 @@ function puckTone(t){
 // Draw the puck at an angle: the transform, every surface lit by how squarely it faces the
 // viewer, and a ground shadow that narrows to the puck's thickness as it stands up
 function puckDraw(stage,angle){
+  const dims=stage._pk||PUCK;
   const F=angle*Math.PI/180, T=PUCK.TILT*Math.PI/180;
   stage.querySelector(".pk-puck").style.transform=`rotateX(${PUCK.TILT}deg) rotateY(${angle}deg)`;
   const facing=Math.cos(F)*Math.cos(T);
   stage.querySelector(".pk-top .pk-shade").style.opacity=(0.6*(1-Math.max(0,facing))).toFixed(3);
   stage.querySelector(".pk-bottom .pk-shade").style.opacity=(0.6*(1-Math.max(0,-facing))).toFixed(3);
   stage.querySelectorAll(".pk-strip").forEach((strip,i)=>{
-    const a=(2*Math.PI/PUCK.N)*i;
+    const a=(2*Math.PI/dims.N)*i;
     const f=-Math.cos(a)*Math.sin(T)-Math.sin(a)*Math.sin(F)*Math.cos(T);
     strip.style.backgroundColor=puckTone(0.08+0.55*Math.max(0,f));
   });
-  const W=Math.round(1.14*(PUCK.H+(PUCK.D-PUCK.H)*Math.abs(Math.cos(F))));
+  const W=Math.round(1.05*(dims.H+(dims.D-dims.H)*Math.abs(Math.cos(F))));
   const g=stage.querySelector(".pk-ground");
   g.style.width=W+"px"; g.style.marginLeft=(-W/2)+"px";
+}
+// One game can show its puck twice (the card and its row); they share a pose and move together
+function puckDrawAll(st,angle){
+  st.nodes=st.nodes.filter(n=>n.isConnected);
+  for(const n of st.nodes){ try{ puckDraw(n,angle); }catch(e){ console.error("puck", String(e)); } }
 }
 function puckTween(key){
   const st=puckState[key]; if(!st) return;
   cancelAnimationFrame(st.raf); st.raf=0;
   const from=st.angle, to=st.target;
   if(from===to) return;
-  if(matchMedia("(prefers-reduced-motion: reduce)").matches){ st.angle=to; if(st.node) puckDraw(st.node,to); return; }
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches){ st.angle=to; puckDrawAll(st,to); return; }
   const t0=performance.now(), ease=p=>1-Math.pow(1-p,3);
   st.to=to;
   const step=now=>{
     const p=Math.min(1,(now-t0)/PUCK.MS);
     st.angle=from+(to-from)*ease(p);
-    try{ if(st.node) puckDraw(st.node,st.angle+st.live); }catch(e){ console.error("puck", String(e)); }
+    puckDrawAll(st,st.angle+st.live);
     st.raf=p<1?requestAnimationFrame(step):0;
   };
   st.raf=requestAnimationFrame(step);
 }
 function puckStatus(mine,ds){
   if(mine==="in"){ const d=new Date(Date.parse(ds)); return isNaN(d)?"See you there.":`See you ${WEEKDAY_FULL[d.getDay()]}.`; }
-  if(mine==="out") return "You're out.";
+  if(mine==="out") return "";
   return rsvpSession?"No answer yet.":"Tap the puck to answer.";
 }
-function puckEl(entry,ds,mine){
+function puckEl(entry,ds,mine,opts){
+  const dims=opts&&opts.mini?PUCK_MINI:PUCK;
   const key=entry.key+"|"+ds;
-  const st=puckState[key]||(puckState[key]={angle:puckNearest(mine,0),target:null,live:0,last:"in",raf:0,node:null});
+  const st=puckState[key]||(puckState[key]={angle:puckNearest(mine,0),target:null,live:0,last:"in",raf:0,nodes:[]});
   // A target set by a flick carries its direction; anything else (first draw, a teammate answering
   // for you, a save that failed and was put back) goes the short way to the pose the answer needs
   if(st.target===null) st.target=st.angle;
   if(puckAnswer(st.target)!==mine) st.target=puckNearest(mine,st.angle);
   st.live=0;   // a drag in progress belonged to the element this one replaces
-  const stage=el("div","pk-stage");
+  const stage=el("div","pk-stage"+(opts&&opts.mini?" pk-mini":""));
+  stage._pk=dims;
   stage.tabIndex=0;
   stage.setAttribute("role","button");
-  stage.setAttribute("aria-label",`Your answer: ${mine==="in"?"In":mine==="out"?"Out":"no answer yet"}. Press to turn the puck over; Left arrow In, Right arrow Out, Up arrow or hold clears it.`);
+  stage.setAttribute("aria-label",`Your answer${opts&&opts.game?" for "+opts.game:""}: ${mine==="in"?"In":mine==="out"?"Out":"no answer yet"}. Press to turn the puck over; Left arrow In, Right arrow Out, Up arrow or hold clears it.`);
   stage.appendChild(el("div","pk-ground"));
   const puck=el("div","pk-puck");
   puck.setAttribute("aria-hidden","true");
-  for(let i=0;i<PUCK.N;i++){
+  for(let i=0;i<dims.N;i++){
     const strip=el("div","pk-strip");
-    strip.style.transform=`rotateZ(${(360/PUCK.N)*i}deg) translateY(${-PUCK.D/2}px) rotateX(90deg)`;
+    strip.style.transform=`rotateZ(${(360/dims.N)*i}deg) translateY(${-dims.D/2}px) rotateX(90deg)`;
     strip.appendChild(el("div","pk-knurl"));
     puck.appendChild(strip);
   }
@@ -1334,7 +1354,9 @@ function puckEl(entry,ds,mine){
     puck.appendChild(face);
   });
   stage.appendChild(puck);
-  st.node=stage;
+  // Not pruned here: a redraw builds the card's puck and the row's before either is in the
+  // document, so the first draw of the roll (next frame, both attached) drops the old ones
+  st.nodes.push(stage);
   puckDraw(stage,st.angle+st.live);
   if(st.angle!==st.target && !(st.raf && st.to===st.target)) puckTween(key);
 
@@ -1371,7 +1393,7 @@ function puckEl(entry,ds,mine){
     if(horiz()) st.live=Math.max(-120,Math.min(120,dx/1.3));
     else if(onEdge) st.live=Math.max(-12,Math.min(12,dy/6));
     else st.live=(pose===0?1:-1)*Math.min(90,Math.abs(dy)/1.5);
-    puckDraw(stage,st.angle+st.live);
+    puckDrawAll(st,st.angle+st.live);
   });
   stage.addEventListener("pointerup",()=>{
     clearTimeout(hold);
@@ -1388,7 +1410,7 @@ function puckEl(entry,ds,mine){
     else delta=(dx<0)?-180:180;
     go(delta);
   });
-  const dropDrag=()=>{ clearTimeout(hold); if(!drag) return; drag=false; stage.classList.remove("dragging"); st.live=0; if(st.node) puckDraw(st.node,st.angle); };
+  const dropDrag=()=>{ clearTimeout(hold); if(!drag) return; drag=false; stage.classList.remove("dragging"); st.live=0; puckDrawAll(st,st.angle); };
   // Assistive tech activates with a bare click, no pointer sequence: treat it like Enter
   stage.addEventListener("click",()=>{
     if(performance.now()-pointerAt<600 || st.raf) return;
@@ -1728,7 +1750,7 @@ async function answer(entry,ds,a,who){
   // Show it at once; put it back if the save fails
   if(a) games[ds][name]=Object.assign({a,t:Date.now()},name!==rsvpSession.name?{by:rsvpSession.name}:{}); else delete games[ds][name];
   renderSchedule();
-  if(name===rsvpSession.name) schedLive(puckStatus(a,ds));
+  if(name===rsvpSession.name) schedLive(a==="out"?"You're out.":puckStatus(a,ds));
   let error="";
   try{
     const {status,res}=await api("/rsvp",{season:entry.key,date:ds,answer:a,name});
