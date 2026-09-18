@@ -270,7 +270,7 @@ header.site{position:relative}
 .nx-io button{flex:1;font-family:var(--font-condensed);font-weight:700;font-size:20px;letter-spacing:.14em;text-transform:uppercase;padding:16px 0;border:2px solid var(--burgundy-300);background:transparent;color:var(--oatmeal-300);cursor:pointer;clip-path:var(--clip-patch-sm)}
 .nx-io button:hover{border-color:var(--oatmeal-300);color:var(--white)}
 .nx-io button.on-in{background:var(--status-win);border-color:var(--status-win);color:var(--white)}
-.nx-io button.on-out{background:var(--penalty-500);border-color:var(--penalty-500);color:var(--white)}
+.nx-io button.on-out{background:var(--burgundy-900);border-color:var(--burgundy-900);color:var(--white)}
 .nx-io button:focus-visible{outline:2px solid var(--whistle-500);outline-offset:2px}
 .nx-sec{border-top:1px solid var(--burgundy-400);padding-top:var(--space-4);display:flex;flex-direction:column;gap:8px}
 .nx-line{display:flex;gap:10px;align-items:baseline;font-family:var(--font-condensed);font-size:16px;line-height:1.35}
@@ -321,14 +321,14 @@ header.site{position:relative}
 .sg-io button+button{border-left:1px solid var(--oatmeal-600)}
 .sg-io button:hover{color:var(--burgundy-600)}
 .sg-io button.on-in{background:var(--status-win);color:var(--white)}
-.sg-io button.on-out{background:var(--penalty-500);color:var(--white)}
+.sg-io button.on-out{background:var(--burgundy-600);color:var(--white)}
 .sg-io button.on-in:hover,.sg-io button.on-out:hover{color:var(--white)}
 .sg-io button:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
 /* Who's in, opened by tapping a game */
 .sg-names{display:flex;flex-direction:column;gap:8px;padding:6px 0 14px calc(44px + 14px);border-bottom:1px solid var(--oatmeal-500);font-family:var(--font-condensed);font-size:15px;line-height:1.45;color:var(--ink-700)}
 .sg-names .grp b{font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-300);margin-right:6px}
 .sg-names .grp.in b{color:var(--status-win)}
-.sg-names .grp.out b{color:var(--penalty-500)}
+.sg-names .grp.out b{color:var(--burgundy-600)}
 .sg-names .grp.you,.sg-names .grp.add{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .sg-pick{font-family:var(--font-body);font-size:15px;color:var(--ink-900);background:var(--white);border:1px solid var(--oatmeal-600);border-radius:var(--radius-sm);padding:5px 8px;max-width:220px}
 .sg-pick:focus{outline:none;border-color:var(--burgundy-600);box-shadow:0 0 0 3px var(--burgundy-100)}
@@ -1124,6 +1124,13 @@ function dutyCells(g,entry,ds,played){
   return [beer,...awards];
 }
 // Who has said In or Out for a game, and who on the season's team hasn't
+// Lists show first names: "Adam Davis" -> "Adam", or "Adam D." when another player on the
+// roster shares the first name (JP's call, Sep 17, 2026)
+function shortNames(names,entry){
+  const count={};
+  new Set([...sheetPlayers(entry).map(p=>p.name),...names]).forEach(n=>{ const f=n.split(" ")[0].toLowerCase(); count[f]=(count[f]||0)+1; });
+  return names.map(n=>{ const parts=n.trim().split(/\s+/); const f=parts[0]; return count[f.toLowerCase()]>1 && parts[1] ? `${f} ${parts[1][0].toUpperCase()}.` : f; });
+}
 function rsvpSplit(entry,ds){
   const answers=(rsvpBySeason[entry.key]||{})[ds]||{};
   const ins=[], outs=[];
@@ -1252,8 +1259,8 @@ function heroCard(entry,g,num,ds){
       if(count!=null) b.appendChild(el("i","nx-n",String(count)));
       l.appendChild(b); l.appendChild(el("span",null,text)); return l;
     };
-    sec.appendChild(line("in","In",ins.length,ins.length?ins.join(", "):"Nobody yet",!ins.length));
-    sec.appendChild(line("out","Out",outs.length,outs.length?outs.join(", "):"Nobody yet",!outs.length));
+    sec.appendChild(line("in","In",ins.length,ins.length?shortNames(ins,entry).join(", "):"Nobody yet",!ins.length));
+    sec.appendChild(line("out","Out",outs.length,outs.length?shortNames(outs,entry).join(", "):"Nobody yet",!outs.length));
     sec.appendChild(line("quiet","Quiet",null,quiet.length?`${quiet.length} haven't said`:"Everyone has answered",true));
     if(rsvpSession){
       const add=el("div","nx-row");
@@ -1524,7 +1531,7 @@ function rsvpNamesRow(entry,ds){
     if(!names.length) return;
     const grp=el("div","grp "+cls);
     grp.appendChild(el("b",null,`${label} · ${names.length}`));
-    grp.append(names.join(", "));
+    grp.append(shortNames(names,entry).join(", "));
     row.appendChild(grp);
   });
   if(!ins.length && !outs.length) row.appendChild(el("span",null,"Nobody has answered yet."));
