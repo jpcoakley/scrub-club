@@ -1147,12 +1147,20 @@ function seasonHeadRow(label){
 }
 const WEEKDAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 // "Sep 22, 2026": the key the beer log and In/Out answers are filed under
-function gameKey(entry,g){ const year=gameYear(entry,g.date); return year?`${g.date}, ${year}`:""; }
-function isUpcoming(ds){ const t=Date.parse(ds); return !isNaN(t) && t>=new Date().setHours(0,0,0,0); }
+function gameKey(entry,g){
+  const year=gameYear(entry,g.date);
+  if(!year) return "";
+  // An event sharing a game's date (Rontoberfest, Oct 22) gets its own key with a slug, so its
+  // In/Out answers never mix with that day's game (both the page's maps and the Worker's KV keys)
+  return g.slug ? `${g.date}, ${year} \u00b7 ${g.slug}` : `${g.date}, ${year}`;
+}
+// The plain "Mon D, YYYY" part of a key, before any " \u00b7 slug" suffix; Date.parse needs this
+function dsDatePart(ds){ return ds.split(" \u00b7 ")[0]; }
+function isUpcoming(ds){ const t=Date.parse(dsDatePart(ds)); return !isNaN(t) && t>=new Date().setHours(0,0,0,0); }
 // The first unplayed game today or later, from a season's [{g,num}] list
 function nextGame(entry,games){
   for(const x of games){
-    if(x.g.us!=null) continue;
+    if(x.g.us!=null || x.g.event) continue; // an event (Rontoberfest) is never the hero card
     const ds=gameKey(entry,x.g);
     if(ds && isUpcoming(ds)) return Object.assign({ds},x);
   }
@@ -1169,6 +1177,8 @@ function dutyPool(){
 function dutyName(who,entry){ return who?shortNames([who],entry,dutyPool())[0]:""; }
 // Beer duty, then the two awards, each its own column: a name, an Assign button, or nothing
 function dutyCells(g,entry,ds,played){
+  // A social event (Rontoberfest) has none of these; leave the three columns blank
+  if(g.event) return [el("span","sg-beer"),el("span","sg-award third"),el("span","sg-award daddy")];
   const beerWho=(ds&&beerByDate[ds])||"";
   const beer=el("span","sg-beer",dutyName(beerWho,entry));
   if(beerWho) beer.title=beerWho;
@@ -1227,7 +1237,7 @@ function ioToggle(entry,ds,mine){
 function youCell(g,entry,ds){
   const cell=el("span","sg-you");
   const {mine}=rsvpSplit(entry,ds);
-  cell.appendChild(puckEl(entry,ds,mine,{mini:true,game:`${g.date} against ${g.opponent}`}));
+  cell.appendChild(puckEl(entry,ds,mine,{mini:true,game:g.event?`${g.date}, ${g.opponent}`:`${g.date} against ${g.opponent}`}));
   return cell;
 }
 function schedRow(g,entry,num,isNext){
@@ -1240,7 +1250,7 @@ function schedRow(g,entry,num,isNext){
   const gm=el("span","sg-gm",String(num));
   const when=el("span","sg-when");
   when.appendChild(el("span","sg-date",g.date));
-  when.appendChild(el("span","sg-time",g.time||""));
+  if(g.time) when.appendChild(el("span","sg-time",g.time));
   const opp=el("span","sg-opp");
   opp.appendChild(el("span","sg-opp-name",g.opponent));
   if(g.rink) opp.appendChild(el("span","sg-time",g.rink));
@@ -1254,7 +1264,9 @@ function schedRow(g,entry,num,isNext){
   const [beer,third,daddy]=dutyCells(g,entry,ds,played);
   // In/Out only for a game still to come in a season the sheet has a team for
   const rsvpable=!!(RSVP_API && ds && !played && entry.col);
-  if(rsvpable){
+  // The event's Beer cell has nothing in it (JP: no beer/award duty for Rontoberfest), so it
+  // shouldn't carry the "N in" badge either; that would misread as "Beer" on phones
+  if(rsvpable && !g.event){
     const {ins}=rsvpSplit(entry,ds);
     beer.appendChild(el("span","sg-cnt",(beer.textContent?" · ":"")+`${ins.length} in`));
   }
@@ -1348,7 +1360,7 @@ function puckTween(key){
   st.raf=requestAnimationFrame(step);
 }
 function puckStatus(mine,ds){
-  if(mine==="in"){ const d=new Date(Date.parse(ds)); return isNaN(d)?"See you there.":`See you ${WEEKDAY_FULL[d.getDay()]}.`; }
+  if(mine==="in"){ const d=new Date(Date.parse(dsDatePart(ds))); return isNaN(d)?"See you there.":`See you ${WEEKDAY_FULL[d.getDay()]}.`; }
   if(mine==="out") return "";
   return rsvpSession?"No answer yet.":"Tap the puck to answer.";
 }

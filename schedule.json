@@ -62,6 +62,14 @@
      "opponent": "Ice Turtles"
     },
     {
+     "gm": 32,
+     "date": "Oct 22",
+     "rink": "Parking Lot",
+     "opponent": "Rontoberfest",
+     "event": true,
+     "slug": "rontoberfest"
+    },
+    {
      "gm": 34,
      "date": "Oct 27",
      "time": "10:10 PM",

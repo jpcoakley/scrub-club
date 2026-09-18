@@ -25,6 +25,8 @@
  *   GET  /rsvp?season=W                    -> {games: {"Sep 22, 2026": {"JP Coakley": {a, t}}}}
  *   POST /rsvp              Bearer, {season, date, answer: "in" | "out" | "", name?}
  *                           name = a teammate on the roster, to answer for them
+ *                           date carries " · slug" when the game shares its date with another
+ *                           schedule.json entry (an event); that keeps their answers apart
  *
  * Storage (KV):
  *   sess:<token>            {email, at, renewed}              a year, renewed weekly by /me
@@ -271,7 +273,9 @@ async function route(request, env, ctx) {
     if (name !== me.name && !(await isRosterName(env, name))) {
       return json({ ok: false, error: "That name isn't on the roster." }, 400);
     }
-    const key = `rsvp:${season}:${game.ymd}:${name}`;
+    // A slug (an event sharing its date with a game) gets its own KV key segment, so a plain
+    // date never collides with a slugged one on the same day
+    const key = `rsvp:${season}:${game.ymd}${game.slug ? "#" + game.slug : ""}:${name}`;
     if (answer) {
       // Who answered isn't kept: an answer given for a teammate reads the same as their own
       await env.SC_KV.put(key, answer, { metadata: { a: answer, t: Date.now(), d: game.date } });
@@ -618,22 +622,28 @@ async function schedule() {
   return r.json();
 }
 
-// "Sep 22, 2026" in a posted season, unplayed, today or later -> {date, ymd}
+// "Sep 22, 2026" (or "Oct 22, 2026 · rontoberfest" for an entry sharing its date with another)
+// in a posted season, unplayed, today or later -> {date, ymd, slug}
 async function gameCheck(season, date) {
-  const m = date.match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/);
+  const m = date.match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})(?: · (.+))?$/);
   const mon = m ? MONTHS.indexOf(m[1]) : -1;
   if (mon < 0) return { error: "Bad game date." };
-  const day = +m[2], year = +m[3];
+  const day = +m[2], year = +m[3], slug = m[4] || "";
   const ymd = `${year}-${String(mon + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   const today = todayYmd();
   if (Math.abs(year - +today.slice(0, 4)) > 1) return { error: "Bad game date." };
   if (ymd < today) return { error: "That game has already been played." };
   const sched = await schedule();
   const games = (sched.seasons && sched.seasons[season] && sched.seasons[season].games) || [];
-  const game = games.find((g) => g.date === `${m[1]} ${day}`);
+  const plain = `${m[1]} ${day}`;
+  // Most dates hold one entry; when two share a date (an event alongside a game), the slug picks
+  // one, and an unslugged request lands on the plain one (a game never carries a slug itself)
+  const matches = games.filter((g) => g.date === plain);
+  const game = matches.length <= 1 ? matches[0] : matches.find((g) => (g.slug || "") === slug);
   if (!game) return { error: "That game isn't on the schedule." };
   if (game.us != null) return { error: "That game has already been played." };
-  return { date: `${m[1]} ${day}, ${year}`, ymd };
+  const label = game.slug ? `${plain}, ${year} · ${game.slug}` : `${plain}, ${year}`;
+  return { date: label, ymd, slug: game.slug || "" };
 }
 
 function todayYmd() {
