@@ -357,9 +357,10 @@ header.site{position:relative}
 .sg-opp-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;min-width:0}
 .sg-opp-name{font-family:var(--font-display);font-size:16px;line-height:1.2;color:var(--text-strong);text-transform:uppercase}
 /* How many have answered, right beside the opponent name so it reads while scrolling the list */
-.sg-io-cnt{display:flex;gap:8px;font-family:var(--font-condensed);font-weight:700;font-size:12px;text-transform:uppercase;white-space:nowrap}
+.sg-io-cnt{display:flex;align-items:baseline;gap:3px;font-family:var(--font-numeral);font-weight:800;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .sg-io-cnt .in{color:var(--status-win)}
-.sg-io-cnt .out{color:var(--burgundy-600)}
+.sg-io-cnt .out{color:var(--penalty-500)}
+.sg-io-cnt .sep{color:var(--ink-300);font-weight:600}
 .sg-res{font-family:var(--font-numeral);font-weight:800;font-size:19px;white-space:nowrap}
 .sg-res.win{color:var(--turf-500)}
 .sg-res.loss{color:var(--penalty-500)}
@@ -417,7 +418,7 @@ header.site{position:relative}
   .sg-beer::before{content:"Beer · "}
   .sg-beer:empty{display:none}
   .sg-opp-top{gap:6px}
-  .sg-io-cnt{font-size:11px;gap:5px}
+  .sg-io-cnt{font-size:13px;gap:2px}
   .sg-beer .sg-req{font-size:13px}
   .sg-date{font-size:14px;letter-spacing:.06em}
   .sg-time{font-size:12px}
@@ -1249,13 +1250,16 @@ function schedRow(g,entry,num,isNext){
   // In/Out only for a game still to come in a season the sheet has a team for
   const rsvpable=!!(RSVP_API && ds && !played && entry.col);
   // Counts sit right next to the opponent name, so they're visible while scrolling the list
-  // instead of only after tapping the row open; they're silent until someone has answered
+  // instead of only after tapping the row open; they're silent until someone has answered.
+  // A plain green/red "3 / 1", no In/Out words here (those show once the row is tapped open)
   if(rsvpable){
     const {ins,outs}=rsvpSplit(entry,ds);
     if(ins.length||outs.length){
       const cnt=el("span","sg-io-cnt");
-      if(ins.length) cnt.appendChild(el("span","in",`In ${ins.length}`));
-      if(outs.length) cnt.appendChild(el("span","out",`Out ${outs.length}`));
+      cnt.setAttribute("aria-label",`${ins.length} in, ${outs.length} out`);
+      cnt.appendChild(el("span","in",String(ins.length)));
+      cnt.appendChild(el("span","sep","/"));
+      cnt.appendChild(el("span","out",String(outs.length)));
       oppTop.appendChild(cnt);
     }
   }
