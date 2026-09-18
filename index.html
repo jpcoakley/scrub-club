@@ -26,7 +26,7 @@
 <meta name="apple-mobile-web-app-title" content="Scrub Club">
 <style>
 /* ============ Scrub Club Design System tokens ============ */
-@import url("https://fonts.googleapis.com/css2?family=Jost:wght@700&family=Big+Shoulders+Display:wght@600;700;800&family=Archivo:ital,wght@0,400..700;1,400..600&family=Barlow+Condensed:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Jost:wght@700&family=Big+Shoulders+Display:wght@600;700;800&family=Archivo:ital,wght@0,400..700;1,400..600&family=Barlow+Condensed:wght@500;600;700&family=Playfair+Display:ital,wght@1,500;1,600&display=swap");
 :root{
   --burgundy-900:#3F1523;--burgundy-800:#571C2E;--burgundy-700:#68223A;--burgundy-600:#7A2842;
   --burgundy-500:#8F3A54;--burgundy-400:#A85A71;--burgundy-300:#C68C9C;--burgundy-200:#E2C3CD;--burgundy-100:#F4E5EA;
@@ -232,19 +232,19 @@ header.site{position:relative}
 .join-btn{font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-900);background:var(--oatmeal-300);border:none;clip-path:var(--clip-patch-sm);padding:11px 22px;cursor:pointer}
 .join-btn:hover{background:var(--white)}
 .about{padding-top:0;padding-bottom:var(--space-8)}
-.about-intro{padding:var(--space-8) 0;display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-4)}
-.about-head{font-family:var(--font-display);font-size:clamp(24px,2.7vw,34px);line-height:1.08;letter-spacing:.02em;color:var(--text-strong);max-width:18ch;text-wrap:balance}
-/* Phones and tablets: copy, then the photo full-bleed as a shallow band. The
-   max-height keeps a wide-but-short window from turning 16/7 into a billboard;
-   at phone widths the natural 16/7 height is already under it, so nothing changes. */
-.about-photo{display:block;width:100vw;margin-left:calc(50% - 50vw);aspect-ratio:16/7;max-height:clamp(180px,30vh,280px);object-fit:cover;border-radius:0;box-shadow:none}
-/* Wide screens: the photo sits beside the copy instead of stacking under it, so a
-   full-bleed 16/7 band can't eat 70% of the viewport and push the season snapshot
-   below the fold. Hero height is now the photo alone, not copy + photo. */
+/* The hero is the photo, full bleed, on the photo's own near-black, with the quote set over the
+   dark side of the frame (JP, Sep 18, 2026). Phones and tablets: the photo as a band, the quote
+   in the black under it. Wide screens: the photo fills the band, the face kept to the right, and
+   a fade holds the left side dark under the quote at any width. */
+.about-hero{position:relative;width:100vw;margin-left:calc(50% - 50vw);background:#1f1f1f;color:var(--oatmeal-300);overflow:hidden;display:flex;flex-direction:column}
+.about-photo{order:-1;display:block;width:100%;aspect-ratio:16/7;max-height:clamp(180px,30vh,280px);object-fit:cover;object-position:50% 30%;border-radius:0;box-shadow:none}
+.about-intro{position:relative;z-index:1;padding:var(--space-6) var(--gutter-inline) var(--space-8);display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-4)}
+.about-head{font-family:var(--font-display);font-size:clamp(24px,2.7vw,34px);line-height:1.08;letter-spacing:.02em;color:var(--oatmeal-100);max-width:18ch;text-wrap:balance}
 @media (min-width:900px){
-  .about-hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);align-items:center;gap:var(--space-12);padding:var(--space-8) 0}
-  .about-intro{padding:0}
-  .about-photo{width:100%;margin-left:0;aspect-ratio:3/2;max-height:none;clip-path:var(--clip-patch)}
+  .about-hero{flex-direction:row;align-items:center;min-height:460px}
+  .about-photo{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:auto;max-height:none;object-position:68% 30%}
+  .about-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#1f1f1f 0%,#1f1f1f 30%,rgba(31,31,31,0) 62%)}
+  .about-intro{width:100%;max-width:var(--container-max);margin:0 auto;padding:var(--space-8) var(--gutter-inline)}
 }
 .wf-hero{aspect-ratio:16/7;border:2px dashed var(--ink-300);background:
   linear-gradient(to top right,transparent calc(50% - 1px),var(--ink-100) calc(50% - 1px),var(--ink-100) calc(50% + 1px),transparent calc(50% + 1px)),
@@ -254,29 +254,35 @@ header.site{position:relative}
 /* The quote is set with hard returns at the clauses. Every line is its own block with a
    hanging indent, so a line that outruns the column wraps underneath itself instead of
    reading as another return. Uniform weight throughout; only the closing stanza lifts. */
-.about-quote{margin:0;max-width:42ch;font-family:var(--font-body);font-size:clamp(15px,1.55vw,18px);line-height:1.5;color:var(--text-body)}
-.about-quote .q-st{margin:0 0 var(--space-6)}
+.about-quote{margin:0;max-width:40ch;font-family:"Playfair Display",Georgia,"Times New Roman",serif;font-style:italic;font-weight:500;font-size:clamp(17px,1.5vw,20px);line-height:1.4;color:var(--oatmeal-300)}
+.about-quote .q-st{margin:0 0 var(--space-4)}
 .about-quote .q-st:last-child{margin-bottom:0}
 .about-quote .q-ln{display:block;padding-left:1.2em;text-indent:-1.2em}
-.about-quote .q-turn .q-ln{font-size:1.1em;line-height:1.4;font-weight:500;color:var(--text-strong)}
+.about-quote .q-turn .q-ln{font-size:1.1em;line-height:1.35;font-weight:600;color:var(--oatmeal-100)}
 /* a line may legally break after a hyphen, which would split this in two */
 .about-quote .nb{white-space:nowrap}
-.about-note{margin-top:var(--space-4);font-family:var(--font-condensed);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
-/* About: season snapshot */
-.ab-season{padding-top:var(--space-8)}
-.ab-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:var(--space-3);margin-top:var(--space-6)}
-.ab-tile{background:var(--surface-inverse);clip-path:var(--clip-patch-sm);padding:var(--space-4) var(--space-3);text-align:center}
-.ab-tile b{display:block;font-family:var(--font-numeral);font-weight:800;font-size:34px;line-height:1;color:var(--oatmeal-300);font-variant-numeric:tabular-nums}
+.about-note{margin-top:var(--space-4);font-family:var(--font-condensed);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--oatmeal-600)}
+/* About: season snapshot (kept short: small tiles, the two game cards as single lines) */
+.ab-season{padding-top:var(--space-6)}
+.ab-body{margin-top:var(--space-4)}
+.ab-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:var(--space-2)}
+.ab-tile{background:var(--surface-inverse);clip-path:var(--clip-patch-sm);padding:var(--space-2) var(--space-2) 10px;text-align:center}
+.ab-tile b{display:block;font-family:var(--font-numeral);font-weight:800;font-size:28px;line-height:1;color:var(--oatmeal-300);font-variant-numeric:tabular-nums}
 .ab-tile span{display:block;margin-top:var(--space-1);font-family:var(--font-condensed);font-weight:600;font-size:13px;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--text-on-inverse-muted)}
-.ab-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-3);margin-top:var(--space-3)}
-.ab-card{background:var(--surface-raised);box-shadow:var(--shadow-card);clip-path:var(--clip-patch-sm);padding:var(--space-4)}
+.ab-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-2);margin-top:var(--space-2)}
+.ab-card{background:var(--surface-raised);box-shadow:var(--shadow-card);clip-path:var(--clip-patch-sm);padding:10px var(--space-4);display:flex;align-items:baseline;flex-wrap:wrap;gap:2px var(--space-3)}
 .ab-card[hidden]{display:none}
-.ab-k{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--text-muted);margin-bottom:var(--space-2)}
-.ab-opp{font-family:var(--font-display);font-size:20px;line-height:1.1;color:var(--text-strong);text-transform:uppercase}
-.ab-meta{margin-top:var(--space-1);font-family:var(--font-condensed);font-weight:600;font-size:14px;letter-spacing:.06em;color:var(--ink-500);text-transform:uppercase}
-.ab-score{font-family:var(--font-numeral);font-weight:800;font-size:26px;line-height:1;margin-top:var(--space-2)}
+.ab-k{flex:0 0 100%;font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--text-muted)}
+.ab-opp{font-family:var(--font-display);font-size:18px;line-height:1.1;color:var(--text-strong);text-transform:uppercase}
+.ab-meta{font-family:var(--font-condensed);font-weight:600;font-size:14px;letter-spacing:.06em;color:var(--ink-500);text-transform:uppercase}
+.ab-score{font-family:var(--font-numeral);font-weight:800;font-size:22px;line-height:1}
+@media (min-width:900px){
+  .ab-body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:var(--space-2);align-items:start}
+  .ab-tiles{grid-template-columns:repeat(4,1fr)}
+  .ab-cards{grid-template-columns:1fr;margin-top:0}
+}
 .ab-score.win{color:var(--status-win)}.ab-score.loss{color:var(--status-loss)}.ab-score.tie{color:var(--ink-500)}
-.ab-links{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap;margin-top:var(--space-6)}
+.ab-links{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap;margin-top:var(--space-4)}
 .ab-link{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-600);background:none;border:none;padding:0;cursor:pointer}
 .ab-link:hover{text-decoration:underline}
 /* ---------- Schedule: the next game as a card, then the season as a list ---------- */
@@ -639,10 +645,12 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
     </div>
     <section class="block ab-season" id="ab-season" hidden>
       <div class="section-head"><h2>THIS SEASON</h2><span class="count" id="ab-season-label"></span></div>
-      <div class="ab-tiles" id="ab-tiles"></div>
-      <div class="ab-cards">
-        <div class="ab-card" id="ab-next" hidden></div>
-        <div class="ab-card" id="ab-last" hidden></div>
+      <div class="ab-body">
+        <div class="ab-tiles" id="ab-tiles"></div>
+        <div class="ab-cards">
+          <div class="ab-card" id="ab-next" hidden></div>
+          <div class="ab-card" id="ab-last" hidden></div>
+        </div>
       </div>
       <div class="ab-links">
         <button class="join-btn" type="button" data-view="schedule">Full schedule</button>
