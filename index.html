@@ -1245,8 +1245,9 @@ function schedRow(g,entry,isNext){
   const rsvpable=!!(RSVP_API && ds && !played && entry.col);
   // Counts sit right next to the opponent name, so they're visible while scrolling the list
   // instead of only after tapping the row open; they're silent until someone has answered.
-  // A plain green/red "3 / 1", no In/Out words here (those show once the row is tapped open)
-  if(rsvpable){
+  // A plain green/red "3 / 1", no In/Out words here (those show once the row is tapped open).
+  // Who's In/Out is for signed-in teammates only (JP, Sep 21, 2026); signed out, this stays blank
+  if(rsvpable && rsvpSession){
     const {ins,outs}=rsvpSplit(entry,ds);
     if(ins.length||outs.length){
       const cnt=el("span","sg-io-cnt");
@@ -1482,16 +1483,27 @@ function heroCard(entry,g,num,ds){
     ask.appendChild(el("div","pk-status",puckStatus(mine,ds)));
     main.appendChild(ask);
     const sec=el("div","nx-sec nx-who");
-    // The label carries the count, in white: "IN 3"
-    const line=(cls,label,count,text,muted)=>{
-      const l=el("div","nx-line"+(muted?" muted":""));
-      const b=el("b",null,label);
-      if(count!=null) b.appendChild(el("i","nx-n",String(count)));
-      l.appendChild(b); l.appendChild(el("span",null,text)); return l;
-    };
-    // Just the counts and names: no "Nobody yet", no Quiet line, no teammate picker (JP, Sep 18, 2026)
-    sec.appendChild(line("in","In",ins.length,ins.length?shortNames(ins,entry).join(", "):"",!ins.length));
-    sec.appendChild(line("out","Out",outs.length,outs.length?shortNames(outs,entry).join(", "):"",!outs.length));
+    // Who's In/Out is for signed-in teammates only (JP, Sep 21, 2026); Beer Man below stays public
+    if(rsvpSession){
+      // The label carries the count, in white: "IN 3"
+      const line=(cls,label,count,text,muted)=>{
+        const l=el("div","nx-line"+(muted?" muted":""));
+        const b=el("b",null,label);
+        if(count!=null) b.appendChild(el("i","nx-n",String(count)));
+        l.appendChild(b); l.appendChild(el("span",null,text)); return l;
+      };
+      // Just the counts and names: no "Nobody yet", no Quiet line, no teammate picker (JP, Sep 18, 2026)
+      sec.appendChild(line("in","In",ins.length,ins.length?shortNames(ins,entry).join(", "):"",!ins.length));
+      sec.appendChild(line("out","Out",outs.length,outs.length?shortNames(outs,entry).join(", "):"",!outs.length));
+    }else{
+      const row=el("div","nx-row");
+      row.appendChild(el("span","nx-val","Sign in to see who's playing."));
+      const b=el("button","nx-btn","Sign in");
+      b.type="button";
+      b.addEventListener("click",()=>openSignIn());
+      row.appendChild(b);
+      sec.appendChild(row);
+    }
     card.appendChild(sec);
   }
   const beer=el("div","nx-sec nx-row nx-beer");
@@ -1665,6 +1677,10 @@ function loadSession(){
 function saveSession(s){
   rsvpSession=s;
   try{ if(s) localStorage.setItem(SESSION_KEY,JSON.stringify(s)); else localStorage.removeItem(SESSION_KEY); }catch(e){}
+  // Who's In/Out is roster-only (JP, Sep 21, 2026): drop any cached answers so signing in fetches
+  // them fresh, and signing out drops them from memory rather than leaving them on screen
+  rsvpBySeason={};
+  Object.keys(rsvpFailedAt).forEach(k=>delete rsvpFailedAt[k]);
   renderAccount();
 }
 // {status, res}; res is null when the reply wasn't JSON
@@ -1692,6 +1708,7 @@ function rsvpNote(text){
 const RSVP_RETRY_MS=30000;
 const rsvpFailedAt={};
 function loadRsvpFor(entries){
+  if(!rsvpSession) return; // who's In/Out needs sign-in now; nothing to fetch while signed out
   const now=Date.now();
   const need=entries.filter(e=>e.col && !(e.key in rsvpBySeason) && !(now-(rsvpFailedAt[e.key]||0)<RSVP_RETRY_MS)
     && schedData.seasons[e.key]?.games?.some(g=>g.us==null));
@@ -1787,8 +1804,17 @@ document.addEventListener("keydown",e=>{
 // Your answer, then In, Out, and the season's team members who haven't said
 // Your own answer already shows on the puck in the You column, so the names row starts at In
 function rsvpNamesRow(entry,ds){
-  const {ins,outs,quiet}=rsvpSplit(entry,ds);
   const row=el("div","sg-names");
+  // Who's In/Out is for signed-in teammates only (JP, Sep 21, 2026)
+  if(!rsvpSession){
+    row.appendChild(el("span",null,"Sign in to see who's playing. "));
+    const b=el("button","sg-req","Sign in");
+    b.type="button";
+    b.addEventListener("click",()=>openSignIn());
+    row.appendChild(b);
+    return row;
+  }
+  const {ins,outs,quiet}=rsvpSplit(entry,ds);
   [["in","In",ins],["out","Out",outs],["quiet","No answer",quiet]].forEach(([cls,label,names])=>{
     if(!names.length) return;
     const grp=el("div","grp "+cls);

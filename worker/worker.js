@@ -22,7 +22,9 @@
  *   POST /assign            {date, name, season, seasonHeader, seasonKey, award?}
  *                                          puts a teammate on Beer Duty (or gives Third Beer /
  *                                          Scrub Daddy, award: "third" | "daddy") for a game
- *   GET  /rsvp?season=W                    -> {games: {"Sep 22, 2026": {"JP Coakley": {a, t}}}}
+ *   GET  /rsvp?season=W      Bearer          -> {games: {"Sep 22, 2026": {"JP Coakley": {a, t}}}}
+ *                                          401 when signed out (JP, Sep 21, 2026: who's In/Out
+ *                                          is for the roster only, not anyone who finds the site)
  *   POST /rsvp              Bearer, {season, date, answer: "in" | "out" | "", name?}
  *                           name = a teammate on the roster, to answer for them
  *                           date carries " · slug" when the game shares its date with another
@@ -252,8 +254,10 @@ async function route(request, env, ctx) {
     return json(out, out.ok ? 200 : 400);
   }
 
-  // ---- who's in and out, one season at a time ----
+  // ---- who's in and out, one season at a time (roster only, JP Sep 21, 2026) ----
   if (m === "GET" && p === "/rsvp") {
+    const me = await whoami(request, env);
+    if (!me) return json({ ok: false, error: "Sign in to see who's playing." }, 401);
     const season = String(url.searchParams.get("season") || "").trim();
     if (!/^[A-Za-z0-9_-]{1,12}$/.test(season)) return json({ ok: false, error: "Bad season." }, 400);
     return json({ ok: true, season, games: await answersFor(env, season) });
