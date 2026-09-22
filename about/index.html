@@ -1232,24 +1232,35 @@ function currentTeam(){
   const e=SEASONS.find(s=>s.col);
   return e?teamNames(e):[];
 }
+// Full name -> nickname, from the Roster's Nickname column (JP, Sep 22, 2026: David Bortnick is
+// Spicy, David Sanders is Sanders). Anyone with one is shown by it instead of a first name.
+function nicknames(){
+  const m={};
+  if(allRows && SEASONS.length) sheetPlayers(SEASONS[0]).forEach(p=>{ if(p.nick) m[p.name]=p.nick; });
+  return m;
+}
 function shortNames(names,entry,pool=[]){
-  const team=currentTeam();
-  const firstOf=n=>n.trim().split(/\s+/)[0].toLowerCase();
-  const short=n=>{ const parts=n.trim().split(/\s+/); return parts[1]?`${parts[0]} ${parts[1][0].toUpperCase()}.`:parts[0]; };
-  const first=n=>n.trim().split(/\s+/)[0];
+  const nicks=nicknames(), team=currentTeam();
+  const base=n=>nicks[n]||n.trim().split(/\s+/)[0];
+  const key=n=>base(n).toLowerCase();
+  const initialed=n=>{
+    if(nicks[n]) return nicks[n];
+    const parts=n.trim().split(/\s+/);
+    return parts[1]?`${parts[0]} ${parts[1][0].toUpperCase()}.`:parts[0];
+  };
   if(!team.length){
     // Roster not loaded yet: fall back to everyone on the sheet, as before
     const count={};
-    new Set([...sheetPlayers(entry).map(p=>p.name),...names,...pool]).forEach(n=>{ const f=firstOf(n); count[f]=(count[f]||0)+1; });
-    return names.map(n=>count[firstOf(n)]>1?short(n):first(n));
+    new Set([...sheetPlayers(entry).map(p=>p.name),...names,...pool]).forEach(n=>{ const k=key(n); count[k]=(count[k]||0)+1; });
+    return names.map(n=>count[key(n)]>1?initialed(n):base(n));
   }
   const onTeam=new Set(team), teamCount={}, offCount={};
-  team.forEach(n=>{ const f=firstOf(n); teamCount[f]=(teamCount[f]||0)+1; });
-  new Set([...names,...pool].filter(n=>!onTeam.has(n))).forEach(n=>{ const f=firstOf(n); offCount[f]=(offCount[f]||0)+1; });
+  team.forEach(n=>{ const k=key(n); teamCount[k]=(teamCount[k]||0)+1; });
+  new Set([...names,...pool].filter(n=>!onTeam.has(n))).forEach(n=>{ const k=key(n); offCount[k]=(offCount[k]||0)+1; });
   return names.map(n=>{
-    const f=firstOf(n);
-    const clash=onTeam.has(n) ? (teamCount[f]||0)>1 : ((teamCount[f]||0)>0 || (offCount[f]||0)>1);
-    return clash?short(n):first(n);
+    const k=key(n);
+    const clash=onTeam.has(n) ? (teamCount[k]||0)>1 : ((teamCount[k]||0)>0 || (offCount[k]||0)>1);
+    return clash?initialed(n):base(n);
   });
 }
 function rsvpSplit(entry,ds){
@@ -1829,7 +1840,7 @@ function renderAccount(){
   const btn=el("button","acct-btn");
   btn.type="button";
   if(rsvpSession){
-    btn.append(rsvpSession.name.split(" ")[0]);
+    btn.append(nicknames()[rsvpSession.name]||rsvpSession.name.split(" ")[0]);
     btn.insertAdjacentHTML("beforeend",'<svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>');
     btn.setAttribute("aria-haspopup","true");
     btn.setAttribute("aria-expanded","false");
@@ -2091,13 +2102,15 @@ function sheetPlayers(entry){
   const header=allRows[HEADER_ROW-1]||[];
   const iF=resolveCol(COL_FIRST,header), iL=resolveCol(COL_LAST,header), iJ=resolveCol(COL_JERSEY,header),
         iU=resolveCol(COL_USAH,header), iS=entry.col?resolveCol(entry,header):-1;
+  const iN=headerIdx(header,"Nickname",16);
   const out=[];
   for(let r=DATA_START-1;r<allRows.length;r++){
     const row=allRows[r]||[];
     const first=(row[iF]||"").trim(), last=(row[iL]||"").trim();
     if(!first&&!last) continue;
     out.push({name:(first+" "+last).trim(), first, last, lastKey:normName(last), initial:(first[0]||"").toLowerCase(),
-      jersey:(row[iJ]||"").trim(), usah:(row[iU]||"").trim(), status:iS>=0?(row[iS]||"").trim().toLowerCase():""});
+      jersey:(row[iJ]||"").trim(), usah:(row[iU]||"").trim(), status:iS>=0?(row[iS]||"").trim().toLowerCase():"",
+      nick:iN>=0?(row[iN]||"").trim():""});
   }
   return out;
 }

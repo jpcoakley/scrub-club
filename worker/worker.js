@@ -68,6 +68,7 @@ const F = {
   name: "Name", first: "First", last: "Last", jersey: "Jersey #", email: "Email",
   date: "Date", season: "Season", type: "Type", opponent: "Opponent", us: "Us", them: "Them",
   outcome: "Outcome", beer: "Beer Duty", third: "Third Beer", daddy: "Scrub Daddy",
+  nickname: "Nickname",
 };
 // Roster fields the site gets: the newest USA Hockey year and every season status column
 const USAH_RE = /^USA Hockey,?\s*(\d{4})$/;
@@ -78,7 +79,8 @@ const ON_TEAM = ["in", "paid", "half", "goalie"];
 // What the site may fill in on a Games row, by the site's kind name
 const ASSIGN_FIELDS = { beer: F.beer, third: F.third, daddy: F.daddy };
 // Where the site's column fallbacks expect the roster columns (0-based, from the old sheet)
-const GRID = { usahEnd: 9, jersey: 11, first: 14, last: 15, seasonsFrom: 20, headerRow: 6 };
+// nickname (column Q) is new with the Airtable move (JP, Sep 22, 2026): the site shows it in place of a first name
+const GRID = { usahEnd: 9, jersey: 11, first: 14, last: 15, nickname: 16, seasonsFrom: 20, headerRow: 6 };
 
 // A public copy older than this is refreshed behind the response
 const PUBLIC_MAX_AGE_MS = 4 * 60 * 60 * 1000;
@@ -452,7 +454,7 @@ function rosterGrid(schema, players) {
   const header = [];
   const put = (i, name) => { header[i] = name; };
   schema.usah.forEach((n, k) => put(Math.max(0, GRID.usahEnd - (schema.usah.length - 1 - k)), n));
-  put(GRID.jersey, F.jersey); put(GRID.first, F.first); put(GRID.last, F.last);
+  put(GRID.jersey, F.jersey); put(GRID.first, F.first); put(GRID.last, F.last); put(GRID.nickname, F.nickname);
   schema.seasons.forEach((n, k) => put(GRID.seasonsFrom + k, n));
   const width = header.length;
   for (let i = 0; i < width; i++) if (header[i] == null) header[i] = "";
@@ -468,6 +470,7 @@ function rosterGrid(schema, players) {
     const row = blank();
     row[col(F.first)] = str(f[F.first]);
     row[col(F.last)] = str(f[F.last]);
+    row[col(F.nickname)] = str(f[F.nickname]);
     row[col(F.jersey)] = str(f[F.jersey]);
     for (const n of schema.usah) row[col(n)] = str(f[n]);
     for (const n of schema.seasons) row[col(n)] = str(f[n]);
