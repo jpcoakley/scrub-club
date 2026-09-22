@@ -803,7 +803,13 @@ function buildScheduleIcs(sched, beerMap) {
 function icsResponse(text) {
   return new Response(text, {
     status: 200,
-    headers: { "Content-Type": "text/calendar; charset=utf-8", "Cache-Control": "public, max-age=1800" },
+    headers: {
+      "Content-Type": "text/calendar; charset=utf-8",
+      "Cache-Control": "public, max-age=1800",
+      // "inline", not "attachment": a browser or OS that hands this to a calendar app still can;
+      // this only names the file for whoever ends up saving it (JP, Sep 22, 2026)
+      "Content-Disposition": 'inline; filename="scrub-club-hockey-schedule.ics"',
+    },
   });
 }
 
