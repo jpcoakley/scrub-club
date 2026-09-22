@@ -1222,12 +1222,35 @@ function dutyCells(g,entry,ds,played){
   return [beer,...awards];
 }
 // Who has said In or Out for a game, and who on the season's team hasn't
-// Lists show first names: "Adam Davis" -> "Adam", or "Adam D." when another player on the
-// roster shares the first name (JP's call, Sep 17, 2026)
+// Lists show first names: "Adam Davis" -> "Adam", or "Adam D." when two people need telling apart
+// (JP's call, Sep 17, 2026). Who clashes is judged by the current team, not everyone who was ever on
+// the roster (JP, Sep 22, 2026: Adam Davis is just Adam; Adam Bortnick hasn't played in a while).
+// On the team: an initial only when a teammate shares the first name (David S. and David B.).
+// Off the team (a sub, an old beer run): an initial when anyone on the team shares it (Adam B.),
+// or when someone else off the team being shown does.
+function currentTeam(){
+  const e=SEASONS.find(s=>s.col);
+  return e?teamNames(e):[];
+}
 function shortNames(names,entry,pool=[]){
-  const count={};
-  new Set([...sheetPlayers(entry).map(p=>p.name),...names,...pool]).forEach(n=>{ const f=n.split(" ")[0].toLowerCase(); count[f]=(count[f]||0)+1; });
-  return names.map(n=>{ const parts=n.trim().split(/\s+/); const f=parts[0]; return count[f.toLowerCase()]>1 && parts[1] ? `${f} ${parts[1][0].toUpperCase()}.` : f; });
+  const team=currentTeam();
+  const firstOf=n=>n.trim().split(/\s+/)[0].toLowerCase();
+  const short=n=>{ const parts=n.trim().split(/\s+/); return parts[1]?`${parts[0]} ${parts[1][0].toUpperCase()}.`:parts[0]; };
+  const first=n=>n.trim().split(/\s+/)[0];
+  if(!team.length){
+    // Roster not loaded yet: fall back to everyone on the sheet, as before
+    const count={};
+    new Set([...sheetPlayers(entry).map(p=>p.name),...names,...pool]).forEach(n=>{ const f=firstOf(n); count[f]=(count[f]||0)+1; });
+    return names.map(n=>count[firstOf(n)]>1?short(n):first(n));
+  }
+  const onTeam=new Set(team), teamCount={}, offCount={};
+  team.forEach(n=>{ const f=firstOf(n); teamCount[f]=(teamCount[f]||0)+1; });
+  new Set([...names,...pool].filter(n=>!onTeam.has(n))).forEach(n=>{ const f=firstOf(n); offCount[f]=(offCount[f]||0)+1; });
+  return names.map(n=>{
+    const f=firstOf(n);
+    const clash=onTeam.has(n) ? (teamCount[f]||0)>1 : ((teamCount[f]||0)>0 || (offCount[f]||0)>1);
+    return clash?short(n):first(n);
+  });
 }
 function rsvpSplit(entry,ds){
   const answers=(rsvpBySeason[entry.key]||{})[ds]||{};
