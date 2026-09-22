@@ -254,7 +254,7 @@ async function route(request, env, ctx) {
     try {
       const { rec, usahField } = await myRecord(env, me);
       if (!rec) return json({ ok: false, error: "That name isn't on the roster." }, 404);
-      return json(Object.assign({ ok: true, sizes: JERSEY_SIZES }, profileOf(rec, usahField, me)));
+      return json(Object.assign({ ok: true, sizes: JERSEY_SIZES }, shown(profileOf(rec, usahField, me))));
     } catch (e) {
       console.error("profile read", me.name, String(e));
       return json({ ok: false, error: "Couldn't reach the team roster. Try again." }, 502);
@@ -286,7 +286,7 @@ async function route(request, env, ctx) {
           { expirationTtl: SESSION_TTL });
       }
       Object.assign(rec.fields, fields);
-      out = Object.assign({ ok: true }, profileOf(rec, usahField, { email: check.email || me.email, name: me.name }));
+      out = Object.assign({ ok: true }, shown(profileOf(rec, usahField, { email: check.email || me.email, name: me.name })));
     } catch (e) {
       console.error("profile write", me.name, String(e));
       return json({ ok: false, error: "Couldn't save to the team roster. Try again." }, 502);
@@ -578,6 +578,15 @@ function profileOf(rec, usahField, me) {
   };
 }
 
+// Phone and Venmo go in but never come back out (JP, Sep 22, 2026): a player adds them for JP's
+// invoicing, and the site doesn't show them, not even to that player
+function shown(profile) {
+  const out = Object.assign({}, profile);
+  delete out.phone;
+  delete out.venmo;
+  return out;
+}
+
 // The fields to write, from what the page sent. Only a value that changed is checked, so an old
 // entry in an odd shape (a Venmo note, say) doesn't block saving everything else.
 function profileChanges(body, now, players, rec, usahField) {
@@ -595,19 +604,20 @@ function profileChanges(body, now, players, rec, usahField) {
     email = e;
   }
 
+  // The page starts phone and Venmo empty, so empty means "no change", not "erase"
   const ph = got("phone");
-  if (ph !== now.phone) {
+  if (ph && ph !== now.phone) {
     let d = ph.replace(/\D/g, "");
     if (d.length === 11 && d[0] === "1") d = d.slice(1);
-    if (ph && d.length !== 10) return { error: "Enter a 10-digit phone number." };
-    fields[F.phone] = d ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}` : null;
+    if (d.length !== 10) return { error: "Enter a 10-digit phone number." };
+    fields[F.phone] = `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
   }
 
   const v = got("venmo");
-  if (v !== now.venmo) {
+  if (v && v !== now.venmo) {
     const h = v.replace(/^@+/, "");
-    if (v && !/^[A-Za-z0-9_-]{2,30}$/.test(h)) return { error: "Enter your Venmo username, like @jpcoakley." };
-    fields[F.venmo] = h ? "@" + h : null;
+    if (!/^[A-Za-z0-9_-]{2,30}$/.test(h)) return { error: "Enter your Venmo username, like @your-name." };
+    fields[F.venmo] = "@" + h;
   }
 
   const u = got("usah").toUpperCase().replace(/[\s-]/g, "");

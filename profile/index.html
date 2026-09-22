@@ -2260,12 +2260,14 @@ function usahCell(p){
 /* ---------- Your profile ----------
    Your own Roster details (email, phone, Venmo, USA Hockey #, jersey # and size), read and written
    through the Worker's /profile, which only ever answers with the signed-in player's own row. The
-   email is the one you sign in with; changing it moves your sign-in to the new address. */
+   email is the one you sign in with; changing it moves your sign-in to the new address. Phone and
+   Venmo are add-only (JP, Sep 22, 2026): the Worker never sends them back, so those two fields
+   always start empty, and leaving one empty keeps whatever the roster already has. */
 let profileData=null, profileErr="", profileLoading=false, profileSavedTimer=0;
 const PROFILE_FIELDS=[
   {group:"Contact", key:"email", label:"Email", type:"email", auto:"email", mode:"email", hint:"You sign in with this address."},
-  {group:"Contact", key:"phone", label:"Phone", type:"tel", auto:"tel", mode:"tel"},
-  {group:"Contact", key:"venmo", label:"Venmo", type:"text", auto:"off", ph:"@username"},
+  {group:"Contact", key:"phone", label:"Phone", type:"tel", auto:"tel", mode:"tel", addOnly:true},
+  {group:"Contact", key:"venmo", label:"Venmo", type:"text", auto:"off", ph:"@username", addOnly:true},
   {group:"Hockey", key:"usah", label:"USA Hockey #", type:"text", auto:"off", caps:true},
   {group:"Hockey", key:"jersey", label:"Jersey #", type:"text", auto:"off", mode:"numeric", max:2},
   {group:"Hockey", key:"jerseySize", label:"Jersey size", select:true},
@@ -2341,7 +2343,7 @@ function renderProfile(){
       if(f.ph) inp.placeholder=f.ph;
       if(f.max) inp.maxLength=f.max;
       if(f.caps) inp.autocapitalize="characters";
-      inp.value=d[f.key]||"";
+      inp.value=f.addOnly?"":(d[f.key]||"");
     }
     inp.id=id; inp.name=f.key;
     g.appendChild(inp);
