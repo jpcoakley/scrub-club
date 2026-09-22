@@ -292,14 +292,40 @@ header.site{position:relative}
 .sched-list{width:100%}
 /* A save that failed shows here for a few seconds (rsvpNote) */
 .sg-note{font-family:var(--font-condensed);font-weight:600;font-size:15px;letter-spacing:.04em;color:var(--penalty-500)}
-/* Next game card */
-.nx{background:var(--surface-inverse);color:var(--text-on-inverse);clip-path:var(--clip-patch);padding:var(--space-6) var(--space-8);display:flex;flex-direction:column;gap:var(--space-6)}
+/* Next game card, "the bench" (JP's pick of the Sep 22, 2026 mockups): a burgundy band with the
+   game, Beer under the date line, and the puck; over a light panel with the counts and the team as chips */
+.nx{clip-path:var(--clip-patch);display:flex;flex-direction:column}
+.nx-band{background:var(--surface-inverse);color:var(--text-on-inverse);padding:var(--space-6) var(--space-8);display:flex;flex-direction:column;align-items:center;gap:var(--space-4)}
+.nx-text{align-self:stretch;display:flex;flex-direction:column;gap:8px;min-width:0}
 .nx-k{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--whistle-500)}
-.nx-main{display:flex;flex-direction:column;gap:var(--space-6)}
-.nx-text{display:flex;flex-direction:column;gap:var(--space-6)}
-.nx-head{display:flex;flex-direction:column;gap:6px}
-.nx-opp{font-family:var(--font-display);font-size:clamp(28px,2.8vw,40px);line-height:1.05;text-transform:uppercase;color:var(--oatmeal-100)}
-.nx-when{font-family:var(--font-condensed);font-weight:600;font-size:18px;letter-spacing:.06em;text-transform:uppercase;color:var(--burgundy-200)}
+.nx-opp{font-family:var(--font-display);font-size:40px;line-height:1.02;text-transform:uppercase;color:var(--oatmeal-100)}
+.nx-when{font-family:var(--font-condensed);font-weight:700;font-size:18px;letter-spacing:.06em;text-transform:uppercase;color:var(--burgundy-200)}
+/* Beer: the mug and a name, no label or box, up with the date so a long name has room (JP, Sep 22, 2026) */
+.nx-beer{display:flex;align-items:center;gap:10px;margin-top:2px}
+.nx-beer svg{width:26px;height:26px;flex:none;color:#F2C25B}
+.nx-beer .nx-who{font-family:var(--font-condensed);font-weight:700;font-size:20px;letter-spacing:.04em;line-height:1.2;text-transform:uppercase;color:var(--oatmeal-100)}
+.nx-btn{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;padding:9px 16px;border:none;background:var(--oatmeal-300);color:var(--burgundy-900);cursor:pointer;clip-path:var(--clip-patch-sm)}
+.nx-btn:hover{background:var(--white)}
+.nx-btn:focus-visible{outline:2px solid var(--whistle-500);outline-offset:2px}
+.nx-bench .nx-btn{background:var(--burgundy-600);color:var(--oatmeal-100)}
+.nx-bench .nx-btn:hover{background:var(--burgundy-800)}
+.nx-bench{background:var(--oatmeal-100);color:var(--ink-700);padding:20px var(--space-8) 26px;display:flex;flex-direction:column;gap:16px}
+.nx-tally{display:flex;align-items:center;gap:32px;flex-wrap:wrap}
+.nx-count{display:flex;align-items:baseline;gap:8px}
+.nx-count b{font-family:var(--font-numeral);font-weight:800;font-size:50px;line-height:.9;font-variant-numeric:tabular-nums}
+.nx-count span{font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.14em;text-transform:uppercase}
+.nx-count.in{color:var(--status-win)}
+.nx-count.out{color:var(--penalty-500)}
+.nx-count.quiet{color:var(--ink-500)}
+.nx-lock{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-family:var(--font-condensed);font-weight:600;font-size:17px;color:var(--ink-700)}
+/* The team, one chip each: green In, red Out, dashed No answer; a sub who says In joins with a tag */
+.nx-chips{display:flex;flex-wrap:wrap;gap:8px}
+.nx-chip{display:inline-flex;align-items:center;padding:7px 15px;border-radius:999px;border:1.5px solid transparent;font-family:var(--font-condensed);font-weight:700;font-size:17px;letter-spacing:.02em;line-height:1.2}
+.nx-chip.in{background:var(--status-win);border-color:var(--status-win);color:var(--white)}
+.nx-chip.out{background:var(--penalty-500);border-color:var(--penalty-500);color:var(--white)}
+.nx-chip.quiet{background:transparent;border:1.5px dashed var(--ink-300);color:var(--ink-500)}
+.nx-sub{margin-left:7px;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,.22);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.nx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* The puck: a CSS 3D cylinder (two faces and a ring of wall strips) seen from just above */
 .pk-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
 .pk-stage{position:relative;width:150px;height:150px;perspective:900px;perspective-origin:50% 35%;cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none;outline:none;border-radius:50%}
@@ -326,20 +352,6 @@ header.site{position:relative}
 .pk-mini .pk-strip{width:8px;height:15px;margin:-7.5px 0 0 -4px}
 .pk-mini .pk-knurl{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.09) 0 1px,transparent 1px 2px),repeating-linear-gradient(-45deg,rgba(255,255,255,.09) 0 1px,transparent 1px 2px)}
 .sg-you .pk-stage{display:block}
-.nx-sec{border-top:1px solid var(--burgundy-400);padding-top:var(--space-4);display:flex;flex-direction:column;gap:8px}
-.nx-line{display:flex;gap:10px;align-items:baseline;font-family:var(--font-condensed);font-size:16px;line-height:1.35}
-.nx-line b{font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-300);flex:none;width:72px}
-.nx-line .nx-n{font-style:normal;color:var(--white);margin-left:6px}
-.nx-line span{font-weight:600;color:var(--oatmeal-100)}
-.nx-line.muted span{color:var(--burgundy-200)}
-.nx-row{display:flex;flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap}
-.nx-row .nx-lbl{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--burgundy-300)}
-.nx-row .nx-val{font-family:var(--font-condensed);font-weight:600;font-size:16px;color:var(--oatmeal-100)}
-.nx-row .nx-val.muted{color:var(--burgundy-200)}
-.nx-row .grow{flex:1}
-.nx-btn{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;padding:9px 16px;border:none;background:var(--oatmeal-300);color:var(--burgundy-900);cursor:pointer;clip-path:var(--clip-patch-sm)}
-.nx-btn:hover{background:var(--white)}
-.nx-btn:focus-visible{outline:2px solid var(--whistle-500);outline-offset:2px}
 /* The list */
 .sg-row{display:grid;grid-template-columns:84px 124px minmax(0,1fr) 84px 136px 128px 128px;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid var(--oatmeal-500)}
 .sg-row.sg-played{opacity:.75}
@@ -373,18 +385,14 @@ header.site{position:relative}
 .sg-names .grp b{font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-300);margin-right:6px}
 .sg-names .grp.in b{color:var(--status-win)}
 .sg-names .grp.out b{color:var(--burgundy-600)}
-/* Wide screens: the card is a band above the list, its three parts side by side */
+/* Wide screens: the game on the left of the band, the puck on the right */
 @media (min-width:900px){
-  .nx{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:var(--space-8);row-gap:8px;align-items:start}
-  .nx-main{grid-row:1/3;align-self:center}
-  .nx-sec{border-top:none;border-left:1px solid var(--burgundy-400);padding:0 0 0 var(--space-8);align-self:stretch}
-  .nx-who{grid-column:2;grid-row:1}
-  /* Beer reads as one more line under In and Out (JP, Sep 18, 2026) */
-  .nx-beer{grid-column:2;grid-row:2;flex-direction:row;align-items:baseline;gap:10px;min-width:0}
-  .nx-beer .nx-lbl{flex:none;width:72px;font-size:16px;letter-spacing:.12em}
-  .nx-beer .grow{display:none}
-  /* The puck sits beside the opponent, not under it, so the card stays short (JP, Sep 18, 2026) */
-  .nx-main{flex-direction:row;align-items:center;justify-content:space-between;gap:var(--space-6)}
+  .nx-band{flex-direction:row;align-items:center;justify-content:space-between;gap:var(--space-8);padding:26px 44px}
+  .nx-text{align-self:center}
+  .nx-opp{font-size:clamp(40px,3.8vw,52px)}
+  .nx-when{font-size:21px}
+  .nx-beer .nx-who{font-size:21px}
+  .nx-bench{padding:22px 44px 30px;gap:18px}
   .pk-wrap{padding-right:var(--space-4)}
 }
 /* Tablets: the same columns, trimmed so Opponent keeps room */
@@ -395,8 +403,20 @@ header.site{position:relative}
    the result or your answer at the right edge. Of the column headers only Date and Opponent stay. */
 @media (max-width:760px){
   .sched-c{gap:var(--space-4);padding-top:var(--space-4)}
-  .nx{clip-path:none;margin-inline:calc(-1*var(--gutter-inline));padding:var(--space-6) var(--gutter-inline)}
-  .nx-opp{font-size:32px}
+  .nx{clip-path:none;margin-inline:calc(-1*var(--gutter-inline))}
+  .nx-band{padding:var(--space-6) var(--gutter-inline) 20px}
+  .nx-bench{padding:18px var(--gutter-inline) 24px;gap:14px}
+  /* Phones: the three counts share one row as columns */
+  .nx-tally{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .nx-count{flex-direction:column;gap:3px}
+  .nx-count b{font-size:42px}
+  .nx-count span{font-size:12px;letter-spacing:.12em}
+  .nx-lock{grid-column:1/-1;font-size:16px}
+  .nx-beer svg{width:24px;height:24px}
+  .nx-beer .nx-who{font-size:18px}
+  .nx-chips{gap:6px}
+  .nx-chip{font-size:15px;padding:6px 12px}
+  .nx-sub{margin-left:6px;font-size:10px}
   .sg-head{padding:4px 0 8px}
   .sg-head .sg-you,.sg-head .sg-res,.sg-head .sg-beer,.sg-head .sg-award{display:none}
   /* The page title and the season dropdown share one line of the band; Add to Calendar wraps
@@ -1211,13 +1231,20 @@ function shortNames(names,entry,pool=[]){
 }
 function rsvpSplit(entry,ds){
   const answers=(rsvpBySeason[entry.key]||{})[ds]||{};
-  const ins=[], outs=[];
+  // The team (In, Paid, Half, Goalie this season) is who's counted. Someone else (a sub, unsure,
+  // sitting out) who says In joins the In count as a sub; their Out doesn't count (JP, Sep 22, 2026).
+  // Before the roster loads the team is unknown, so every answer counts as it comes.
+  const team=teamNames(entry), onTeam=new Set(team), known=team.length>0;
+  const ins=[], outs=[], subs=[];
   // An answer a teammate gave for someone reads the same as their own (JP: no "via" tags)
-  Object.entries(answers).forEach(([name,v])=>{ if(v.a==="in") ins.push(name); else if(v.a==="out") outs.push(name); });
+  Object.entries(answers).forEach(([name,v])=>{
+    if(v.a==="in"){ ins.push(name); if(known && !onTeam.has(name)) subs.push(name); }
+    else if(v.a==="out" && (!known || onTeam.has(name))) outs.push(name);
+  });
   const said=new Set(Object.keys(answers).filter(nm=>["in","out"].includes(answers[nm].a)));
-  const quiet=teamNames(entry).filter(nm=>!said.has(nm));
+  const quiet=team.filter(nm=>!said.has(nm));
   const sortNames=a=>a.slice().sort((x,y)=>x.localeCompare(y));
-  return { ins:sortNames(ins), outs:sortNames(outs), quiet:sortNames(quiet), mine:rsvpSession?(answers[rsvpSession.name]?.a||""):"" };
+  return { ins:sortNames(ins), outs:sortNames(outs), quiet:sortNames(quiet), subs:sortNames(subs), mine:rsvpSession?(answers[rsvpSession.name]?.a||""):"" };
 }
 function youCell(g,entry,ds){
   const cell=el("span","sg-you");
@@ -1471,59 +1498,79 @@ function puckEl(entry,ds,mine,opts){
 function heroCard(entry,g,num,ds){
   const card=el("section","nx");
   card.setAttribute("aria-label","Next game");
-  const main=el("div","nx-main");
-  card.appendChild(main);
-  // Kicker and heading in one block, so wide screens can set the puck beside them
+  // The band: kicker, opponent, when and Beer on the left; the puck on the right (under them on phones)
+  const band=el("div","nx-band");
+  card.appendChild(band);
   const text=el("div","nx-text");
-  main.appendChild(text);
+  band.appendChild(text);
   text.appendChild(el("div","nx-k",`Next game · Game ${num}`));
-  const head=el("div","nx-head");
-  head.appendChild(el("div","nx-opp",g.opponent));
+  text.appendChild(el("div","nx-opp",g.opponent));
   const d=new Date(Date.parse(ds));
-  head.appendChild(el("div","nx-when",[(isNaN(d)?"":WEEKDAYS[d.getDay()]+" ")+g.date,g.time,g.rink].filter(Boolean).join(" · ")));
-  text.appendChild(head);
-  if(RSVP_API && entry.col){
-    const {ins,outs,mine}=rsvpSplit(entry,ds);
-    const ask=el("div","pk-wrap");
-    ask.appendChild(puckEl(entry,ds,mine));
-    ask.appendChild(el("div","pk-status",puckStatus(mine,ds)));
-    main.appendChild(ask);
-    const sec=el("div","nx-sec nx-who");
-    // Who's In/Out is for signed-in teammates only (JP, Sep 21, 2026); Beer Man below stays public
-    if(rsvpSession){
-      // The label carries the count, in white: "IN 3"
-      const line=(cls,label,count,text,muted)=>{
-        const l=el("div","nx-line"+(muted?" muted":""));
-        const b=el("b",null,label);
-        if(count!=null) b.appendChild(el("i","nx-n",String(count)));
-        l.appendChild(b); l.appendChild(el("span",null,text)); return l;
-      };
-      // Just the counts and names: no "Nobody yet", no Quiet line, no teammate picker (JP, Sep 18, 2026)
-      sec.appendChild(line("in","In",ins.length,ins.length?shortNames(ins,entry).join(", "):"",!ins.length));
-      sec.appendChild(line("out","Out",outs.length,outs.length?shortNames(outs,entry).join(", "):"",!outs.length));
-    }else{
-      const row=el("div","nx-row");
-      row.appendChild(el("span","nx-val","Sign in to see who's playing."));
-      const b=el("button","nx-btn","Sign in");
-      b.type="button";
-      b.addEventListener("click",()=>openSignIn());
-      row.appendChild(b);
-      sec.appendChild(row);
-    }
-    card.appendChild(sec);
-  }
-  const beer=el("div","nx-sec nx-row nx-beer");
-  beer.appendChild(el("span","nx-lbl","Beer"));
+  text.appendChild(el("div","nx-when",[(isNaN(d)?"":WEEKDAYS[d.getDay()]+" ")+g.date,g.time,g.rink].filter(Boolean).join(" · ")));
   const who=beerByDate[ds]||"";
-  if(who){ const v=el("span","nx-val",dutyName(who,entry)); v.title=who; beer.appendChild(v); }
-  if(!who && canRequestBeer(ds,entry)){
-    beer.appendChild(el("span","grow"));
-    const b=el("button","nx-btn","Assign");
-    b.type="button";
-    b.addEventListener("click",()=>openBeerRequest(g,entry,ds));
-    beer.appendChild(b);
+  const canAssign=!who && canRequestBeer(ds,entry);
+  if(who || canAssign){
+    const beer=el("div","nx-beer");
+    const icon=el("span");
+    icon.setAttribute("aria-hidden","true");
+    icon.style.display="flex";
+    icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h10v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M15 12h2.5a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H15"/><path d="M5 9V7a2 2 0 0 1 2.5-1.9A2.6 2.6 0 0 1 12 5a2 2 0 0 1 3 1.7V9"/></svg>';
+    beer.append(icon,el("span","nx-sr","Beer:"));
+    if(who){ const v=el("span","nx-who",dutyName(who,entry)); v.title=who; beer.appendChild(v); }
+    else{
+      const b=el("button","nx-btn","Assign");
+      b.type="button";
+      b.setAttribute("aria-label","Assign beer duty");
+      b.addEventListener("click",()=>openBeerRequest(g,entry,ds));
+      beer.appendChild(b);
+    }
+    text.appendChild(beer);
   }
-  card.appendChild(beer);
+  const rsvp=!!(RSVP_API && entry.col);
+  if(!rsvp) return card;
+  const split=rsvpSplit(entry,ds);
+  const ask=el("div","pk-wrap");
+  ask.appendChild(puckEl(entry,ds,split.mine));
+  // No "See you Tuesday." under the puck once you're In (JP, Sep 22, 2026); the other states keep theirs
+  const status=split.mine==="in"?"":puckStatus(split.mine,ds);
+  if(status) ask.appendChild(el("div","pk-status",status));
+  band.appendChild(ask);
+  // The bench: In, Out, No answer, then the team as chips
+  const bench=el("div","nx-bench");
+  card.appendChild(bench);
+  const tally=el("div","nx-tally");
+  bench.appendChild(tally);
+  if(!rsvpSession){
+    // Who's In/Out is for signed-in teammates only (JP, Sep 21, 2026)
+    const lock=el("div","nx-lock");
+    lock.appendChild(el("span",null,"Sign in to see who's playing."));
+    const b=el("button","nx-btn","Sign in");
+    b.type="button";
+    b.addEventListener("click",()=>openSignIn());
+    lock.appendChild(b);
+    tally.appendChild(lock);
+    return card;
+  }
+  [["in","In",split.ins.length],["out","Out",split.outs.length],["quiet","No answer",split.quiet.length]].forEach(([cls,label,n])=>{
+    const c=el("div","nx-count "+cls);
+    c.append(el("b",null,String(n)),el("span",null,label));
+    tally.appendChild(c);
+  });
+  const teamIns=split.ins.filter(n=>split.subs.indexOf(n)<0);
+  const all=teamIns.concat(split.subs,split.outs,split.quiet);
+  if(!all.length) return card;
+  const short=shortNames(all,entry);
+  const kinds=teamIns.map(()=>"in").concat(split.subs.map(()=>"in"),split.outs.map(()=>"out"),split.quiet.map(()=>"quiet"));
+  const words={in:"in",out:"out",quiet:"no answer"};
+  const chips=el("div","nx-chips");
+  all.forEach((name,i)=>{
+    const c=el("span","nx-chip "+kinds[i],short[i]);
+    c.title=name;
+    if(i>=teamIns.length && i<teamIns.length+split.subs.length) c.appendChild(el("span","nx-sub","Sub"));
+    c.appendChild(el("span","nx-sr",", "+words[kinds[i]]));
+    chips.appendChild(c);
+  });
+  bench.appendChild(chips);
   return card;
 }
 
