@@ -68,8 +68,10 @@ const F = {
   name: "Name", first: "First", last: "Last", jersey: "Jersey #", email: "Email",
   date: "Date", season: "Season", type: "Type", opponent: "Opponent", us: "Us", them: "Them",
   outcome: "Outcome", beer: "Beer Duty", third: "Third Beer", daddy: "Scrub Daddy",
-  nickname: "Nickname",
+  nickname: "Nickname", phone: "Phone", venmo: "Venmo", jerseySize: "Jersey Size",
 };
+// What a player can pick on their profile; a size already on the Roster that isn't here still shows
+const JERSEY_SIZES = ["S", "M", "L", "XL", "XXL", "3XL", "Goalie M", "Goalie L", "Goalie XL", "Goalie XXL"];
 // Roster fields the site gets: the newest USA Hockey year and every season status column
 const USAH_RE = /^USA Hockey,?\s*(\d{4})$/;
 const SEASON_RE = /^(Winter|Spring|Summer|Fall),\s*\d{2}(-\d{2})?$/;
@@ -242,6 +244,55 @@ async function route(request, env, ctx) {
     }
     // The site's copy of the roster shows it once this lands
     ctx.waitUntil(refreshPublic(env).catch((e) => console.error("public refresh after usah", String(e))));
+    return json(out);
+  }
+
+  // ---- your own profile: contact details and jersey, read and written only by you ----
+  if (m === "GET" && p === "/profile") {
+    const me = await whoami(request, env);
+    if (!me) return json({ ok: false, error: "Not signed in." }, 401);
+    try {
+      const { rec, usahField } = await myRecord(env, me);
+      if (!rec) return json({ ok: false, error: "That name isn't on the roster." }, 404);
+      return json(Object.assign({ ok: true, sizes: JERSEY_SIZES }, profileOf(rec, usahField, me)));
+    } catch (e) {
+      console.error("profile read", me.name, String(e));
+      return json({ ok: false, error: "Couldn't reach the team roster. Try again." }, 502);
+    }
+  }
+
+  if (m === "POST" && p === "/profile") {
+    const me = await whoami(request, env);
+    if (!me) return json({ ok: false, error: "Not signed in." }, 401);
+    const body = await readJson(request);
+    let out;
+    try {
+      const { rec, usahField, players } = await myRecord(env, me);
+      if (!rec) return json({ ok: false, error: "That name isn't on the roster." }, 404);
+      const now = profileOf(rec, usahField, me);
+      const check = profileChanges(body, now, players, rec, usahField);
+      if (check.error) return json({ ok: false, error: check.error }, 400);
+      const fields = check.fields;
+      if (Object.keys(fields).length) {
+        await at(env, `${AT_BASE}/${AT_ROSTER}`, { method: "PATCH",
+          body: JSON.stringify({ records: [{ id: rec.id, fields }], typecast: true }) });
+      }
+      if (check.email && check.email !== me.email) {
+        // Sign-in goes by email: this session moves to the new address, and the roster copy is
+        // re-read now (not in the background) so the very next request still knows who this is
+        await refreshRoster(env);
+        await env.SC_KV.put("sess:" + me.token,
+          JSON.stringify({ email: check.email, at: me.at, renewed: me.renewed || 0 }),
+          { expirationTtl: SESSION_TTL });
+      }
+      Object.assign(rec.fields, fields);
+      out = Object.assign({ ok: true }, profileOf(rec, usahField, { email: check.email || me.email, name: me.name }));
+    } catch (e) {
+      console.error("profile write", me.name, String(e));
+      return json({ ok: false, error: "Couldn't save to the team roster. Try again." }, 502);
+    }
+    // Jersey and USA Hockey numbers show on the Team page once the site's copy catches up
+    ctx.waitUntil(refreshPublic(env).catch((e) => console.error("public refresh after profile", String(e))));
     return json(out);
   }
 
@@ -500,6 +551,104 @@ function scheduleGrid(players, games) {
 }
 
 function str(v) { return v == null ? "" : String(v).trim(); }
+
+/* ---------------- your profile ---------------- */
+
+// The signed-in player's Roster record, by the email they signed in with, else by name (JP's
+// address is in EXTRA_EMAILS rather than on his row). usahField is the newest USA Hockey column.
+async function myRecord(env, me) {
+  const [schema, players] = await Promise.all([schemaFields(env), atList(env, AT_ROSTER)]);
+  const emailsOf = (r) => String((r.fields || {})[F.email] || "").split(/[\s,;]+/).map(normEmail);
+  const rec = players.find((r) => emailsOf(r).includes(me.email))
+    || players.find((r) => norm(playerName(r)) === norm(me.name));
+  return { rec, players, usahField: schema.usah[schema.usah.length - 1] || "", seasons: schema.seasons };
+}
+
+function profileOf(rec, usahField, me) {
+  const f = rec.fields || {};
+  return {
+    name: playerName(rec),
+    email: str(f[F.email]) || me.email,
+    phone: str(f[F.phone]),
+    venmo: str(f[F.venmo]),
+    usah: usahField ? str(f[usahField]) : "",
+    usahYear: (usahField.match(USAH_RE) || [])[1] || "",
+    jersey: f[F.jersey] == null ? "" : String(f[F.jersey]),
+    jerseySize: str(f[F.jerseySize]),
+  };
+}
+
+// The fields to write, from what the page sent. Only a value that changed is checked, so an old
+// entry in an odd shape (a Venmo note, say) doesn't block saving everything else.
+function profileChanges(body, now, players, rec, usahField) {
+  const fields = {};
+  const got = (k) => String(body[k] == null ? now[k] : body[k]).replace(/\s+/g, " ").trim();
+  let email = null;
+
+  const e = normEmail(got("email"));
+  if (e !== normEmail(now.email)) {
+    if (!emailish(e)) return { error: "That's not an email address." };
+    const taken = players.find((r) => r.id !== rec.id &&
+      String((r.fields || {})[F.email] || "").split(/[\s,;]+/).map(normEmail).includes(e));
+    if (taken) return { error: "That email is already on the roster for someone else." };
+    fields[F.email] = e;
+    email = e;
+  }
+
+  const ph = got("phone");
+  if (ph !== now.phone) {
+    let d = ph.replace(/\D/g, "");
+    if (d.length === 11 && d[0] === "1") d = d.slice(1);
+    if (ph && d.length !== 10) return { error: "Enter a 10-digit phone number." };
+    fields[F.phone] = d ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}` : null;
+  }
+
+  const v = got("venmo");
+  if (v !== now.venmo) {
+    const h = v.replace(/^@+/, "");
+    if (v && !/^[A-Za-z0-9_-]{2,30}$/.test(h)) return { error: "Enter your Venmo username, like @jpcoakley." };
+    fields[F.venmo] = h ? "@" + h : null;
+  }
+
+  const u = got("usah").toUpperCase().replace(/[\s-]/g, "");
+  if (u !== now.usah) {
+    if (!usahField) return { error: "The roster has no USA Hockey column." };
+    if (u && !/^[0-9A-Z]{4,24}$/.test(u)) return { error: "That doesn't look like a USA Hockey number." };
+    fields[usahField] = u || null;
+  }
+
+  const j = got("jersey");
+  if (j !== now.jersey) {
+    if (j && !/^\d{1,2}$/.test(j)) return { error: "A jersey number is 0 to 99." };
+    if (j) {
+      // Two players on this season's team can't wear the same number
+      const col = currentSeasonField(players);
+      const clash = col && players.find((r) => r.id !== rec.id && (r.fields || {})[F.jersey] === +j &&
+        ON_TEAM.includes(norm((r.fields || {})[col])));
+      if (clash) return { error: `#${j} is taken by ${playerName(clash)}.` };
+    }
+    fields[F.jersey] = j ? +j : null;
+  }
+
+  const sz = got("jerseySize");
+  if (sz !== now.jerseySize) {
+    if (sz && !JERSEY_SIZES.includes(sz)) return { error: "Pick a jersey size from the list." };
+    fields[F.jerseySize] = sz || null;
+  }
+  return { fields, email };
+}
+
+// The newest season field with anyone on the team ("Winter, 26-27" over an empty "Spring, 27")
+function currentSeasonField(players) {
+  const rank = (h) => {
+    const m = h.match(/^(\w+),\s*(\d{2})/);
+    return m ? +m[2] * 10 + ["Spring", "Summer", "Fall", "Winter"].indexOf(m[1]) : -1;
+  };
+  const names = new Set();
+  for (const r of players) for (const k of Object.keys(r.fields || {})) if (SEASON_RE.test(k)) names.add(k);
+  return [...names].filter((k) => players.some((r) => ON_TEAM.includes(norm((r.fields || {})[k]))))
+    .sort((a, b) => rank(b) - rank(a))[0] || "";
+}
 
 /* ---------------- Beer Man and awards ---------------- */
 

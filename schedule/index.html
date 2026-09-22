@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>if(/\/(about|team|schedule|stats|swag|join)\/?$/.test(location.pathname))document.write('<base href="../">');</script>
+<script>if(/\/(about|team|schedule|stats|swag|join|profile)\/?$/.test(location.pathname))document.write('<base href="../">');</script>
 <title>Scrub Club Hockey</title>
 <meta name="description" content="Scrub Club season commitments: who's in, who's out, who's subbing.">
 <meta property="og:title" content="Scrub Club Hockey">
@@ -124,6 +124,7 @@ header.site{position:relative}
 .acct-who{font-family:var(--font-condensed);font-weight:700;font-size:18px;letter-spacing:.02em;white-space:nowrap}
 .acct-out{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-600);background:none;border:none;padding:0;cursor:pointer}
 .acct-out:hover{text-decoration:underline;text-underline-offset:3px}
+.acct-prof{color:var(--ink-700);text-decoration:none}
 @media (min-width:861px){
   .acct{padding-left:var(--space-6);border-left:1px solid rgba(241,233,210,.22)}
 }
@@ -505,6 +506,18 @@ header.site{position:relative}
 
 /* ============ Sections ============ */
 section.block{padding-top:var(--space-8)}
+/* Your profile: two cards (contact, hockey) and one Save */
+.pf{padding:var(--space-6) 0 var(--space-8);max-width:820px}
+.pf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6)}
+.pf-group{background:var(--surface-card);clip-path:var(--clip-patch);border-top:4px solid var(--burgundy-600);padding:var(--space-6);display:flex;flex-direction:column;gap:var(--space-2);min-width:0}
+.pf-group .br-k{margin-bottom:var(--space-1)}
+.pf-group .br-label:not(:first-of-type){margin-top:var(--space-3)}
+.pf-hint{font-size:14px;line-height:1.4;color:var(--ink-500)}
+select.br-input{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237A2842' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:12px 8px;padding-right:36px;cursor:pointer}
+.pf-actions{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-4);margin-top:var(--space-6)}
+.pf-actions .br-msg{flex:1 1 240px}
+.pf-note{font-size:17px;line-height:1.5;color:var(--text-body);display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-3)}
+@media (max-width:640px){ .pf-grid{grid-template-columns:minmax(0,1fr);gap:var(--space-4)} .pf-group{padding:20px} }
 .section-head{display:flex;align-items:baseline;gap:var(--space-4);border-bottom:2px solid var(--burgundy-600);padding:var(--space-3) var(--gutter-inline) var(--space-2);margin-inline:calc(-1*var(--gutter-inline));position:sticky;top:var(--freeze-h,0px);background:var(--surface-page);z-index:10}
 .section-head h2{font-family:var(--font-display);font-size:26px;letter-spacing:.02em;color:var(--text-strong)}
 .section-head .count{font-family:var(--font-condensed);font-weight:700;font-size:16px;color:var(--text-muted);letter-spacing:.06em}
@@ -787,6 +800,15 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
           <button class="join-btn" type="button" data-view="roster">See the roster</button>
         </aside>
       </div>
+    </section>
+  </div>
+</div>
+
+<div id="view-profile" hidden>
+  <div class="container">
+    <section class="block">
+      <div class="section-head"><h2 id="pf-name">Your profile</h2></div>
+      <div id="pf-body" class="pf"></div>
     </section>
   </div>
 </div>
@@ -1074,7 +1096,7 @@ async function load(){
   }
 }
 // Tabs: About, Team (sheet + GameSheet stats), Schedule (GameSheet snapshot), Swag, Join
-const VIEWS=["about","schedule","swag","join"];
+const VIEWS=["about","schedule","swag","join","profile"];
 let activeView="about";
 function gamesheetSrc(){
   const gs=seasonEntry().gs;
@@ -1768,7 +1790,11 @@ function saveSession(s){
   // them fresh, and signing out drops them from memory rather than leaving them on screen
   rsvpBySeason={};
   Object.keys(rsvpFailedAt).forEach(k=>delete rsvpFailedAt[k]);
+  // Someone else's (or nobody's) details now: drop the copy and redraw if Profile is showing
+  profileData=null; profileErr="";
   renderAccount();
+  const pv=document.getElementById("view-profile");
+  if(pv && !pv.hidden) renderProfile();
 }
 // {status, res}; res is null when the reply wasn't JSON
 async function api(path,body){
@@ -1848,6 +1874,13 @@ function renderAccount(){
     const card=el("div","acct-card");
     card.hidden=true;
     card.appendChild(el("span","acct-who",rsvpSession.name));
+    const prof=el("a","acct-out acct-prof","Profile");
+    prof.href="profile/";
+    prof.addEventListener("click",e=>{
+      if(e.metaKey||e.ctrlKey||e.shiftKey) return; // a new tab gets the real link
+      e.preventDefault(); closeMenu(); showTab("profile");
+    });
+    card.appendChild(prof);
     const out=el("button","acct-out","Sign out");
     out.type="button";
     // Focus moves to the name first, so the Sign in button that replaces it gets the focus back
@@ -2224,6 +2257,145 @@ function usahCell(p){
   if(isMe(p)){ if(!p.usah) td.textContent=""; td.appendChild(usahButton(p)); }
   return td;
 }
+/* ---------- Your profile ----------
+   Your own Roster details (email, phone, Venmo, USA Hockey #, jersey # and size), read and written
+   through the Worker's /profile, which only ever answers with the signed-in player's own row. The
+   email is the one you sign in with; changing it moves your sign-in to the new address. */
+let profileData=null, profileErr="", profileLoading=false, profileSavedTimer=0;
+const PROFILE_FIELDS=[
+  {group:"Contact", key:"email", label:"Email", type:"email", auto:"email", mode:"email", hint:"You sign in with this address."},
+  {group:"Contact", key:"phone", label:"Phone", type:"tel", auto:"tel", mode:"tel"},
+  {group:"Contact", key:"venmo", label:"Venmo", type:"text", auto:"off", ph:"@username"},
+  {group:"Hockey", key:"usah", label:"USA Hockey #", type:"text", auto:"off", caps:true},
+  {group:"Hockey", key:"jersey", label:"Jersey #", type:"text", auto:"off", mode:"numeric", max:2},
+  {group:"Hockey", key:"jerseySize", label:"Jersey size", select:true},
+];
+async function loadProfile(){
+  profileLoading=true; profileErr="";
+  let status=0, res=null;
+  try{ ({status,res}=await api("/profile")); }catch(e){}
+  profileLoading=false;
+  if(status===401){ saveSession(null); renderSchedule(); renderTeam(); return; }
+  if(res?.ok) profileData=res; else profileErr=res?.error||"Couldn't load your profile. Check your connection and try again.";
+  const pv=document.getElementById("view-profile");
+  if(pv && !pv.hidden) renderProfile();
+}
+function renderProfile(){
+  const box=document.getElementById("pf-body"), head=document.getElementById("pf-name");
+  if(!box) return;
+  box.replaceChildren();
+  head.textContent=rsvpSession?rsvpSession.name:"Your profile";
+  if(!rsvpSession){
+    const p=el("p","pf-note","Sign in to see and edit your profile.");
+    const b=el("button","br-send","Sign in");
+    b.type="button";
+    b.addEventListener("click",()=>{ rsvpPending=null; openSignIn(); });
+    p.appendChild(b);
+    box.appendChild(p);
+    return;
+  }
+  if(!profileData){
+    if(profileErr){
+      const p=el("p","pf-note",profileErr);
+      const b=el("button","sg-req","Try again");
+      b.type="button";
+      b.addEventListener("click",()=>{ profileErr=""; renderProfile(); });
+      p.appendChild(b);
+      box.appendChild(p);
+    }else{
+      box.appendChild(el("p","pf-note","Loading your profile…"));
+      if(!profileLoading) loadProfile();
+    }
+    return;
+  }
+  const d=profileData;
+  const form=el("form");
+  form.noValidate=true;
+  const grid=el("div","pf-grid");
+  const groups={};
+  PROFILE_FIELDS.forEach(f=>{
+    if(!groups[f.group]){
+      const g=el("div","pf-group");
+      const k=el("div","br-k",f.group);
+      k.id="pf-g-"+f.group.toLowerCase();
+      g.setAttribute("role","group");
+      g.setAttribute("aria-labelledby",k.id);
+      g.appendChild(k);
+      groups[f.group]=g; grid.appendChild(g);
+    }
+    const g=groups[f.group], id="pf-"+f.key;
+    const lab=el("label","br-label",f.key==="usah"&&d.usahYear?`USA Hockey # (${d.usahYear})`:f.label);
+    lab.htmlFor=id;
+    g.appendChild(lab);
+    let inp;
+    if(f.select){
+      inp=el("select","br-input");
+      const sizes=(d.sizes||[]).slice();
+      if(d.jerseySize && !sizes.includes(d.jerseySize)) sizes.unshift(d.jerseySize);
+      [""].concat(sizes).forEach(v=>{ const o=el("option",null,v||"Pick a size"); o.value=v; inp.appendChild(o); });
+      inp.value=d.jerseySize||"";
+    }else{
+      inp=el("input","br-input");
+      inp.type=f.type; inp.autocomplete=f.auto; inp.spellcheck=false;
+      if(f.mode) inp.inputMode=f.mode;
+      if(f.ph) inp.placeholder=f.ph;
+      if(f.max) inp.maxLength=f.max;
+      if(f.caps) inp.autocapitalize="characters";
+      inp.value=d[f.key]||"";
+    }
+    inp.id=id; inp.name=f.key;
+    g.appendChild(inp);
+    if(f.hint) g.appendChild(el("span","pf-hint",f.hint));
+  });
+  form.appendChild(grid);
+  const actions=el("div","pf-actions");
+  const save=el("button","br-send","Save");
+  save.type="submit";
+  const msg=el("div","br-msg");
+  msg.setAttribute("role","alert");
+  msg.hidden=true;
+  actions.append(save,msg);
+  form.appendChild(actions);
+  form.addEventListener("submit",e=>{ e.preventDefault(); saveProfile(form,save,msg); });
+  box.appendChild(form);
+}
+async function saveProfile(form,save,msg){
+  if(!rsvpSession || !profileData) return;
+  const body={};
+  PROFILE_FIELDS.forEach(f=>{ body[f.key]=form.elements[f.key].value; });
+  const email=body.email.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ msg.textContent="That's not an email address."; msg.hidden=false; return; }
+  clearTimeout(profileSavedTimer);
+  msg.hidden=true;
+  save.disabled=true; save.textContent="Saving…";
+  let status=0, res=null;
+  try{ ({status,res}=await api("/profile",body)); }catch(e){}
+  save.disabled=false; save.textContent="Save";
+  if(status===401){ saveSession(null); renderSchedule(); renderTeam(); return; }
+  if(!res?.ok){ msg.textContent=res?.error||"Couldn't save. Check your connection and try again."; msg.hidden=false; return; }
+  profileData=Object.assign({},profileData,res);
+  // A new sign-in address: keep the session, just remember the address (saveSession would reset the page)
+  if(res.email && res.email!==rsvpSession.email){
+    rsvpSession=Object.assign({},rsvpSession,{email:res.email});
+    try{ localStorage.setItem(SESSION_KEY,JSON.stringify(rsvpSession)); }catch(e){}
+  }
+  // The Team page shows jersey and USA Hockey numbers: put them in our copy now, the Worker refreshes its own
+  if(allRows){
+    const header=allRows[HEADER_ROW-1]||[];
+    const iF=resolveCol(COL_FIRST,header), iL=resolveCol(COL_LAST,header), iU=resolveCol(COL_USAH,header), iJ=resolveCol(COL_JERSEY,header);
+    for(let r=DATA_START-1;r<allRows.length;r++){
+      const row=allRows[r]||[];
+      if(((row[iF]||"").trim()+" "+(row[iL]||"").trim()).trim()===rsvpSession.name){
+        if(iU>=0) row[iU]=res.usah||"";
+        if(iJ>=0) row[iJ]=res.jersey||"";
+        break;
+      }
+    }
+  }
+  renderProfile();
+  const b=document.querySelector("#pf-body .br-send");
+  if(b){ b.textContent="Saved"; profileSavedTimer=setTimeout(()=>{ if(b.isConnected) b.textContent="Save"; },2500); }
+}
 /* ---------- Your USA Hockey number ----------
    A signed-in player writes their own number; the Worker checks the session and puts it in the
    roster's newest "USA Hockey, <year>" field, which is the one the site shows. */
@@ -2392,12 +2564,12 @@ async function renderTeam(){
   setFreezeH();
 }
 // URL routing: each view lives at its own path (…/about/, …/team/, …/schedule/, …)
-const VIEW_PATHS={about:"about",roster:"team",schedule:"schedule",swag:"swag",join:"join"};
-const PAGE_TITLES={about:"About",roster:"Team",schedule:"Schedule",swag:"Swag",join:"Join"};
+const VIEW_PATHS={about:"about",roster:"team",schedule:"schedule",swag:"swag",join:"join",profile:"profile"};
+const PAGE_TITLES={about:"About",roster:"Team",schedule:"Schedule",swag:"Swag",join:"Join",profile:"Profile"};
 const SITE_TITLE=document.title;
 // Stats folded into Team; old /stats/ links still land there
 const PATH_VIEWS=Object.assign(Object.fromEntries(Object.entries(VIEW_PATHS).map(([v,p])=>[p,v])),{stats:"roster"});
-const ROUTE_RE=/(about|team|schedule|stats|swag|join)\/?$/;
+const ROUTE_RE=/(about|team|schedule|stats|swag|join|profile)\/?$/;
 function viewFromPath(){
   const m=location.pathname.match(ROUTE_RE);
   return m?PATH_VIEWS[m[1]]:"about";
@@ -2431,6 +2603,7 @@ function showTab(which,push=true){
   if(which==="roster"){ renderTeam(); renderBeerStats(); }
   if(which==="schedule") renderSchedule();
   if(which==="about") renderAbout();
+  if(which==="profile") renderProfile();
   window.scrollTo(0,0);
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
@@ -2455,7 +2628,12 @@ function moveInk(el,animate){
   if(animate===false){ void ink.offsetWidth; ink.style.transition=""; }
   nav.classList.add("has-ink");
 }
-function settleInk(animate){ moveInk(document.querySelector(".tabs .tab.active"),animate); }
+function settleInk(animate){
+  const a=document.querySelector(".tabs .tab.active");
+  // Profile has no tab of its own, so no underline
+  if(!a){ const nav=document.querySelector(".tabs"); if(nav) nav.classList.remove("has-ink"); return; }
+  moveInk(a,animate);
+}
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("pointerenter",()=>moveInk(t,true)));
 tabsNav.addEventListener("pointerleave",()=>settleInk(true));
 window.addEventListener("resize",()=>settleInk(false));
