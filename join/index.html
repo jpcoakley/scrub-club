@@ -569,7 +569,7 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
 <div class="subbar" id="subbar">
   <div class="container hero-row">
     <h1 class="page-title" id="page-title">About</h1>
-    <a class="cal-link" id="cal-link" href="webcal://api.scrubclubhockeyteam.com/schedule.ics" hidden>Add to Calendar</a>
+    <a class="cal-link" id="cal-link" href="https://api.scrubclubhockeyteam.com/schedule.ics" target="_blank" rel="noopener" hidden>Add to Calendar</a>
     <select id="season-select" class="season-select" aria-label="Season"></select>
   </div>
 </div>
@@ -1934,6 +1934,22 @@ async function ioSubmit(ev){
   if(p) answer(p.entry,p.ds,p.a,p.who); else renderSchedule();
   renderTeam();
 }
+// Opening webcal:// straight up did nothing on a desktop with no calendar app registered for it
+// (JP, Sep 22, 2026), no error and no sign the click even landed. The link now opens the feed in a
+// new tab (whatever the browser makes of the .ics response) and, either way, copies the plain URL
+// so pasting it into "Subscribe from URL" always works, with the button's own label confirming it.
+function wireCalLink(){
+  const a=document.getElementById("cal-link");
+  const label=a.textContent;
+  a.addEventListener("click",async ()=>{
+    try{
+      await navigator.clipboard.writeText(a.href);
+      a.textContent="Link copied";
+      clearTimeout(a._calTimer);
+      a._calTimer=setTimeout(()=>{ a.textContent=label; },2500);
+    }catch(e){}
+  });
+}
 function wireSignIn(){
   const dlg=document.getElementById("io-dlg");
   document.getElementById("io-form").addEventListener("submit",ioSubmit);
@@ -2393,6 +2409,7 @@ setFreezeH();
 
 document.getElementById("refresh").addEventListener("click",e=>{e.preventDefault();load();});
 wireBeerRequest();
+wireCalLink();
 wireSignIn();
 wireUsah();
 loadSession();
