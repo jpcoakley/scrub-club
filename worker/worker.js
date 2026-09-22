@@ -307,7 +307,10 @@ async function route(request, env, ctx) {
   if (m === "GET" && p === "/schedule.ics") {
     const sched = await schedule();
     let beerMap = {};
-    try { beerMap = beerByDate((await publicData(env, ctx, false)).schedule); }
+    try {
+      const pub = await publicData(env, ctx, false);
+      beerMap = beerByDate(pub.schedule, beerNamer(pub.roster));
+    }
     catch (e) { console.error("schedule.ics beer lookup", String(e)); } // the feed still works without it
     return icsResponse(buildScheduleIcs(sched, beerMap));
   }
@@ -730,17 +733,58 @@ function icsFold(line) {
 }
 function icsLine(name, value) { return icsFold(`${name}:${value}`); }
 
-// Beer Duty by date ("Sep 10, 2026" -> name), from the same grid /public builds; skips silently if
-// the shape ever changes, since a feed with no beer notes still beats no feed
-function beerByDate(scheduleRows) {
+// "David Sanders" -> "Sanders": the name the site's Beer column shows, from the roster grid /public
+// builds. A nickname wins; otherwise the first name, with a last initial only when it would be
+// ambiguous against the current team (the same rule as shortNames in index.html)
+function beerNamer(rosterRows) {
+  const rows = rosterRows || [];
+  const head = rows[GRID.headerRow] || [];
+  const iF = head.indexOf(F.first), iL = head.indexOf(F.last), iN = head.indexOf(F.nickname);
+  const rank = (h) => {
+    const m = h.match(/^(\w+),\s*(\d{2})/);
+    return m ? +m[2] * 10 + ["Spring", "Summer", "Fall", "Winter"].indexOf(m[1]) : -1;
+  };
+  // The newest season with anyone on it: a column JP sets up ahead of time stays empty until then
+  const staffed = (i) => rows.slice(GRID.headerRow + 1).some((row) => ON_TEAM.includes(norm((row || [])[i])));
+  const seasonCols = head.map((h, i) => [h, i]).filter(([h, i]) => SEASON_RE.test(h) && staffed(i))
+    .sort((a, b) => rank(b[0]) - rank(a[0]));
+  const iS = seasonCols.length ? seasonCols[0][1] : -1;
+  const nick = {}, onTeam = new Set(), all = [];
+  for (let r = GRID.headerRow + 1; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const full = `${row[iF] || ""} ${row[iL] || ""}`.replace(/\s+/g, " ").trim();
+    if (!full) continue;
+    all.push(full);
+    if (iN >= 0 && row[iN]) nick[norm(full)] = row[iN];
+    if (iS >= 0 && ON_TEAM.includes(norm(row[iS]))) onTeam.add(norm(full));
+  }
+  const first = (n) => n.split(" ")[0].toLowerCase();
+  const teamCount = {}, offCount = {};
+  for (const n of all) {
+    if (nick[norm(n)]) continue;
+    const c = onTeam.has(norm(n)) ? teamCount : offCount;
+    c[first(n)] = (c[first(n)] || 0) + 1;
+  }
+  return (full) => {
+    const n = String(full || "").replace(/\s+/g, " ").trim();
+    if (!n || nick[norm(n)]) return nick[norm(n)] || n;
+    const k = first(n), parts = n.split(" ");
+    const clash = onTeam.has(norm(n)) ? (teamCount[k] || 0) > 1 : (teamCount[k] || 0) > 0 || (offCount[k] || 0) > 1;
+    return clash && parts[1] ? `${parts[0]} ${parts[1][0].toUpperCase()}.` : parts[0];
+  };
+}
+
+// Beer Duty by date ("Sep 10, 2026" -> short name), from the same grids /public builds; skips
+// silently if the shape ever changes, since a feed with no beer notes still beats no feed
+function beerByDate(scheduleRows, name = (n) => n) {
   const map = {};
   const rows = scheduleRows || [];
   const head = rows[0] || [];
   const iD = head.indexOf("Date"), iB = head.indexOf("Beer Duty");
   if (iD < 0 || iB < 0) return map;
   for (let i = 1; i < rows.length; i++) {
-    const name = (rows[i][iB] || "").trim(), ds = (rows[i][iD] || "").trim();
-    if (name && ds) map[ds] = name;
+    const full = (rows[i][iB] || "").trim(), ds = (rows[i][iD] || "").trim();
+    if (full && ds) map[ds] = name(full);
   }
   return map;
 }
