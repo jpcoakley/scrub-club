@@ -29,6 +29,12 @@
  *                           name = a teammate on the roster, to answer for them
  *                           date carries " · slug" when the game shares its date with another
  *                           schedule.json entry (an event); that keeps their answers apart
+ *   GET  /schedule.ics                     -> text/calendar, every season in schedule.json as a
+ *                                          subscribable feed (webcal, not a one-time import): dates,
+ *                                          times and rinks are public like the rest of the schedule;
+ *                                          each game's notes carry the result once played and who
+ *                                          has Beer Duty, from the same Games table the site reads.
+ *                                          No sign-in: it carries nothing that /rsvp now gates.
  *
  * Storage (KV):
  *   sess:<token>            {email, at, renewed}              a year, renewed weekly by /me
@@ -94,6 +100,12 @@ const SESSION_TTL = 365 * 86400;
 const TZ = "America/New_York";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const enc = new TextEncoder();
+// Mirrors index.html's SEASONS "years" field, so /schedule.ics can date a "Sep 10" line without a
+// year. Keep in step with SEASONS there when a season is added or archived.
+const SEASON_YEARS = {
+  W: [2026, 2027], V: [2026], U: [2026],
+  w2526: [2025, 2026], s25: [2025], sp25: [2025], w2425: [2024, 2025], s24: [2024],
+};
 
 export default {
   async fetch(request, env, ctx) {
@@ -287,6 +299,15 @@ async function route(request, env, ctx) {
       await env.SC_KV.delete(key);
     }
     return json({ ok: true, season, date: game.date, name, answer });
+  }
+
+  // ---- the schedule as a calendar feed, for a person to subscribe to (not a one-time import) ----
+  if (m === "GET" && p === "/schedule.ics") {
+    const sched = await schedule();
+    let beerMap = {};
+    try { beerMap = beerByDate((await publicData(env, ctx, false)).schedule); }
+    catch (e) { console.error("schedule.ics beer lookup", String(e)); } // the feed still works without it
+    return icsResponse(buildScheduleIcs(sched, beerMap));
   }
 
   return json({ ok: false, error: "No such endpoint." }, 404);
@@ -655,6 +676,135 @@ function todayYmd() {
     .formatToParts(new Date());
   const get = (t) => parts.find((x) => x.type === t).value;
   return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/* ---------------- the calendar feed (GET /schedule.ics) ---------------- */
+
+// "Sep 10" in a season -> the calendar year it falls in, from SEASON_YEARS: Aug through Dec is the
+// season's first year, Jan onward its second (a one-year season, like a summer, has only the one)
+function seasonYear(seasonKey, dateStr) {
+  const ys = SEASON_YEARS[seasonKey];
+  if (!ys) return null;
+  if (ys.length < 2) return ys[0];
+  return ["Aug", "Sep", "Oct", "Nov", "Dec"].includes(String(dateStr).split(" ")[0]) ? ys[0] : ys[1];
+}
+
+// A wall-clock time in America/New_York -> the matching UTC Date. No DST table of our own: convert
+// once assuming UTC, see what that instant reads as in New York, and correct by the difference. That
+// difference is the zone's real offset for that date (from the runtime's own tzdata), DST included.
+function nyToUTC(year, month, day, hour, minute) {
+  const guess = Date.UTC(year, month - 1, day, hour, minute);
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ, hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  });
+  const p = {};
+  for (const part of fmt.formatToParts(guess)) p[part.type] = part.value;
+  const shown = Date.UTC(+p.year, +p.month - 1, +p.day, p.hour === "24" ? 0 : +p.hour, +p.minute);
+  return new Date(guess + (guess - shown));
+}
+
+function icsUTC(d) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}T${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())}Z`;
+}
+function icsDate(y, mo, d) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${y}${p(mo)}${p(d)}`;
+}
+// RFC 5545 escaping for a TEXT value: backslash, semicolon and comma are escaped, a real newline
+// becomes the two characters \n (calendar apps turn that back into a line break on their side)
+function icsEscape(s) {
+  return String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+}
+// RFC 5545 line folding: no content line over 75 octets; a continuation line starts with a space
+function icsFold(line) {
+  const max = 75;
+  if (line.length <= max) return line;
+  let out = line.slice(0, max), rest = line.slice(max);
+  while (rest.length) { out += "\r\n " + rest.slice(0, max - 1); rest = rest.slice(max - 1); }
+  return out;
+}
+function icsLine(name, value) { return icsFold(`${name}:${value}`); }
+
+// Beer Duty by date ("Sep 10, 2026" -> name), from the same grid /public builds; skips silently if
+// the shape ever changes, since a feed with no beer notes still beats no feed
+function beerByDate(scheduleRows) {
+  const map = {};
+  const rows = scheduleRows || [];
+  const head = rows[0] || [];
+  const iD = head.indexOf("Date"), iB = head.indexOf("Beer Duty");
+  if (iD < 0 || iB < 0) return map;
+  for (let i = 1; i < rows.length; i++) {
+    const name = (rows[i][iB] || "").trim(), ds = (rows[i][iD] || "").trim();
+    if (name && ds) map[ds] = name;
+  }
+  return map;
+}
+
+// Every season in schedule.json as one VCALENDAR: a game with a time gets an hour-long slot (the
+// league's ice time; schedule.json doesn't carry an end time), an event with none (Rontoberfest) is
+// an all-day entry. UID is stable across regenerations (season + date + slug) so a calendar app
+// updates the same entry on refetch instead of duplicating it.
+function buildScheduleIcs(sched, beerMap) {
+  const lines = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Scrub Club Hockey//Schedule//EN",
+    "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    icsLine("X-WR-CALNAME", "Scrub Club Hockey"),
+    icsLine("X-WR-CALDESC", "Scrub Club's game schedule, from scrubclubhockeyteam.com"),
+    "X-WR-TIMEZONE:America/New_York",
+  ];
+  const seasons = sched.seasons || {};
+  for (const seasonKey of Object.keys(seasons)) {
+    for (const g of (seasons[seasonKey] || {}).games || []) {
+      const year = seasonYear(seasonKey, g.date);
+      const m = String(g.date || "").match(/^([A-Z][a-z]{2}) (\d{1,2})$/);
+      if (!year || !m) continue; // an unrecognized season key or a date we can't parse: skip it
+      const mon = MONTHS.indexOf(m[1]) + 1;
+      if (mon < 1) continue;
+      const day = +m[2];
+      const dateLabel = `${m[1]} ${day}, ${year}`;
+      const uid = `${seasonKey}-${year}${String(mon).padStart(2, "0")}${String(day).padStart(2, "0")}` +
+        `${g.slug ? "-" + g.slug : ""}@scrubclubhockeyteam.com`;
+
+      const desc = [];
+      if (g.us != null && g.them != null) {
+        desc.push(`Final: ${g.us > g.them ? "W" : g.us < g.them ? "L" : "T"} ${g.us}-${g.them}`);
+      }
+      const beer = beerMap[dateLabel];
+      if (beer) desc.push(`Beer: ${beer}`);
+      desc.push("Full schedule: https://scrubclubhockeyteam.com/schedule/");
+
+      lines.push("BEGIN:VEVENT");
+      lines.push(icsLine("UID", uid));
+      lines.push(icsLine("DTSTAMP", icsUTC(new Date())));
+      const t = g.time ? String(g.time).match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i) : null;
+      if (t) {
+        let hour = (+t[1]) % 12;
+        if (/pm/i.test(t[3])) hour += 12;
+        const start = nyToUTC(year, mon, day, hour, +t[2]);
+        lines.push(icsLine("DTSTART", icsUTC(start)));
+        lines.push(icsLine("DTEND", icsUTC(new Date(start.getTime() + 60 * 60 * 1000))));
+      } else {
+        const end = new Date(Date.UTC(year, mon - 1, day + 1));
+        lines.push(`DTSTART;VALUE=DATE:${icsDate(year, mon, day)}`);
+        lines.push(`DTEND;VALUE=DATE:${icsDate(end.getUTCFullYear(), end.getUTCMonth() + 1, end.getUTCDate())}`);
+      }
+      lines.push(icsLine("SUMMARY", icsEscape(g.event ? g.opponent : `vs. ${g.opponent}`)));
+      if (g.rink) lines.push(icsLine("LOCATION", icsEscape(g.rink)));
+      lines.push(icsLine("DESCRIPTION", icsEscape(desc.join("\n"))));
+      lines.push("END:VEVENT");
+    }
+  }
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n") + "\r\n";
+}
+
+function icsResponse(text) {
+  return new Response(text, {
+    status: 200,
+    headers: { "Content-Type": "text/calendar; charset=utf-8", "Cache-Control": "public, max-age=1800" },
+  });
 }
 
 /* ---------------- answers ---------------- */
