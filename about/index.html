@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>if(/\/(about|team|schedule|stats|swag|join|profile)\/?$/.test(location.pathname))document.write('<base href="../">');</script>
+<script>if(/\/(about|team|schedule|stats|swag|join|profile|lines)\/?$/.test(location.pathname))document.write('<base href="../">');</script>
 <title>Scrub Club Hockey</title>
 <meta name="description" content="Scrub Club season commitments: who's in, who's out, who's subbing.">
 <meta property="og:title" content="Scrub Club Hockey">
@@ -326,6 +326,72 @@ header.site{position:relative}
 .nx-chip.out{background:var(--penalty-500);border-color:var(--penalty-500);color:var(--white)}
 .nx-chip.quiet{background:transparent;border:1.5px dashed var(--ink-300);color:var(--ink-500)}
 .nx-sub{margin-left:7px;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,.22);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+button.nx-chip{cursor:pointer;font-family:var(--font-condensed)}
+button.nx-chip:hover{filter:brightness(1.08)}
+button.nx-chip.quiet:hover{border-color:var(--ink-500);color:var(--ink-700);filter:none}
+button.nx-chip:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
+.nx-chip.add{background:transparent;border:1.5px dashed var(--burgundy-600);color:var(--burgundy-600)}
+.nx-acts{display:flex;flex-wrap:wrap;gap:10px}
+.nx-tool,.sg-lines{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-condensed);font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;background:transparent;color:var(--burgundy-600)}
+.nx-tool{font-size:15px;padding:8px 16px 8px 12px;border:1.5px solid var(--oatmeal-600);border-radius:var(--radius-md)}
+.nx-tool:hover{border-color:var(--burgundy-600)}
+.nx-tool svg{width:22px;height:22px}
+.sg-lines{font-size:14px;padding:2px 0;border:none}
+.sg-lines svg{width:18px;height:18px}
+.sg-lines:hover{color:var(--burgundy-800)}
+.nx-tool:focus-visible,.sg-lines:focus-visible,.ln-link:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
+.sg-names .nx-chips{gap:6px}
+.sg-names .nx-chip{font-size:14px;padding:4px 11px}
+.sg-names .grp .in-c{color:var(--status-win)}
+.sg-names .grp .out-c{color:var(--burgundy-600)}
+.sg-names .grp b+b{margin-left:10px}
+.sg-acts{display:flex;gap:16px}
+.cap-set{display:flex;flex-wrap:wrap;gap:8px}
+.cap-opt{flex:1 1 0;min-width:92px;font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.1em;text-transform:uppercase;padding:11px 12px;border-radius:999px;cursor:pointer;border:1.5px solid transparent}
+.cap-opt.in{background:var(--status-win);color:var(--white)}
+.cap-opt.out{background:var(--penalty-500);color:var(--white)}
+.cap-opt.quiet{background:transparent;border:1.5px dashed var(--ink-300);color:var(--ink-500)}
+.cap-opt[aria-pressed="true"]{box-shadow:0 0 0 3px var(--surface-card),0 0 0 5px var(--ink-900)}
+.cap-opt:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:4px}
+/* Lines: section headings over cards of position rows, like the team app's Lines screen */
+.ln{padding:var(--space-6) 0 var(--space-12);max-width:640px}
+.ln-top{display:flex;align-items:center;gap:var(--space-4)}
+.ln-top .ln-link:last-child{margin-left:auto}
+.ln-link{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--burgundy-600);background:none;border:none;padding:4px 0;cursor:pointer}
+.ln-link:hover{color:var(--burgundy-800)}
+.ln-status{font-family:var(--font-condensed);font-weight:600;font-size:15px;color:var(--ink-500);margin-left:auto}
+.ln-status.err{color:var(--penalty-500)}
+.ln-status:empty{display:none}
+.ln-status:not(:empty)+.ln-link{margin-left:0}
+.ln-head{margin:var(--space-4) 0 var(--space-2)}
+.ln-game{font-family:var(--font-display);font-size:30px;line-height:1.1;text-transform:uppercase;color:var(--text-strong);text-wrap:balance}
+.ln-when{font-family:var(--font-condensed);font-weight:700;font-size:17px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-500);margin-top:4px}
+.ln-free{margin-top:var(--space-4);font-family:var(--font-condensed);font-size:16px;line-height:1.45;color:var(--ink-700)}
+.ln-free b{font-weight:700;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--status-win);margin-right:8px}
+.ln-group{margin-top:var(--space-6)}
+.ln-h{font-family:var(--font-condensed);font-weight:700;font-size:21px;letter-spacing:.03em;color:var(--text-strong);margin:0 0 8px 2px}
+.ln-h span{font-weight:600;color:var(--ink-500);margin-left:9px}
+.ln-card{background:var(--surface-card);clip-path:var(--clip-patch)}
+.ln-row{position:relative;display:flex;align-items:center;gap:14px;min-height:58px;padding:0 20px;border-top:1px solid var(--oatmeal-500)}
+.ln-row:first-child{border-top:none}
+.ln-pos{flex:none;width:34px;font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;color:var(--burgundy-600)}
+.ln-name{flex:1 1 auto;min-width:0;font-family:var(--font-condensed);font-weight:700;font-size:20px;letter-spacing:.02em;color:var(--ink-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ln-row.empty .ln-name{font-weight:600;font-size:17px;color:var(--ink-300)}
+.ln-tag{flex:none;font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--penalty-500);color:var(--white)}
+.ln-chev{flex:none;width:12px;height:8px;color:var(--ink-300)}
+.ln-row select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px}
+.ln-row.edit:hover{background:var(--oatmeal-100)}
+.ln-row:focus-within{outline:2px solid var(--burgundy-600);outline-offset:-2px}
+@media (max-width:640px){ .ln-game{font-size:26px} .ln-row{padding:0 16px;min-height:54px} }
+@media print{
+  .freeze,footer.site,.ln-top,.ln-chev{display:none !important}
+  body{background:#fff}
+  .ln{padding:0;max-width:none}
+  .ln-card{clip-path:none;border:1px solid #bbb}
+  .ln-group{break-inside:avoid;margin-top:14px}
+  .ln-row{min-height:36px}
+  .ln-row.empty .ln-name{color:transparent}
+}
 .nx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* The puck: a CSS 3D cylinder (two faces and a ring of wall strips) seen from just above */
 .pk-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -813,6 +879,32 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
   </div>
 </div>
 
+<div id="view-lines" hidden>
+  <div class="container">
+    <div id="ln-body" class="ln"></div>
+  </div>
+</div>
+<dialog id="cap-dlg" class="br" aria-labelledby="cap-title">
+  <form id="cap-form" class="br-card" novalidate>
+    <div class="br-k">Captain</div>
+    <h2 id="cap-title" class="br-game"></h2>
+    <p class="io-help" id="cap-game"></p>
+    <div id="cap-set" class="cap-set">
+      <button type="button" class="cap-opt in" data-a="in">In</button>
+      <button type="button" class="cap-opt out" data-a="out">Out</button>
+      <button type="button" class="cap-opt quiet" data-a="">No answer</button>
+    </div>
+    <div id="cap-add" hidden>
+      <label class="br-label" for="cap-name">Player</label>
+      <select id="cap-name" class="br-input"></select>
+    </div>
+    <div class="br-actions">
+      <button type="button" id="cap-cancel" class="br-cancel">Cancel</button>
+      <button type="submit" id="cap-send" class="br-send">Add as In</button>
+    </div>
+  </form>
+</dialog>
+
 <footer class="site">
   <div class="container">
     <span class="slogan">Inscrubutable Hockey</span>
@@ -1086,6 +1178,7 @@ async function load(){
     render();
     renderBeerStats();
     if(activeView==="schedule") renderSchedule();
+    if(activeView==="lines") renderLines();
     state.textContent="";
     document.getElementById("updated").textContent="Updated "+new Date().toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
   }catch(e){
@@ -1096,7 +1189,7 @@ async function load(){
   }
 }
 // Tabs: About, Team (sheet + GameSheet stats), Schedule (GameSheet snapshot), Swag, Join
-const VIEWS=["about","schedule","swag","join","profile"];
+const VIEWS=["about","schedule","swag","join","profile","lines"];
 let activeView="about";
 function gamesheetSrc(){
   const gs=seasonEntry().gs;
@@ -1612,22 +1705,53 @@ function heroCard(entry,g,num,ds){
     c.append(el("b",null,String(n)),el("span",null,label));
     tally.appendChild(c);
   });
+  const chips=benchChips(entry,ds,split,g);
+  if(chips) bench.appendChild(chips);
+  const acts=el("div","nx-acts");
+  acts.appendChild(linesButton(entry,ds,"nx-tool"));
+  bench.appendChild(acts);
+  return card;
+}
+// The team as chips: In (team, then subs), Out, No answer. A captain's chips are buttons that
+// set that player In, Out or No answer, and end with an Add chip for anyone else on the roster.
+function benchChips(entry,ds,split,g){
+  const cap=!!rsvpSession?.captain;
   const teamIns=split.ins.filter(n=>split.subs.indexOf(n)<0);
   const all=teamIns.concat(split.subs,split.outs,split.quiet);
-  if(!all.length) return card;
+  if(!all.length && !cap) return null;
   const short=shortNames(all,entry);
   const kinds=teamIns.map(()=>"in").concat(split.subs.map(()=>"in"),split.outs.map(()=>"out"),split.quiet.map(()=>"quiet"));
   const words={in:"in",out:"out",quiet:"no answer"};
   const chips=el("div","nx-chips");
   all.forEach((name,i)=>{
-    const c=el("span","nx-chip "+kinds[i],short[i]);
+    const c=el(cap?"button":"span","nx-chip "+kinds[i],short[i]);
     c.title=name;
     if(i>=teamIns.length && i<teamIns.length+split.subs.length) c.appendChild(el("span","nx-sub","Sub"));
     c.appendChild(el("span","nx-sr",", "+words[kinds[i]]));
+    if(cap){
+      c.type="button";
+      c.setAttribute("aria-haspopup","dialog");
+      c.addEventListener("click",()=>openCaptain(entry,ds,g,name));
+    }
     chips.appendChild(c);
   });
-  bench.appendChild(chips);
-  return card;
+  if(cap){
+    const add=el("button","nx-chip add","+ Add");
+    add.type="button";
+    add.setAttribute("aria-label","Add a player to this game");
+    add.addEventListener("click",()=>openCaptain(entry,ds,g,null));
+    chips.appendChild(add);
+  }
+  return chips;
+}
+const LINES_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="3.2" height="3.2" rx=".7"/><rect x="3" y="10.4" width="3.2" height="3.2" rx=".7"/><rect x="3" y="16.3" width="3.2" height="3.2" rx=".7"/><path d="M10 6.1h11M10 12h11M10 17.9h11"/></svg>';
+function linesButton(entry,ds,cls){
+  const b=el("button",cls);
+  b.type="button";
+  b.innerHTML=LINES_ICON;
+  b.append("Lines");
+  b.addEventListener("click",()=>openLines(entry,ds));
+  return b;
 }
 
 /* ---------- Beer Man assignments ----------
@@ -1792,9 +1916,12 @@ function saveSession(s){
   Object.keys(rsvpFailedAt).forEach(k=>delete rsvpFailedAt[k]);
   // Someone else's (or nobody's) details now: drop the copy and redraw if Profile is showing
   profileData=null; profileErr="";
+  Object.keys(linesBy).forEach(k=>delete linesBy[k]);
   renderAccount();
   const pv=document.getElementById("view-profile");
   if(pv && !pv.hidden) renderProfile();
+  const lv=document.getElementById("view-lines");
+  if(lv && !lv.hidden) renderLines();
 }
 // {status, res}; res is null when the reply wasn't JSON
 async function api(path,body){
@@ -1835,7 +1962,7 @@ function loadRsvpFor(entries){
     }catch(err){}
     delete rsvpBySeason[e.key];
     rsvpFailedAt[e.key]=Date.now();
-  })).then(()=>{ if(loaded) renderSchedule(); });
+  })).then(()=>{ if(loaded){ renderSchedule(); if(activeView==="lines") renderLines(); } });
 }
 /* On load, ask the Worker who we are. It answers from the Bearer token or from the sign-in
    cookie, so a phone whose localStorage was cleared comes back signed in, and each visit renews
@@ -1845,8 +1972,8 @@ async function checkSession(){
   try{
     const {status,res}=await api("/me");
     if(status===401){ if(rsvpSession){ saveSession(null); renderSchedule(); renderTeam(); } return; }
-    if(res?.ok && res.name && (!rsvpSession || rsvpSession.name!==res.name || rsvpSession.email!==res.email)){
-      saveSession({token:rsvpSession?.token||"",name:res.name,email:res.email});
+    if(res?.ok && res.name && (!rsvpSession || rsvpSession.name!==res.name || rsvpSession.email!==res.email || !!rsvpSession.captain!==!!res.captain)){
+      saveSession({token:rsvpSession?.token||"",name:res.name,email:res.email,captain:!!res.captain});
       renderSchedule();
       renderTeam();
     }
@@ -1934,17 +2061,238 @@ function rsvpNamesRow(entry,ds){
     row.appendChild(b);
     return row;
   }
-  const {ins,outs,quiet}=rsvpSplit(entry,ds);
-  [["in","In",ins],["out","Out",outs],["quiet","No answer",quiet]].forEach(([cls,label,names])=>{
-    if(!names.length) return;
-    const grp=el("div","grp "+cls);
-    grp.appendChild(el("b",null,`${label} · ${names.length}`));
-    grp.append(shortNames(names,entry).join(", "));
-    row.appendChild(grp);
-  });
-  if(!ins.length && !outs.length) row.appendChild(el("span",null,"Nobody has answered yet."));
-  // Answering for a teammate lives on the next-game card only
+  const split=rsvpSplit(entry,ds);
+  const {ins,outs,quiet}=split;
+  if(rsvpSession.captain){
+    // A captain gets the same buttons as the next-game card: tap a player, or Add
+    const g=(schedData?.seasons[entry.key]?.games||[]).find(x=>gameKey(entry,x)===ds);
+    const counts=el("div","grp");
+    counts.innerHTML=`<b class="in-c">In ${ins.length}</b><b class="out-c">Out ${outs.length}</b><b>No answer ${quiet.length}</b>`;
+    row.appendChild(counts);
+    const chips=benchChips(entry,ds,split,g);
+    if(chips) row.appendChild(chips);
+  }else{
+    [["in","In",ins],["out","Out",outs],["quiet","No answer",quiet]].forEach(([cls,label,names])=>{
+      if(!names.length) return;
+      const grp=el("div","grp "+cls);
+      grp.appendChild(el("b",null,`${label} · ${names.length}`));
+      grp.append(shortNames(names,entry).join(", "));
+      row.appendChild(grp);
+    });
+    if(!ins.length && !outs.length) row.appendChild(el("span",null,"Nobody has answered yet."));
+  }
+  const acts=el("div","sg-acts");
+  acts.appendChild(linesButton(entry,ds,"sg-lines"));
+  row.appendChild(acts);
   return row;
+}
+/* ---------- Captains (JP, Sep 23, 2026) ----------
+   The Roster's Captain box (JP, Sanders, Adam, Fred) lets a player set anyone In, Out or No answer
+   and add anyone on the roster to a game (a sub, say), from the chips; the Worker checks the same
+   box before it saves an answer for someone else. One dialog does both: a player's name picks
+   In / Out / No answer, the Add chip picks a player and puts them In. */
+let capCtx=null;
+function openCaptain(entry,ds,g,name){
+  capCtx={entry,ds,name};
+  const dlg=document.getElementById("cap-dlg");
+  const answers=(rsvpBySeason[entry.key]||{})[ds]||{};
+  document.getElementById("cap-title").textContent=name||"Add a player";
+  document.getElementById("cap-game").textContent=g?[g.date,g.opponent].join(" · "):dsDatePart(ds);
+  const set=document.getElementById("cap-set"), add=document.getElementById("cap-add"), send=document.getElementById("cap-send");
+  set.hidden=!name; add.hidden=!!name; send.hidden=!!name;
+  if(name){
+    const now=answers[name]?.a||"";
+    set.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.a===now)));
+  }else{
+    // Everyone on the roster who isn't already In, with their status this season when they aren't on the team
+    const inNow=new Set(Object.keys(answers).filter(n=>answers[n].a==="in"));
+    const seen=new Set();
+    const people=sheetPlayers(entry).filter(p=>p.name && !inNow.has(p.name) && !seen.has(p.name) && seen.add(p.name))
+      .sort((a,b)=>a.name.localeCompare(b.name));
+    const sel=document.getElementById("cap-name");
+    const prompt=new Option("Pick a player","");
+    prompt.disabled=true;
+    sel.replaceChildren(prompt,...people.map(p=>new Option(p.status && !ON_TEAM.includes(p.status)?`${p.name} (${p.status[0].toUpperCase()+p.status.slice(1)})`:p.name,p.name)));
+    sel.value="";
+  }
+  dlg.showModal();
+  (name?set.querySelector('[aria-pressed="true"]')||set.querySelector("button"):document.getElementById("cap-name")).focus();
+}
+function wireCaptain(){
+  const dlg=document.getElementById("cap-dlg");
+  document.getElementById("cap-set").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    if(!capCtx) return;
+    dlg.close();
+    answer(capCtx.entry,capCtx.ds,b.dataset.a,capCtx.name);
+  }));
+  document.getElementById("cap-form").addEventListener("submit",e=>{
+    e.preventDefault();
+    const name=document.getElementById("cap-name").value;
+    if(!capCtx || !name) return;
+    dlg.close();
+    answer(capCtx.entry,capCtx.ds,"in",name);
+  });
+  document.getElementById("cap-cancel").addEventListener("click",()=>dlg.close());
+  dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
+}
+
+/* ---------- Lines ----------
+   A game's lines at lines/?season=W&game=Sep 29, 2026: three forward lines, three defense pairs
+   and the goalie, laid out like the team app JP uses. Anyone signed in reads them; a captain picks
+   a player for each spot (the game's In players first) and every change saves the whole lineup
+   through the Worker's /lines. Keep LINE_GROUPS in step with LINE_SLOTS in worker.js. */
+const LINE_GROUPS=[
+  {kind:"Forward",n:"1st Line",slots:[["F1LW","LW"],["F1C","C"],["F1RW","RW"]]},
+  {kind:"Forward",n:"2nd Line",slots:[["F2LW","LW"],["F2C","C"],["F2RW","RW"]]},
+  {kind:"Forward",n:"3rd Line",slots:[["F3LW","LW"],["F3C","C"],["F3RW","RW"]]},
+  {kind:"Defense",n:"1st Pair",slots:[["D1LD","LD"],["D1RD","RD"]]},
+  {kind:"Defense",n:"2nd Pair",slots:[["D2LD","LD"],["D2RD","RD"]]},
+  {kind:"Defense",n:"3rd Pair",slots:[["D3LD","LD"],["D3RD","RD"]]},
+  {kind:"Goalie",n:"",slots:[["G","G"]]},
+];
+const linesBy={};   // "season|game key" -> {slots, loading, err}
+let linesMsg="", linesMsgErr=false, linesMsgTimer=0;
+function openLines(entry,ds){
+  const url=routeURL("lines")+"?season="+encodeURIComponent(entry.key)+"&game="+encodeURIComponent(ds);
+  try{ history.pushState(null,"",url); }catch(e){}
+  showTab("lines",false);
+}
+async function fetchLines(entry,ds){
+  const k=entry.key+"|"+ds;
+  let status=0, res=null;
+  try{ ({status,res}=await api("/lines?season="+encodeURIComponent(entry.key)+"&date="+encodeURIComponent(ds))); }catch(e){}
+  if(status===401){ saveSession(null); return; }
+  linesBy[k]=res?.ok?{slots:res.slots||{}}:{slots:{},err:res?.error||"Couldn't load the lines. Check your connection and try again."};
+  if(activeView==="lines") renderLines();
+}
+function setLinesMsg(text,err){
+  linesMsg=text||""; linesMsgErr=!!err;
+  clearTimeout(linesMsgTimer);
+  if(text==="Saved") linesMsgTimer=setTimeout(()=>{ linesMsg=""; const n=document.querySelector(".ln-status"); if(n) n.textContent=""; },2500);
+}
+async function saveLines(entry,ds,slots){
+  const st=linesBy[entry.key+"|"+ds];
+  const before=st.slots;
+  st.slots=slots;
+  setLinesMsg("Saving…");
+  renderLines();
+  let status=0, res=null;
+  try{ ({status,res}=await api("/lines",{season:entry.key,date:ds,slots})); }catch(e){}
+  if(status===401){ saveSession(null); return; }
+  if(res?.ok){ if(st.slots===slots) st.slots=res.slots||slots; setLinesMsg("Saved"); }
+  else{ if(st.slots===slots) st.slots=before; setLinesMsg(res?.error||"Couldn't save. Check your connection and try again.",true); }
+  if(activeView==="lines") renderLines();
+}
+async function renderLines(){
+  const box=document.getElementById("ln-body");
+  if(!box) return;
+  if(!schedData){
+    box.replaceChildren(el("p","pf-note","Loading…"));
+    try{ schedData=await loadSched(); }catch(e){ box.replaceChildren(el("p","pf-note","Couldn't load the schedule. Try refreshing.")); return; }
+  }
+  const q=new URLSearchParams(location.search);
+  const entry=SEASONS.find(s=>s.key===q.get("season")), ds=q.get("game")||"";
+  const g=entry?(schedData.seasons[entry.key]?.games||[]).find(x=>gameKey(entry,x)===ds):null;
+  const focusId=document.activeElement?.id||"";
+  box.replaceChildren();
+  const top=el("div","ln-top");
+  const back=el("button","ln-link","‹ Schedule");
+  back.type="button";
+  back.addEventListener("click",()=>showTab("schedule"));
+  top.appendChild(back);
+  box.appendChild(top);
+  if(!g){ box.appendChild(el("p","pf-note","That game isn't on the schedule.")); return; }
+  const status=el("span","ln-status"+(linesMsgErr?" err":""),linesMsg);
+  status.setAttribute("role","status");
+  const print=el("button","ln-link","Print");
+  print.type="button";
+  print.addEventListener("click",()=>window.print());
+  top.appendChild(status);
+  if(rsvpSession) top.appendChild(print);
+  const head=el("div","ln-head");
+  head.appendChild(el("h2","ln-game",g.event?g.opponent:"vs. "+g.opponent));
+  const d=new Date(Date.parse(dsDatePart(ds)));
+  head.appendChild(el("div","ln-when",[(isNaN(d)?"":WEEKDAYS[d.getDay()]+" ")+g.date,g.time,g.rink].filter(Boolean).join(" · ")));
+  box.appendChild(head);
+  if(!rsvpSession){
+    const p=el("p","pf-note","Sign in to see the lines.");
+    const b=el("button","br-send","Sign in");
+    b.type="button";
+    b.addEventListener("click",()=>{ rsvpPending=null; openSignIn(); });
+    p.appendChild(b);
+    box.appendChild(p);
+    return;
+  }
+  const k=entry.key+"|"+ds;
+  if(!linesBy[k]){ linesBy[k]={slots:{},loading:true}; fetchLines(entry,ds); }
+  const st=linesBy[k];
+  if(st.loading){ box.appendChild(el("p","pf-note","Loading the lines…")); return; }
+  if(st.err){
+    const p=el("p","pf-note",st.err);
+    const b=el("button","sg-req","Try again");
+    b.type="button";
+    b.addEventListener("click",()=>{ delete linesBy[k]; renderLines(); });
+    p.appendChild(b);
+    box.appendChild(p);
+    return;
+  }
+  loadRsvpFor([entry]);
+  const upcoming=g.us==null && isUpcoming(ds);
+  const cap=!!rsvpSession.captain && upcoming;
+  const slots=st.slots||{};
+  const split=rsvpSplit(entry,ds);
+  const where={};   // name -> "2nd line LW", for the picker
+  LINE_GROUPS.forEach(gr=>gr.slots.forEach(([key,pos])=>{ if(slots[key]) where[slots[key]]=gr.kind==="Goalie"?"Goalie":`${gr.n.toLowerCase()} ${pos}`; }));
+  const placed=Object.values(slots);
+  const shortOf={};
+  const everyone=[...new Set([...placed,...split.ins,...teamNames(entry)])];
+  shortNames(everyone,entry).forEach((sn,i)=>{ shortOf[everyone[i]]=sn; });
+  if(cap){
+    const free=split.ins.filter(n=>!where[n]);
+    const f=el("div","ln-free");
+    f.appendChild(el("b",null,free.length?`In, not on a line · ${free.length}`:(split.ins.length?"Everyone who's In is on a line":"Nobody is In yet")));
+    if(free.length) f.append(free.map(n=>shortOf[n]||n).join(", "));
+    box.appendChild(f);
+  }
+  const pool=[...new Set([...split.ins])], rest=teamNames(entry).filter(n=>!pool.includes(n));
+  LINE_GROUPS.forEach(gr=>{
+    const sec=el("section","ln-group");
+    const h=el("h3","ln-h",gr.kind);
+    if(gr.n) h.appendChild(el("span",null,gr.n));
+    sec.appendChild(h);
+    const card=el("div","ln-card");
+    gr.slots.forEach(([key,pos])=>{
+      const who=slots[key]||"";
+      const row=el("div","ln-row"+(who?"":" empty")+(cap?" edit":""));
+      row.appendChild(el("span","ln-pos",pos));
+      row.appendChild(el("span","ln-name",who?(shortOf[who]||who):(cap?"Pick a player":"")));
+      // Put on a line, then said Out: flag it so a captain sees the hole
+      if(who && split.outs.includes(who)) row.appendChild(el("span","ln-tag","Out"));
+      if(cap){
+        row.insertAdjacentHTML("beforeend",'<svg class="ln-chev" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>');
+        const sel=el("select");
+        sel.id="ln-"+key;
+        sel.setAttribute("aria-label",`${gr.kind} ${gr.n} ${pos}`.replace(/\s+/g," "));
+        const opt=(n)=>new Option(n+(where[n] && where[n]!==(gr.kind==="Goalie"?"Goalie":`${gr.n.toLowerCase()} ${pos}`)?` (${where[n]})`:""),n);
+        sel.appendChild(new Option("Nobody",""));
+        const grp=(label,names)=>{ if(!names.length) return; const og=document.createElement("optgroup"); og.label=label; names.forEach(n=>og.appendChild(opt(n))); sel.appendChild(og); };
+        grp("In",pool);
+        grp("Rest of the team",rest);
+        if(who && !pool.includes(who) && !rest.includes(who)) grp("On this spot",[who]);
+        sel.value=who;
+        sel.addEventListener("change",()=>{
+          const next=Object.assign({},slots);
+          if(sel.value) next[key]=sel.value; else delete next[key];
+          saveLines(entry,ds,next);
+        });
+        row.appendChild(sel);
+      }
+      card.appendChild(row);
+    });
+    sec.appendChild(card);
+    box.appendChild(sec);
+  });
+  if(focusId){ const f=document.getElementById(focusId); if(f) f.focus(); }
 }
 async function answer(entry,ds,a,who){
   if(!rsvpSession){ rsvpPending={entry,ds,a,who}; openSignIn(); return; }
@@ -2042,7 +2390,7 @@ async function ioSubmit(ev){
   ioBusy(false);
   if(!res){ ioMessage("Couldn't reach the sign-in service. Try again."); return; }
   if(!res.ok){ ioMessage(res.error||"That code didn't work."); return; }
-  saveSession({token:res.token,name:res.name,email});
+  saveSession({token:res.token,name:res.name,email,captain:!!res.captain});
   const p=rsvpPending;
   closeSignIn();
   if(p) answer(p.entry,p.ds,p.a,p.who); else renderSchedule();
@@ -2566,12 +2914,12 @@ async function renderTeam(){
   setFreezeH();
 }
 // URL routing: each view lives at its own path (…/about/, …/team/, …/schedule/, …)
-const VIEW_PATHS={about:"about",roster:"team",schedule:"schedule",swag:"swag",join:"join",profile:"profile"};
-const PAGE_TITLES={about:"About",roster:"Team",schedule:"Schedule",swag:"Swag",join:"Join",profile:"Profile"};
+const VIEW_PATHS={about:"about",roster:"team",schedule:"schedule",swag:"swag",join:"join",profile:"profile",lines:"lines"};
+const PAGE_TITLES={about:"About",roster:"Team",schedule:"Schedule",swag:"Swag",join:"Join",profile:"Profile",lines:"Lines"};
 const SITE_TITLE=document.title;
 // Stats folded into Team; old /stats/ links still land there
 const PATH_VIEWS=Object.assign(Object.fromEntries(Object.entries(VIEW_PATHS).map(([v,p])=>[p,v])),{stats:"roster"});
-const ROUTE_RE=/(about|team|schedule|stats|swag|join|profile)\/?$/;
+const ROUTE_RE=/(about|team|schedule|stats|swag|join|profile|lines)\/?$/;
 function viewFromPath(){
   const m=location.pathname.match(ROUTE_RE);
   return m?PATH_VIEWS[m[1]]:"about";
@@ -2588,7 +2936,8 @@ function showTab(which,push=true){
   activeView=which;
   document.querySelector("main").hidden=which!=="roster";
   VIEWS.forEach(v=>{ document.getElementById("view-"+v).hidden=v!==which; });
-  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===which));
+  // Lines belongs to a game on the schedule, so Schedule stays underlined there
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===which||(which==="lines"&&b.dataset.view==="schedule")));
   settleInk(true);
   // The band under the header names the page; the season dropdown shows on Team and Schedule
   document.getElementById("page-title").textContent=PAGE_TITLES[which]||"";
@@ -2606,6 +2955,7 @@ function showTab(which,push=true){
   if(which==="schedule") renderSchedule();
   if(which==="about") renderAbout();
   if(which==="profile") renderProfile();
+  if(which==="lines") renderLines();
   window.scrollTo(0,0);
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
@@ -2675,6 +3025,7 @@ wireBeerRequest();
 wireCalLink();
 wireSignIn();
 wireUsah();
+wireCaptain();
 loadSession();
 renderAccount();
 checkSession();

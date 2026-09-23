@@ -35,6 +35,8 @@
  *                                          each game's notes carry the result once played and who
  *                                          has Beer Duty, from the same Games table the site reads.
  *                                          No sign-in: it carries nothing that /rsvp now gates.
+ *   GET  /lines?season=W&date=Sep 29, 2026 -> {ok, slots: {F1LW: name, ...}} (signed in)
+ *   POST /lines {season, date, slots}      -> captains only: the game's whole lineup at once
  *
  * Storage (KV):
  *   sess:<token>            {email, at, renewed}              a year, renewed weekly by /me
@@ -42,9 +44,10 @@
  *   rl:<what>:<who>         counter                           rate limits
  *   lock:assign:<ymd>       "1"                               a minute, while an assignment writes
  *   cache:schema            {usah: [...], seasons: [...], at}  the Roster's year and season fields (a day)
- *   cache:roster2           {emails: {email: name}, names, at}   no expiry
+ *   cache:roster3           {emails: {email: name}, names, captains, at}   no expiry
  *   cache:public            {data: {roster, schedule}, at}       no expiry
  *   rsvp:<season>:<ymd>:<name>   value "in" | "out", metadata {a, t, d}
+ *   lines:<season>:<ymd>[#slug]  {slots: {F1LW: name, ...}, by, t}   a game's lines, no expiry
  *
  * Airtable's free plan allows about 1,000 API calls a month per workspace, so the copies in
  * KV are the normal source and Airtable is read only when a copy is older than PUBLIC_MAX_AGE_MS
@@ -69,7 +72,12 @@ const F = {
   date: "Date", season: "Season", type: "Type", opponent: "Opponent", us: "Us", them: "Them",
   outcome: "Outcome", beer: "Beer Duty", third: "Third Beer", daddy: "Scrub Daddy",
   nickname: "Nickname", phone: "Phone", venmo: "Venmo", jerseySize: "Jersey Size",
+  captain: "Captain",
 };
+// A game's lines: three forward lines, three defense pairs and the goalie. Keep in step with
+// LINE_GROUPS in index.html.
+const LINE_SLOTS = ["F1LW", "F1C", "F1RW", "F2LW", "F2C", "F2RW", "F3LW", "F3C", "F3RW",
+  "D1LD", "D1RD", "D2LD", "D2RD", "D3LD", "D3RD", "G"];
 // What a player can pick on their profile; a size already on the Roster that isn't here still shows
 const JERSEY_SIZES = ["S", "M", "L", "XL", "XXL", "3XL", "Goalie M", "Goalie L", "Goalie XL", "Goalie XXL"];
 // Roster fields the site gets: the newest USA Hockey year and every season status column
@@ -195,7 +203,8 @@ async function route(request, env, ctx) {
     const token = randomToken();
     await env.SC_KV.put("sess:" + token, JSON.stringify({ email, at: Date.now() }),
       { expirationTtl: SESSION_TTL });
-    return json({ ok: true, token, name }, 200, { "Set-Cookie": sessionCookie(token) });
+    const captain = (await roster(env, false)).captains.includes(name);
+    return json({ ok: true, token, name, captain }, 200, { "Set-Cookie": sessionCookie(token) });
   }
 
   if (m === "GET" && p === "/me") {
@@ -210,7 +219,7 @@ async function route(request, env, ctx) {
         JSON.stringify({ email: me.email, at: me.at, renewed: Date.now() }),
         { expirationTtl: SESSION_TTL });
     }
-    return json({ ok: true, name: me.name, email: me.email }, 200, { "Set-Cookie": sessionCookie(me.token) });
+    return json({ ok: true, name: me.name, email: me.email, captain: me.captain }, 200, { "Set-Cookie": sessionCookie(me.token) });
   }
 
   if (m === "POST" && p === "/auth/signout") {
@@ -337,10 +346,12 @@ async function route(request, env, ctx) {
     if (!["in", "out", ""].includes(answer)) return json({ ok: false, error: "Answer In or Out." }, 400);
     const game = await gameCheck(season, String(body.date || "").trim());
     if (game.error) return json({ ok: false, error: game.error }, 400);
-    // Anyone signed in can answer for a teammate; the roster says who counts as one
+    // Your own answer, or, for a captain (JP, Sep 23, 2026), anyone's on the roster: that's how a
+    // captain adds a sub to a game or takes someone off it
     const name = String(body.name || "").replace(/\s+/g, " ").trim() || me.name;
-    if (name !== me.name && !(await isRosterName(env, name))) {
-      return json({ ok: false, error: "That name isn't on the roster." }, 400);
+    if (name !== me.name) {
+      if (!me.captain) return json({ ok: false, error: "Only captains can answer for someone else." }, 403);
+      if (!(await isRosterName(env, name))) return json({ ok: false, error: "That name isn't on the roster." }, 400);
     }
     // A slug (an event sharing its date with a game) gets its own KV key segment, so a plain
     // date never collides with a slugged one on the same day
@@ -352,6 +363,41 @@ async function route(request, env, ctx) {
       await env.SC_KV.delete(key);
     }
     return json({ ok: true, season, date: game.date, name, answer });
+  }
+
+  // ---- a game's lines: anyone signed in reads them, captains set them ----
+  if (m === "GET" && p === "/lines") {
+    const me = await whoami(request, env);
+    if (!me) return json({ ok: false, error: "Sign in to see the lines." }, 401);
+    const season = String(url.searchParams.get("season") || "").trim();
+    const g = gameKeyParts(String(url.searchParams.get("date") || "").trim());
+    if (!/^[A-Za-z0-9_-]{1,12}$/.test(season) || !g) return json({ ok: false, error: "Bad game." }, 400);
+    const doc = await env.SC_KV.get(`lines:${season}:${g.ymd}${g.slug ? "#" + g.slug : ""}`, "json");
+    return json({ ok: true, season, slots: (doc && doc.slots) || {}, t: (doc && doc.t) || 0 });
+  }
+
+  if (m === "POST" && p === "/lines") {
+    const me = await whoami(request, env);
+    if (!me) return json({ ok: false, error: "Not signed in." }, 401);
+    if (!me.captain) return json({ ok: false, error: "Only captains can set the lines." }, 403);
+    const body = await readJson(request);
+    const season = String(body.season || "").trim();
+    const game = await gameCheck(season, String(body.date || "").trim());
+    if (game.error) return json({ ok: false, error: game.error }, 400);
+    const slots = {};
+    const names = (await roster(env, false)).names;
+    for (const [k, v] of Object.entries(body.slots || {})) {
+      const name = String(v || "").replace(/\s+/g, " ").trim();
+      if (!LINE_SLOTS.includes(k) || !name) continue;
+      if (!names.includes(name) && !(await isRosterName(env, name))) {
+        return json({ ok: false, error: `${name} isn't on the roster.` }, 400);
+      }
+      slots[k] = name;
+    }
+    const key = `lines:${season}:${game.ymd}${game.slug ? "#" + game.slug : ""}`;
+    if (Object.keys(slots).length) await env.SC_KV.put(key, JSON.stringify({ slots, by: me.name, t: Date.now() }));
+    else await env.SC_KV.delete(key);
+    return json({ ok: true, season, date: game.date, slots });
   }
 
   // ---- the schedule as a calendar feed, for a person to subscribe to (not a one-time import) ----
@@ -407,7 +453,8 @@ async function whoami(request, env) {
   if (!sess || !sess.email) return null;
   const name = await nameForEmail(env, sess.email);
   if (!name) return null;
-  return { email: sess.email, name, token, at: sess.at || Date.now(), renewed: sess.renewed || 0 };
+  const captain = (await roster(env, false)).captains.includes(name);
+  return { email: sess.email, name, captain, token, at: sess.at || Date.now(), renewed: sess.renewed || 0 };
 }
 
 /* ---------------- Airtable ---------------- */
@@ -441,7 +488,12 @@ async function atList(env, table, params = {}) {
   const out = [];
   let offset;
   do {
-    const q = new URLSearchParams(Object.assign({ pageSize: "100" }, params));
+    // An array (fields[]) goes out as one parameter per value; URLSearchParams would join it into
+    // one comma-separated name, which Airtable rejects as an unknown field
+    const q = new URLSearchParams({ pageSize: "100" });
+    for (const [k, v] of Object.entries(params)) {
+      if (Array.isArray(v)) v.forEach((x) => q.append(k, x)); else q.set(k, v);
+    }
     if (offset) q.set("offset", offset);
     const body = await at(env, `${AT_BASE}/${table}?${q}`);
     out.push(...(body.records || []));
@@ -478,12 +530,14 @@ function playerName(rec) {
 
 // {emails: {email: "First Last"}, names} from the Roster
 async function fetchRoster(env) {
-  const recs = await atList(env, AT_ROSTER, { "fields[]": [F.name, F.first, F.last, F.email] });
-  const emails = {}, names = [];
+  const recs = await atList(env, AT_ROSTER, { "fields[]": [F.name, F.first, F.last, F.email, F.captain] });
+  const emails = {}, names = [], captains = [];
   for (const r of recs) {
     const name = playerName(r);
     if (!name) continue;
     if (!names.includes(name)) names.push(name);
+    // The Roster's Captain box: set anyone In or Out, add players to a game, set the lines
+    if ((r.fields || {})[F.captain] === true && !captains.includes(name)) captains.push(name);
     for (const e of String((r.fields || {})[F.email] || "").split(/[\s,;]+/).map(normEmail)) {
       if (emailish(e) && !(e in emails)) emails[e] = name;
     }
@@ -492,7 +546,7 @@ async function fetchRoster(env) {
     if (!(e in emails)) emails[e] = n;
     if (!names.includes(n)) names.push(n);
   }
-  return { emails, names };
+  return { emails, names, captains };
 }
 
 // {roster, schedule}: row arrays shaped like the old sheet. The roster keeps the header row where
@@ -743,7 +797,7 @@ async function saveCopy(env, key, fields) {
 }
 
 async function refreshRoster(env) {
-  return saveCopy(env, "cache:roster2", await fetchRoster(env));
+  return saveCopy(env, "cache:roster3", await fetchRoster(env));
 }
 
 // force re-reads the field list too, so ?fresh=1 picks up a season or year JP just added
@@ -785,9 +839,15 @@ async function publicData(env, ctx, fresh) {
 // {emails, names, fresh}. recheck asks for a read newer than RECHECK_MS, for an email JP may
 // have just added to the roster.
 async function roster(env, recheck) {
-  const { copy, fresh } = await cached(env, "cache:roster2", refreshRoster,
+  // The copy moved to cache:roster3 when it gained captains (Sep 23, 2026). Start it from the old
+  // copy, marked stale, so a failed Airtable read falls back to that instead of failing sign-in
+  if (!(await env.SC_KV.get("cache:roster3"))) {
+    const old = await env.SC_KV.get("cache:roster2", "json");
+    if (old) await env.SC_KV.put("cache:roster3", JSON.stringify(Object.assign({}, old, { captains: old.captains || [], at: 0 })));
+  }
+  const { copy, fresh } = await cached(env, "cache:roster3", refreshRoster,
     (age) => (recheck ? age > RECHECK_MS : age > ROSTER_MAX_AGE_MS), ROSTER_MAX_AGE_MS, null);
-  return { emails: copy.emails || {}, names: copy.names || [], fresh };
+  return { emails: copy.emails || {}, names: copy.names || [], captains: copy.captains || [], fresh };
 }
 
 async function nameForEmail(env, email) {
@@ -834,6 +894,15 @@ async function gameCheck(season, date) {
   if (game.us != null) return { error: "That game has already been played." };
   const label = game.slug ? `${plain}, ${year} · ${game.slug}` : `${plain}, ${year}`;
   return { date: label, ymd, slug: game.slug || "" };
+}
+
+// "Sep 29, 2026" or "Oct 22, 2026 · rontoberfest" -> {ymd, slug}, for reading a game's lines
+// (past games included, unlike gameCheck)
+function gameKeyParts(date) {
+  const m = date.match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})(?: · ([a-z0-9-]{1,40}))?$/);
+  const mon = m ? MONTHS.indexOf(m[1]) : -1;
+  if (mon < 0 || +m[2] < 1 || +m[2] > 31) return null;
+  return { ymd: `${m[3]}-${String(mon + 1).padStart(2, "0")}-${String(+m[2]).padStart(2, "0")}`, slug: m[4] || "" };
 }
 
 function todayYmd() {
