@@ -629,6 +629,7 @@ function profileOf(rec, usahField, me) {
     usahYear: (usahField.match(USAH_RE) || [])[1] || "",
     jersey: f[F.jersey] == null ? "" : String(f[F.jersey]),
     jerseySize: str(f[F.jerseySize]),
+    nickname: str(f[F.nickname]),
   };
 }
 
@@ -692,6 +693,15 @@ function profileChanges(body, now, players, rec, usahField) {
       if (clash) return { error: `#${j} is taken by ${playerName(clash)}.` };
     }
     fields[F.jersey] = j ? +j : null;
+  }
+
+  // A nickname shows on the site in place of the first name; empty goes back to the first name
+  const nk = got("nickname");
+  if (nk !== now.nickname) {
+    if (nk && !/^[\p{L}\p{N}][\p{L}\p{N} .'-]{0,19}$/u.test(nk)) return { error: "A nickname is up to 20 letters, numbers and spaces." };
+    const taken = nk && players.find((r) => r.id !== rec.id && norm((r.fields || {})[F.nickname]) === norm(nk));
+    if (taken) return { error: `${playerName(taken)} already goes by ${str(taken.fields[F.nickname])}.` };
+    fields[F.nickname] = nk || null;
   }
 
   const sz = got("jerseySize");

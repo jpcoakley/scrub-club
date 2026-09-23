@@ -2616,6 +2616,7 @@ const PROFILE_FIELDS=[
   {group:"Contact", key:"email", label:"Email", type:"email", auto:"email", mode:"email", hint:"You sign in with this address."},
   {group:"Contact", key:"phone", label:"Phone", type:"tel", auto:"tel", mode:"tel", addOnly:true},
   {group:"Contact", key:"venmo", label:"Venmo", type:"text", auto:"off", ph:"@username", addOnly:true},
+  {group:"Hockey", key:"nickname", label:"Nickname", type:"text", auto:"nickname", max:20, hint:"Shown on the site in place of your first name."},
   {group:"Hockey", key:"usah", label:"USA Hockey #", type:"text", auto:"off", caps:true},
   {group:"Hockey", key:"jersey", label:"Jersey #", type:"text", auto:"off", mode:"numeric", max:2},
   {group:"Hockey", key:"jerseySize", label:"Jersey size", select:true},
@@ -2733,16 +2734,19 @@ async function saveProfile(form,save,msg){
   if(allRows){
     const header=allRows[HEADER_ROW-1]||[];
     const iF=resolveCol(COL_FIRST,header), iL=resolveCol(COL_LAST,header), iU=resolveCol(COL_USAH,header), iJ=resolveCol(COL_JERSEY,header);
+    const iN=headerIdx(header,"Nickname",16);
     for(let r=DATA_START-1;r<allRows.length;r++){
       const row=allRows[r]||[];
       if(((row[iF]||"").trim()+" "+(row[iL]||"").trim()).trim()===rsvpSession.name){
         if(iU>=0) row[iU]=res.usah||"";
         if(iJ>=0) row[iJ]=res.jersey||"";
+        if(iN>=0) row[iN]=res.nickname||"";
         break;
       }
     }
   }
   renderProfile();
+  renderAccount();   // the nav shows your nickname
   const b=document.querySelector("#pf-body .br-send");
   if(b){ b.textContent="Saved"; profileSavedTimer=setTimeout(()=>{ if(b.isConnected) b.textContent="Save"; },2500); }
 }
