@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>if(/\/(about|team|schedule|stats|swag|join|profile|lines)\/?$/.test(location.pathname))document.write('<base href="../">');</script>
+<script>if(/\/(about|team|schedule|stats|swag|join|profile|lines|names)\/?$/.test(location.pathname))document.write('<base href="../">');</script>
 <title>Scrub Club Hockey</title>
 <meta name="description" content="Scrub Club season commitments: who's in, who's out, who's subbing.">
 <meta property="og:title" content="Scrub Club Hockey">
@@ -353,6 +353,39 @@ button.nx-chip:focus-visible{outline:2px solid var(--burgundy-600);outline-offse
 .cap-opt.quiet{background:transparent;border:1.5px dashed var(--ink-300);color:var(--ink-500)}
 .cap-opt[aria-pressed="true"]{box-shadow:0 0 0 3px var(--surface-card),0 0 0 5px var(--ink-900)}
 .cap-opt:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:4px}
+/* Team Names: a table of ideas with up and down votes */
+.tn{padding:var(--space-6) 0 var(--space-12);max-width:760px}
+.tn-top{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);margin-bottom:var(--space-4)}
+.tn-count{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500)}
+.tn-wrap{background:var(--surface-card);clip-path:var(--clip-patch);overflow-x:auto}
+.tn-table{width:100%;border-collapse:collapse}
+.tn-table th{text-align:left;font-family:var(--font-condensed);font-weight:700;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500);padding:14px 16px 10px;border-bottom:2px solid var(--burgundy-600);white-space:nowrap}
+.tn-table th.tn-vh{text-align:center}
+.tn-table td{padding:12px 16px;border-top:1px solid var(--oatmeal-500);vertical-align:middle}
+.tn-table tbody tr:first-child td{border-top:none}
+.tn-name{font-family:var(--font-display);font-size:19px;line-height:1.2;text-transform:uppercase;color:var(--text-strong);overflow-wrap:anywhere}
+.tn-name span{margin-right:10px}
+.tn-rm{font-family:var(--font-condensed);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-300);background:none;border:none;padding:2px 0;cursor:pointer;vertical-align:middle}
+.tn-rm:hover{color:var(--penalty-500)}
+.tn-by{font-family:var(--font-condensed);font-weight:600;font-size:17px;color:var(--ink-700);white-space:nowrap}
+.tn-votes{display:flex;align-items:center;justify-content:center;gap:6px}
+.tn-vote{width:36px;height:36px;flex:none;display:grid;place-items:center;border:1.5px solid var(--oatmeal-600);background:transparent;border-radius:999px;color:var(--ink-500);cursor:pointer;padding:0}
+.tn-vote svg{width:13px;height:9px}
+.tn-vote:hover{border-color:var(--ink-500);color:var(--ink-700)}
+.tn-vote.up[aria-pressed="true"]{background:var(--status-win);border-color:var(--status-win);color:var(--white)}
+.tn-vote.down[aria-pressed="true"]{background:var(--penalty-500);border-color:var(--penalty-500);color:var(--white)}
+.tn-vote:focus-visible,.tn-rm:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
+.tn-score{min-width:30px;text-align:center;font-family:var(--font-numeral);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums;color:var(--ink-700)}
+.tn-score.pos{color:var(--status-win)}
+.tn-score.neg{color:var(--penalty-500)}
+@media (max-width:640px){
+  .tn-table th,.tn-table td{padding-left:10px;padding-right:10px}
+  .tn-name{font-size:17px}
+  .tn-by{font-size:15px}
+  .tn-vote{width:32px;height:32px}
+  .tn-votes{gap:4px}
+  .tn-score{min-width:24px;font-size:19px}
+}
 /* Lines: section headings over cards of position rows, like the team app's Lines screen */
 .ln{padding:var(--space-6) 0 var(--space-12);max-width:640px}
 .ln-top{display:flex;align-items:center;gap:var(--space-4)}
@@ -662,6 +695,7 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
       <button class="tab" data-view="schedule" type="button">Schedule</button>
       <button class="tab" data-view="swag" type="button">Swag</button>
       <button class="tab" data-view="join" type="button">Join</button>
+      <button class="tab" data-view="names" type="button">Team Names</button>
       <div class="acct" id="acct" hidden></div>
     </nav>
   </div>
@@ -881,6 +915,23 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
   </div>
 </div>
 
+<div id="view-names" hidden>
+  <div class="container">
+    <div id="tn-body" class="tn"></div>
+  </div>
+</div>
+<dialog id="tn-dlg" class="br" aria-labelledby="tn-title">
+  <form id="tn-form" class="br-card" novalidate>
+    <h2 id="tn-title" class="br-game">Add a team name</h2>
+    <label class="br-label" for="tn-name">Team name</label>
+    <input id="tn-name" class="br-input" type="text" autocomplete="off" maxlength="40">
+    <div id="tn-msg" class="br-msg" role="alert" hidden></div>
+    <div class="br-actions">
+      <button type="button" id="tn-cancel" class="br-cancel">Cancel</button>
+      <button type="submit" id="tn-send" class="br-send">Add</button>
+    </div>
+  </form>
+</dialog>
 <div id="view-lines" hidden>
   <div class="container">
     <div id="ln-body" class="ln"></div>
@@ -1190,7 +1241,7 @@ async function load(){
   }
 }
 // Tabs: About, Team (sheet + GameSheet stats), Schedule (GameSheet snapshot), Swag, Join
-const VIEWS=["about","schedule","swag","join","profile","lines"];
+const VIEWS=["about","schedule","swag","join","profile","lines","names"];
 let activeView="about";
 function gamesheetSrc(){
   const gs=seasonEntry().gs;
@@ -1918,11 +1969,14 @@ function saveSession(s){
   // Someone else's (or nobody's) details now: drop the copy and redraw if Profile is showing
   profileData=null; profileErr="";
   Object.keys(linesBy).forEach(k=>delete linesBy[k]);
+  namesList=null; namesErr="";
   renderAccount();
   const pv=document.getElementById("view-profile");
   if(pv && !pv.hidden) renderProfile();
   const lv=document.getElementById("view-lines");
   if(lv && !lv.hidden) renderLines();
+  const nv=document.getElementById("view-names");
+  if(nv && !nv.hidden) renderNames();
 }
 // {status, res}; res is null when the reply wasn't JSON
 async function api(path,body){
@@ -2086,6 +2140,153 @@ function rsvpNamesRow(entry,ds){
   acts.appendChild(linesButton(entry,ds,"sg-lines"));
   row.appendChild(acts);
   return row;
+}
+/* ---------- Team Names (JP, Sep 23, 2026) ----------
+   Ideas for a team name: anyone signed in adds one and votes each name up or down (one vote per
+   person per name; tapping your vote again takes it back). Whoever added a name, or a captain,
+   can remove it. Stored by the Worker (/names) in KV, one key per name and per vote. The list is
+   sorted best first when it loads and keeps its order while you vote, so rows don't jump. */
+let namesList=null, namesErr="", namesLoading=false;
+const TN_UP='<svg viewBox="0 0 14 10" aria-hidden="true"><path d="M7 1l6 8H1z" fill="currentColor"/></svg>';
+const TN_DOWN='<svg viewBox="0 0 14 10" aria-hidden="true"><path d="M7 9L1 1h12z" fill="currentColor"/></svg>';
+async function loadNames(){
+  namesLoading=true; namesErr="";
+  let status=0, res=null;
+  try{ ({status,res}=await api("/names")); }catch(e){}
+  namesLoading=false;
+  if(status===401){ saveSession(null); return; }
+  if(res?.ok) namesList=res.names||[]; else namesErr=res?.error||"Couldn't load the team names. Check your connection and try again.";
+  if(activeView==="names") renderNames();
+}
+function renderNames(){
+  const box=document.getElementById("tn-body");
+  if(!box) return;
+  const focusId=document.activeElement?.id||"";
+  box.replaceChildren();
+  if(!rsvpSession){
+    const p=el("p","pf-note","Sign in to see and suggest team names.");
+    const b=el("button","br-send","Sign in");
+    b.type="button";
+    b.addEventListener("click",()=>{ rsvpPending=null; openSignIn(); });
+    p.appendChild(b);
+    box.appendChild(p);
+    return;
+  }
+  if(!namesList){
+    if(namesErr){
+      const p=el("p","pf-note",namesErr);
+      const b=el("button","sg-req","Try again");
+      b.type="button";
+      b.addEventListener("click",()=>{ namesErr=""; renderNames(); });
+      p.appendChild(b);
+      box.appendChild(p);
+    }else{
+      box.appendChild(el("p","pf-note","Loading the team names…"));
+      if(!namesLoading) loadNames();
+    }
+    return;
+  }
+  const top=el("div","tn-top");
+  top.appendChild(el("span","tn-count",namesList.length===1?"1 name":`${namesList.length} names`));
+  const add=el("button","br-send","+ Add");
+  add.type="button"; add.id="tn-add";
+  add.addEventListener("click",openAddName);
+  top.appendChild(add);
+  box.appendChild(top);
+  if(!namesList.length){ box.appendChild(el("p","pf-note","No team names yet. Add the first one.")); return; }
+  const entry=SEASONS.find(s=>s.col);
+  const who=[...new Set(namesList.map(x=>x.by).filter(Boolean))];
+  const shortBy={};
+  shortNames(who,entry).forEach((sn,i)=>{ shortBy[who[i]]=sn; });
+  const table=el("table","tn-table");
+  table.innerHTML='<thead><tr><th scope="col">Team Name</th><th scope="col">Added By</th><th scope="col" class="tn-vh">Votes</th></tr></thead>';
+  const body=el("tbody");
+  namesList.forEach(x=>{
+    const tr=el("tr");
+    const tdName=el("td","tn-name");
+    tdName.appendChild(el("span",null,x.name));
+    if(x.by===rsvpSession.name || rsvpSession.captain){
+      const rm=el("button","tn-rm","Remove");
+      rm.type="button";
+      rm.setAttribute("aria-label",`Remove ${x.name}`);
+      rm.addEventListener("click",()=>removeName(x));
+      tdName.appendChild(rm);
+    }
+    const tdBy=el("td","tn-by",shortBy[x.by]||x.by);
+    tdBy.title=x.by;
+    const tdV=el("td");
+    const votes=el("div","tn-votes");
+    [[1,"up",TN_UP,"Vote up"],[-1,"down",TN_DOWN,"Vote down"]].forEach(([v,cls,icon,label],i)=>{
+      const b=el("button","tn-vote "+cls);
+      b.type="button"; b.id=`tn-${x.id}-${cls}`;
+      b.innerHTML=icon;
+      b.setAttribute("aria-label",`${label}: ${x.name}`);
+      b.setAttribute("aria-pressed",String(x.mine===v));
+      b.addEventListener("click",()=>voteName(x,x.mine===v?0:v));
+      if(i===1) votes.appendChild(el("span","tn-score"+(x.score>0?" pos":x.score<0?" neg":""),String(x.score)));
+      votes.appendChild(b);
+    });
+    tdV.appendChild(votes);
+    tr.append(tdName,tdBy,tdV);
+    body.appendChild(tr);
+  });
+  table.appendChild(body);
+  const wrap=el("div","tn-wrap");
+  wrap.appendChild(table);
+  box.appendChild(wrap);
+  if(focusId){ const f=document.getElementById(focusId); if(f) f.focus(); }
+}
+async function voteName(x,v){
+  const before={mine:x.mine,up:x.up,down:x.down,score:x.score};
+  const apply=(from,to)=>{ if(from===1){x.up--;} if(from===-1){x.down--;} if(to===1){x.up++;} if(to===-1){x.down++;} x.score=x.up-x.down; x.mine=to; };
+  apply(x.mine,v);
+  renderNames();
+  let status=0, res=null;
+  try{ ({status,res}=await api("/names/vote",{id:x.id,v})); }catch(e){}
+  if(res?.ok) return;
+  if(status===401){ saveSession(null); return; }
+  Object.assign(x,before);
+  if(status===404) namesList=namesList.filter(n=>n.id!==x.id);
+  renderNames();
+}
+async function removeName(x){
+  if(!confirm(`Remove "${x.name}" from the team names?`)) return;
+  let status=0, res=null;
+  try{ ({status,res}=await api("/names/remove",{id:x.id})); }catch(e){}
+  if(status===401){ saveSession(null); return; }
+  if(res?.ok || status===404){ namesList=namesList.filter(n=>n.id!==x.id); renderNames(); return; }
+  alert(res?.error||"Couldn't remove it. Try again.");
+}
+function openAddName(){
+  const dlg=document.getElementById("tn-dlg"), inp=document.getElementById("tn-name");
+  inp.value=""; inp.disabled=false;
+  nameMsg("");
+  const send=document.getElementById("tn-send");
+  send.disabled=false; send.textContent="Add";
+  dlg.showModal();
+  inp.focus();
+}
+function nameMsg(t){ const m=document.getElementById("tn-msg"); m.textContent=t||""; m.hidden=!t; }
+function wireNames(){
+  const dlg=document.getElementById("tn-dlg");
+  document.getElementById("tn-form").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const inp=document.getElementById("tn-name"), send=document.getElementById("tn-send");
+    const name=inp.value.replace(/\s+/g," ").trim();
+    if(!name){ nameMsg("Type a team name."); return; }
+    send.disabled=true; send.textContent="Adding…"; inp.disabled=true;
+    let status=0, res=null;
+    try{ ({status,res}=await api("/names",{name})); }catch(err){}
+    send.disabled=false; send.textContent="Add"; inp.disabled=false;
+    if(status===401){ dlg.close(); saveSession(null); return; }
+    if(!res?.ok){ nameMsg(res?.error||"Couldn't add it. Try again."); inp.focus(); return; }
+    // New names go to the top, where you can see them
+    if(namesList) namesList.unshift(res.name);
+    dlg.close();
+    renderNames();
+  });
+  document.getElementById("tn-cancel").addEventListener("click",()=>dlg.close());
+  dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
 }
 /* ---------- Captains (JP, Sep 23, 2026) ----------
    The Roster's Captain box (JP, Sanders, Adam, Fred) lets a player set anyone In, Out or No answer
@@ -2950,12 +3151,12 @@ async function renderTeam(){
   setFreezeH();
 }
 // URL routing: each view lives at its own path (…/about/, …/team/, …/schedule/, …)
-const VIEW_PATHS={about:"about",roster:"team",schedule:"schedule",swag:"swag",join:"join",profile:"profile",lines:"lines"};
-const PAGE_TITLES={about:"About",roster:"Team",schedule:"Schedule",swag:"Swag",join:"Join",profile:"Profile",lines:"Lines"};
+const VIEW_PATHS={about:"about",roster:"team",schedule:"schedule",swag:"swag",join:"join",profile:"profile",lines:"lines",names:"names"};
+const PAGE_TITLES={about:"About",roster:"Team",schedule:"Schedule",swag:"Swag",join:"Join",profile:"Profile",lines:"Lines",names:"Team Names"};
 const SITE_TITLE=document.title;
 // Stats folded into Team; old /stats/ links still land there
 const PATH_VIEWS=Object.assign(Object.fromEntries(Object.entries(VIEW_PATHS).map(([v,p])=>[p,v])),{stats:"roster"});
-const ROUTE_RE=/(about|team|schedule|stats|swag|join|profile|lines)\/?$/;
+const ROUTE_RE=/(about|team|schedule|stats|swag|join|profile|lines|names)\/?$/;
 function viewFromPath(){
   const m=location.pathname.match(ROUTE_RE);
   return m?PATH_VIEWS[m[1]]:"about";
@@ -2992,6 +3193,7 @@ function showTab(which,push=true){
   if(which==="about") renderAbout();
   if(which==="profile") renderProfile();
   if(which==="lines") renderLines();
+  if(which==="names") renderNames();
   window.scrollTo(0,0);
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
@@ -3071,6 +3273,7 @@ wireCalLink();
 wireSignIn();
 wireUsah();
 wireCaptain();
+wireNames();
 loadSession();
 renderAccount();
 checkSession();

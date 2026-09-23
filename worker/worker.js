@@ -37,6 +37,10 @@
  *                                          No sign-in: it carries nothing that /rsvp now gates.
  *   GET  /lines?season=W&date=Sep 29, 2026 -> {ok, slots: {F1LW: name, ...}} (signed in)
  *   POST /lines {season, date, slots}      -> captains only: the game's whole lineup at once
+ *   GET  /names                            -> {ok, names: [{id, name, by, t, up, down, score, mine}]}
+ *   POST /names {name}                     -> suggest a team name (signed in)
+ *   POST /names/vote {id, v: 1 | -1 | 0}   -> your one vote on a name; 0 takes it back
+ *   POST /names/remove {id}                -> whoever added it, or a captain
  *
  * Storage (KV):
  *   sess:<token>            {email, at, renewed}              a year, renewed weekly by /me
@@ -48,6 +52,8 @@
  *   cache:public            {data: {roster, schedule}, at}       no expiry
  *   rsvp:<season>:<ymd>:<name>   value "in" | "out", metadata {a, t, d}
  *   lines:<season>:<ymd>[#slug]  {slots: {F1LW: name, ...}, by, t}   a game's lines, no expiry
+ *   tn:<id>                 "1", metadata {n: team name, by, t}   a suggested team name
+ *   tnv:<id>:<voter>        "1", metadata {v: 1 | -1}              one vote per player per name
  *
  * Airtable's free plan allows about 1,000 API calls a month per workspace, so the copies in
  * KV are the normal source and Airtable is read only when a copy is older than PUBLIC_MAX_AGE_MS
@@ -406,6 +412,47 @@ async function route(request, env, ctx) {
     return json({ ok: true, season, date: game.date, slots });
   }
 
+  // ---- team name ideas: suggest, vote up or down, remove (signed in; JP, Sep 23, 2026) ----
+  if (p === "/names" || p.startsWith("/names/")) {
+    const me = await whoami(request, env);
+    if (!me) return json({ ok: false, error: "Sign in to see the team names." }, 401);
+    if (m === "GET" && p === "/names") return json({ ok: true, names: await teamNames(env, me.name) });
+    if (m !== "POST") return json({ ok: false, error: "No such endpoint." }, 404);
+    const body = await readJson(request);
+    if (p === "/names") {
+      const name = String(body.name || "").replace(/\s+/g, " ").trim();
+      if (!name || name.length > 40) return json({ ok: false, error: "A team name is 1 to 40 characters." }, 400);
+      const all = await teamNames(env, me.name);
+      const same = all.find((x) => norm(x.name) === norm(name));
+      if (same) return json({ ok: false, error: `${same.name} is already on the list.` }, 400);
+      if (await overLimit(env, "names:" + me.name, 25, 86400)) return json({ ok: false, error: "That's plenty for today. Add more tomorrow." }, 429);
+      const id = randomToken().slice(0, 10);
+      const t = Date.now();
+      await env.SC_KV.put("tn:" + id, "1", { metadata: { n: name, by: me.name, t } });
+      return json({ ok: true, name: { id, name, by: me.name, t, up: 0, down: 0, score: 0, mine: 0 } });
+    }
+    const id = String(body.id || "");
+    if (!/^[A-Za-z0-9_-]{6,16}$/.test(id)) return json({ ok: false, error: "Bad team name." }, 400);
+    const doc = await env.SC_KV.getWithMetadata("tn:" + id);
+    if (doc.value == null) return json({ ok: false, error: "That name was removed." }, 404);
+    if (p === "/names/vote") {
+      const v = Number(body.v);
+      if (![1, -1, 0].includes(v)) return json({ ok: false, error: "Vote up or down." }, 400);
+      const key = `tnv:${id}:${me.name}`;
+      if (v) await env.SC_KV.put(key, "1", { metadata: { v } }); else await env.SC_KV.delete(key);
+      return json({ ok: true, id, v });
+    }
+    if (p === "/names/remove") {
+      if (!me.captain && (doc.metadata || {}).by !== me.name) {
+        return json({ ok: false, error: "Only whoever added it, or a captain, can remove it." }, 403);
+      }
+      await env.SC_KV.delete("tn:" + id);
+      for (const k of (await env.SC_KV.list({ prefix: `tnv:${id}:` })).keys) await env.SC_KV.delete(k.name);
+      return json({ ok: true, id });
+    }
+    return json({ ok: false, error: "No such endpoint." }, 404);
+  }
+
   // ---- the schedule as a calendar feed, for a person to subscribe to (not a one-time import) ----
   if (m === "GET" && p === "/schedule.ics") {
     const sched = await schedule();
@@ -642,8 +689,8 @@ function profileOf(rec, usahField, me) {
   };
 }
 
-// A rename moves the player's In/Out answers (rsvp:<season>:<game>:<name>) and their spots in
-// every saved lineup (lines:*) to the new full name. Both prefixes hold a few hundred keys at most.
+// A rename moves the player's In/Out answers (rsvp:<season>:<game>:<name>), their spots in
+// every saved lineup (lines:*) and their team name ideas and votes (tn:, tnv:) to the new full name. Both prefixes hold a few hundred keys at most.
 async function renameInKv(env, from, to) {
   let cursor;
   do {
@@ -667,6 +714,15 @@ async function renameInKv(env, from, to) {
     }
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);
+  // Team names they added, and their votes
+  for (const k of await listAll(env, "tn:")) {
+    if ((k.metadata || {}).by === from) await env.SC_KV.put(k.name, "1", { metadata: Object.assign({}, k.metadata, { by: to }) });
+  }
+  for (const k of await listAll(env, "tnv:")) {
+    if (!k.name.endsWith(":" + from)) continue;
+    await env.SC_KV.put(k.name.slice(0, -from.length) + to, "1", { metadata: k.metadata });
+    await env.SC_KV.delete(k.name);
+  }
 }
 
 // The fields to write, from what the page sent. Only a value that changed is checked, so an old
@@ -771,6 +827,41 @@ function currentSeasonField(players) {
   for (const r of players) for (const k of Object.keys(r.fields || {})) if (SEASON_RE.test(k)) names.add(k);
   return [...names].filter((k) => players.some((r) => ON_TEAM.includes(norm((r.fields || {})[k]))))
     .sort((a, b) => rank(b) - rank(a))[0] || "";
+}
+
+/* ---------------- team name ideas ---------------- */
+
+// Every suggested name with its tally and your own vote, best first. Two list calls: the names
+// ride in their keys' metadata and each vote is its own key, so two people voting at once can't
+// overwrite each other.
+async function teamNames(env, voter) {
+  const names = {}, out = [];
+  for (const k of await listAll(env, "tn:")) {
+    const md = k.metadata || {};
+    const id = k.name.slice(3);
+    names[id] = { id, name: md.n || "", by: md.by || "", t: md.t || 0, up: 0, down: 0, score: 0, mine: 0 };
+  }
+  for (const k of await listAll(env, "tnv:")) {
+    const [, id, who] = k.name.match(/^tnv:([^:]+):(.+)$/) || [];
+    const x = names[id], v = (k.metadata || {}).v;
+    if (!x || (v !== 1 && v !== -1)) continue;
+    if (v === 1) x.up++; else x.down++;
+    x.score += v;
+    if (who === voter) x.mine = v;
+  }
+  for (const x of Object.values(names)) out.push(x);
+  return out.sort((a, b) => b.score - a.score || b.t - a.t);
+}
+
+async function listAll(env, prefix) {
+  const keys = [];
+  let cursor;
+  do {
+    const page = await env.SC_KV.list({ prefix, cursor });
+    keys.push(...page.keys);
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
+  return keys;
 }
 
 /* ---------------- Beer Man and awards ---------------- */
