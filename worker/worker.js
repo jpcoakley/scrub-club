@@ -72,7 +72,7 @@ const F = {
   date: "Date", season: "Season", type: "Type", opponent: "Opponent", us: "Us", them: "Them",
   outcome: "Outcome", beer: "Beer Duty", third: "Third Beer", daddy: "Scrub Daddy",
   nickname: "Nickname", phone: "Phone", venmo: "Venmo", jerseySize: "Jersey Size",
-  captain: "Captain",
+  captain: "Captain", drinks: "Drinks",
 };
 // A game's lines: four forward lines, three defense pairs and the goalie. Keep in step with
 // LINE_GROUPS in index.html.
@@ -263,7 +263,7 @@ async function route(request, env, ctx) {
     try {
       const { rec, usahField } = await myRecord(env, me);
       if (!rec) return json({ ok: false, error: "That name isn't on the roster." }, 404);
-      return json(Object.assign({ ok: true, sizes: JERSEY_SIZES }, shown(profileOf(rec, usahField, me))));
+      return json(Object.assign({ ok: true, sizes: JERSEY_SIZES }, profileOf(rec, usahField, me)));
     } catch (e) {
       console.error("profile read", me.name, String(e));
       return json({ ok: false, error: "Couldn't reach the team roster. Try again." }, 502);
@@ -286,6 +286,12 @@ async function route(request, env, ctx) {
         await at(env, `${AT_BASE}/${AT_ROSTER}`, { method: "PATCH",
           body: JSON.stringify({ records: [{ id: rec.id, fields }], typecast: true }) });
       }
+      if (check.rename) {
+        // Answers and lines are kept by full name: move them to the new one, and re-read the
+        // roster now so this session's email resolves to the new name on the very next request
+        await refreshRoster(env);
+        await renameInKv(env, check.rename.from, check.rename.to);
+      }
       if (check.email && check.email !== me.email) {
         // Sign-in goes by email: this session moves to the new address, and the roster copy is
         // re-read now (not in the background) so the very next request still knows who this is
@@ -295,7 +301,7 @@ async function route(request, env, ctx) {
           { expirationTtl: SESSION_TTL });
       }
       Object.assign(rec.fields, fields);
-      out = Object.assign({ ok: true }, shown(profileOf(rec, usahField, { email: check.email || me.email, name: me.name })));
+      out = Object.assign({ ok: true }, profileOf(rec, usahField, { email: check.email || me.email, name: me.name }));
     } catch (e) {
       console.error("profile write", me.name, String(e));
       return json({ ok: false, error: "Couldn't save to the team roster. Try again." }, 502);
@@ -630,16 +636,37 @@ function profileOf(rec, usahField, me) {
     jersey: f[F.jersey] == null ? "" : String(f[F.jersey]),
     jerseySize: str(f[F.jerseySize]),
     nickname: str(f[F.nickname]),
+    first: str(f[F.first]),
+    last: str(f[F.last]),
+    drinks: f[F.drinks] === true,
   };
 }
 
-// Phone and Venmo go in but never come back out (JP, Sep 22, 2026): a player adds them for JP's
-// invoicing, and the site doesn't show them, not even to that player
-function shown(profile) {
-  const out = Object.assign({}, profile);
-  delete out.phone;
-  delete out.venmo;
-  return out;
+// A rename moves the player's In/Out answers (rsvp:<season>:<game>:<name>) and their spots in
+// every saved lineup (lines:*) to the new full name. Both prefixes hold a few hundred keys at most.
+async function renameInKv(env, from, to) {
+  let cursor;
+  do {
+    const page = await env.SC_KV.list({ prefix: "rsvp:", cursor });
+    for (const k of page.keys) {
+      if (!k.name.endsWith(":" + from)) continue;
+      const v = await env.SC_KV.get(k.name);
+      if (v != null) await env.SC_KV.put(k.name.slice(0, -from.length) + to, v, { metadata: k.metadata });
+      await env.SC_KV.delete(k.name);
+    }
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
+  cursor = undefined;
+  do {
+    const page = await env.SC_KV.list({ prefix: "lines:", cursor });
+    for (const k of page.keys) {
+      const doc = await env.SC_KV.get(k.name, "json");
+      if (!doc || !doc.slots || !Object.values(doc.slots).includes(from)) continue;
+      for (const [slot, n] of Object.entries(doc.slots)) if (n === from) doc.slots[slot] = to;
+      await env.SC_KV.put(k.name, JSON.stringify(doc));
+    }
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
 }
 
 // The fields to write, from what the page sent. Only a value that changed is checked, so an old
@@ -659,21 +686,43 @@ function profileChanges(body, now, players, rec, usahField) {
     email = e;
   }
 
-  // The page starts phone and Venmo empty, so empty means "no change", not "erase"
+  // Your own phone and Venmo show on your Profile (JP, Sep 23, 2026) and nowhere else on the site;
+  // emptying one clears it
   const ph = got("phone");
-  if (ph && ph !== now.phone) {
+  if (ph !== now.phone) {
     let d = ph.replace(/\D/g, "");
     if (d.length === 11 && d[0] === "1") d = d.slice(1);
-    if (d.length !== 10) return { error: "Enter a 10-digit phone number." };
-    fields[F.phone] = `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+    if (ph && d.length !== 10) return { error: "Enter a 10-digit phone number." };
+    const formatted = d ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}` : "";
+    if (formatted !== now.phone) fields[F.phone] = formatted || null;
   }
 
   const v = got("venmo");
-  if (v && v !== now.venmo) {
+  if (v !== now.venmo) {
     const h = v.replace(/^@+/, "");
-    if (!/^[A-Za-z0-9_-]{2,30}$/.test(h)) return { error: "Enter your Venmo username, like @your-name." };
-    fields[F.venmo] = "@" + h;
+    if (v && !/^[A-Za-z0-9_-]{2,30}$/.test(h)) return { error: "Enter your Venmo username, like @your-name." };
+    const handle = h ? "@" + h : "";
+    if (handle !== now.venmo) fields[F.venmo] = handle || null;
   }
+
+  // First and last name: the site keys answers, lines and sign-in by the full name, so a change
+  // also rewrites the Name field and hands the caller a rename to carry through KV
+  let rename = null;
+  const fn = got("first"), ln = got("last");
+  if (fn !== now.first || ln !== now.last) {
+    const ok = /^[\p{L}][\p{L} .'-]{0,29}$/u;
+    if (!ok.test(fn) || !ok.test(ln)) return { error: "Enter a first and last name, letters only." };
+    const full = `${fn} ${ln}`;
+    const taken = players.find((r) => r.id !== rec.id && norm(playerName(r)) === norm(full));
+    if (taken) return { error: `${full} is already on the roster.` };
+    fields[F.first] = fn;
+    fields[F.last] = ln;
+    fields[F.name] = full;
+    if (full !== now.name) rename = { from: now.name, to: full };
+  }
+
+  // The Roster's Drinks box: ticked means they drink beer
+  if (body.drinks != null && !!body.drinks !== now.drinks) fields[F.drinks] = !!body.drinks;
 
   const u = got("usah").toUpperCase().replace(/[\s-]/g, "");
   if (u !== now.usah) {
@@ -709,7 +758,7 @@ function profileChanges(body, now, players, rec, usahField) {
     if (sz && !JERSEY_SIZES.includes(sz)) return { error: "Pick a jersey size from the list." };
     fields[F.jerseySize] = sz || null;
   }
-  return { fields, email };
+  return { fields, email, rename };
 }
 
 // The newest season field with anyone on the team ("Winter, 26-27" over an empty "Spring, 27")

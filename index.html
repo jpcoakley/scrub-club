@@ -578,6 +578,8 @@ section.block{padding-top:var(--space-8)}
 .pf-group{background:var(--surface-card);clip-path:var(--clip-patch);border-top:4px solid var(--burgundy-600);padding:var(--space-6);display:flex;flex-direction:column;gap:var(--space-2);min-width:0}
 .pf-group .br-k{margin-bottom:var(--space-1)}
 .pf-group .br-label:not(:first-of-type){margin-top:var(--space-3)}
+.pf-check{display:flex;align-items:center;gap:10px;font-family:var(--font-body);font-size:17px;color:var(--ink-900);cursor:pointer;padding:6px 0}
+.pf-check input{width:20px;height:20px;accent-color:var(--burgundy-600);margin:0;cursor:pointer}
 .pf-hint{font-size:14px;line-height:1.4;color:var(--ink-500)}
 select.br-input{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237A2842' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:12px 8px;padding-right:36px;cursor:pointer}
 .pf-actions{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-4);margin-top:var(--space-6)}
@@ -2606,20 +2608,24 @@ function usahCell(p){
   return td;
 }
 /* ---------- Your profile ----------
-   Your own Roster details (email, phone, Venmo, USA Hockey #, jersey # and size), read and written
-   through the Worker's /profile, which only ever answers with the signed-in player's own row. The
-   email is the one you sign in with; changing it moves your sign-in to the new address. Phone and
-   Venmo are add-only (JP, Sep 22, 2026): the Worker never sends them back, so those two fields
-   always start empty, and leaving one empty keeps whatever the roster already has. */
+   Your own Roster details (name, email, phone, Venmo, nickname, USA Hockey #, jersey # and size,
+   whether you drink beer), read and written through the Worker's /profile, which only ever answers
+   with the signed-in player's own row. The email is the one you sign in with; changing it moves
+   your sign-in to the new address. Phone and Venmo show only here, to you (JP, Sep 23, 2026; for
+   a day they were add-only and never shown, which read as a save that didn't work). A new first
+   or last name carries your answers and line spots over to it. */
 let profileData=null, profileErr="", profileLoading=false, profileSavedTimer=0;
 const PROFILE_FIELDS=[
+  {group:"Contact", key:"first", label:"First name", type:"text", auto:"given-name", max:30},
+  {group:"Contact", key:"last", label:"Last name", type:"text", auto:"family-name", max:30},
   {group:"Contact", key:"email", label:"Email", type:"email", auto:"email", mode:"email", hint:"You sign in with this address."},
-  {group:"Contact", key:"phone", label:"Phone", type:"tel", auto:"tel", mode:"tel", addOnly:true},
-  {group:"Contact", key:"venmo", label:"Venmo", type:"text", auto:"off", ph:"@username", addOnly:true},
+  {group:"Contact", key:"phone", label:"Phone", type:"tel", auto:"tel", mode:"tel"},
+  {group:"Contact", key:"venmo", label:"Venmo", type:"text", auto:"off", ph:"@username"},
   {group:"Hockey", key:"nickname", label:"Nickname", type:"text", auto:"nickname", max:20, hint:"Shown on the site in place of your first name."},
   {group:"Hockey", key:"usah", label:"USA Hockey #", type:"text", auto:"off", caps:true},
   {group:"Hockey", key:"jersey", label:"Jersey #", type:"text", auto:"off", mode:"numeric", max:2},
   {group:"Hockey", key:"jerseySize", label:"Jersey size", select:true},
+  {group:"Hockey", key:"drinks", label:"Beer", check:"I drink beer"},
 ];
 async function loadProfile(){
   profileLoading=true; profileErr="";
@@ -2679,6 +2685,16 @@ function renderProfile(){
     lab.htmlFor=id;
     g.appendChild(lab);
     let inp;
+    if(f.check){
+      // The Roster's Drinks box
+      lab.htmlFor="";
+      inp=el("input");
+      inp.type="checkbox"; inp.id=id; inp.name=f.key; inp.checked=!!d[f.key];
+      const row=el("label","pf-check");
+      row.append(inp,f.check);
+      g.appendChild(row);
+      return;
+    }
     if(f.select){
       inp=el("select","br-input");
       const sizes=(d.sizes||[]).slice();
@@ -2692,7 +2708,7 @@ function renderProfile(){
       if(f.ph) inp.placeholder=f.ph;
       if(f.max) inp.maxLength=f.max;
       if(f.caps) inp.autocapitalize="characters";
-      inp.value=f.addOnly?"":(d[f.key]||"");
+      inp.value=d[f.key]||"";
     }
     inp.id=id; inp.name=f.key;
     g.appendChild(inp);
@@ -2713,7 +2729,7 @@ function renderProfile(){
 async function saveProfile(form,save,msg){
   if(!rsvpSession || !profileData) return;
   const body={};
-  PROFILE_FIELDS.forEach(f=>{ body[f.key]=form.elements[f.key].value; });
+  PROFILE_FIELDS.forEach(f=>{ body[f.key]=f.check?form.elements[f.key].checked:form.elements[f.key].value; });
   const email=body.email.trim().toLowerCase();
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ msg.textContent="That's not an email address."; msg.hidden=false; return; }
   clearTimeout(profileSavedTimer);
@@ -2725,6 +2741,8 @@ async function saveProfile(form,save,msg){
   if(status===401){ saveSession(null); renderSchedule(); renderTeam(); return; }
   if(!res?.ok){ msg.textContent=res?.error||"Couldn't save. Check your connection and try again."; msg.hidden=false; return; }
   profileData=Object.assign({},profileData,res);
+  const oldName=rsvpSession.name;
+  const renamed=res.name && res.name!==oldName;
   // A new sign-in address: keep the session, just remember the address (saveSession would reset the page)
   if(res.email && res.email!==rsvpSession.email){
     rsvpSession=Object.assign({},rsvpSession,{email:res.email});
@@ -2737,13 +2755,27 @@ async function saveProfile(form,save,msg){
     const iN=headerIdx(header,"Nickname",16);
     for(let r=DATA_START-1;r<allRows.length;r++){
       const row=allRows[r]||[];
-      if(((row[iF]||"").trim()+" "+(row[iL]||"").trim()).trim()===rsvpSession.name){
+      if(((row[iF]||"").trim()+" "+(row[iL]||"").trim()).trim()===oldName){
         if(iU>=0) row[iU]=res.usah||"";
         if(iJ>=0) row[iJ]=res.jersey||"";
         if(iN>=0) row[iN]=res.nickname||"";
+        if(renamed){ row[iF]=res.first; row[iL]=res.last; }
         break;
       }
     }
+  }
+  if(renamed){
+    // Beer and awards on our copy of the game log, then the session itself (which also drops the
+    // cached answers, so they come back under the new name the Worker moved them to)
+    Object.keys(beerByDate).forEach(k=>{ if(beerByDate[k]===oldName) beerByDate[k]=res.name; });
+    Object.values(awardsByDate).forEach(a=>{ if(a.third===oldName) a.third=res.name; if(a.daddy===oldName) a.daddy=res.name; });
+    // Not saveSession: that would also reload this page. The cached answers and lines go, so they
+    // come back under the new name the Worker moved them to.
+    rsvpSession=Object.assign({},rsvpSession,{name:res.name});
+    try{ localStorage.setItem(SESSION_KEY,JSON.stringify(rsvpSession)); }catch(e){}
+    rsvpBySeason={};
+    Object.keys(rsvpFailedAt).forEach(k=>delete rsvpFailedAt[k]);
+    Object.keys(linesBy).forEach(k=>delete linesBy[k]);
   }
   renderProfile();
   renderAccount();   // the nav shows your nickname
