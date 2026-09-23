@@ -2137,7 +2137,7 @@ function wireCaptain(){
 }
 
 /* ---------- Lines ----------
-   A game's lines at lines/?season=W&game=Sep 29, 2026: three forward lines, three defense pairs
+   A game's lines at lines/?season=W&game=Sep 29, 2026: four forward lines, three defense pairs
    and the goalie, laid out like the team app JP uses. Anyone signed in reads them; a captain picks
    a player for each spot (the game's In players first) and every change saves the whole lineup
    through the Worker's /lines. Keep LINE_GROUPS in step with LINE_SLOTS in worker.js. */
@@ -2145,6 +2145,7 @@ const LINE_GROUPS=[
   {kind:"Forward",n:"1st Line",slots:[["F1LW","LW"],["F1C","C"],["F1RW","RW"]]},
   {kind:"Forward",n:"2nd Line",slots:[["F2LW","LW"],["F2C","C"],["F2RW","RW"]]},
   {kind:"Forward",n:"3rd Line",slots:[["F3LW","LW"],["F3C","C"],["F3RW","RW"]]},
+  {kind:"Forward",n:"4th Line",slots:[["F4LW","LW"],["F4C","C"],["F4RW","RW"]]},
   {kind:"Defense",n:"1st Pair",slots:[["D1LD","LD"],["D1RD","RD"]]},
   {kind:"Defense",n:"2nd Pair",slots:[["D2LD","LD"],["D2RD","RD"]]},
   {kind:"Defense",n:"3rd Pair",slots:[["D3LD","LD"],["D3RD","RD"]]},

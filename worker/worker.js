@@ -74,9 +74,9 @@ const F = {
   nickname: "Nickname", phone: "Phone", venmo: "Venmo", jerseySize: "Jersey Size",
   captain: "Captain",
 };
-// A game's lines: three forward lines, three defense pairs and the goalie. Keep in step with
+// A game's lines: four forward lines, three defense pairs and the goalie. Keep in step with
 // LINE_GROUPS in index.html.
-const LINE_SLOTS = ["F1LW", "F1C", "F1RW", "F2LW", "F2C", "F2RW", "F3LW", "F3C", "F3RW",
+const LINE_SLOTS = ["F1LW", "F1C", "F1RW", "F2LW", "F2C", "F2RW", "F3LW", "F3C", "F3RW", "F4LW", "F4C", "F4RW",
   "D1LD", "D1RD", "D2LD", "D2RD", "D3LD", "D3RD", "G"];
 // What a player can pick on their profile; a size already on the Roster that isn't here still shows
 const JERSEY_SIZES = ["S", "M", "L", "XL", "XXL", "3XL", "Goalie M", "Goalie L", "Goalie XL", "Goalie XXL"];
