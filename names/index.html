@@ -3,7 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>if(/\/(about|team|schedule|stats|swag|join|profile|lines|names)\/?$/.test(location.pathname))document.write('<base href="../">');</script>
+<script>
+/* Every page gets a <base> at the site's root, so relative links, images and fetches (beer-review.html,
+   swag/assets/..., stats.json) resolve the same on /, /swag/ or anywhere. Always, not just on the
+   section folders: after landing on / and tapping a tab, the address becomes /swag/ without a reload,
+   and a page with no <base> then resolved beer-review.html to /swag/beer-review.html, a 404 (Sep 25, 2026). */
+(function(){
+  var root=location.pathname.replace(/index\.html$/,"").replace(/(about|team|schedule|stats|swag|join|profile|lines|names)\/?$/,"").replace(/[^\/]*$/,"")||"/";
+  var b=document.createElement("base"); b.href=root; document.head.appendChild(b);
+})();
+</script>
 <title>Scrub Club Hockey</title>
 <meta name="description" content="Scrub Club season commitments: who's in, who's out, who's subbing.">
 <meta property="og:title" content="Scrub Club Hockey">
