@@ -487,6 +487,7 @@ button.nx-chip:focus-visible{outline:2px solid var(--burgundy-600);outline-offse
 .sg-res.tie{color:var(--ink-500)}
 .sg-res.next{font-family:var(--font-condensed);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--whistle-500)}
 .sg-beer,.sg-award{min-width:0;font-family:var(--font-condensed);font-weight:600;font-size:15px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg-award.none{color:var(--ink-300)}
 .sg-you{text-align:left;white-space:nowrap}
 .sg-openable{cursor:pointer}
 /* Who's in, opened by tapping a game */
@@ -984,6 +985,9 @@ const TEAM_DATA_URL = "https://api.scrubclubhockeyteam.com/public";
 const RSVP_API = "https://api.scrubclubhockeyteam.com";
 // Beer Man and award assignments go to the Worker too. Empty hides the schedule's Assign buttons.
 const BEER_REQUEST_URL = "https://api.scrubclubhockeyteam.com/assign";
+// An award nobody got (JP, Sep 30, 2026): a pick-list option, sent to and served by the Worker as
+// this name. Keep in step with NOT_AWARDED in worker.js.
+const NOT_AWARDED = "Not awarded";
 const HEADER_ROW = 7;   // 1-based row holding "First / Last / <season>" headers
 const DATA_START = 8;   // 1-based first player row
 /* Column lookups resolve by header text first and fall back to the letter the column
@@ -1109,8 +1113,8 @@ async function loadBeer(fresh){
       if(isNaN(t)) continue;
       const third=iT<0?"":(rows[i][iT]||"").trim(), daddy=iSD<0?"":(rows[i][iSD]||"").trim();
       if(third||daddy) awardsByDate[ds]={third,daddy};
-      if(third) awards.third.push({name:third,ds,t});
-      if(daddy) awards.daddy.push({name:daddy,ds,t});
+      if(third && third!==NOT_AWARDED) awards.third.push({name:third,ds,t});
+      if(daddy && daddy!==NOT_AWARDED) awards.daddy.push({name:daddy,ds,t});
       if(!name) continue;
       beerByDate[ds]=name;
       if(t>endOfToday) continue;
@@ -1363,7 +1367,7 @@ function nextGame(entry,games){
 // Adams have ever had duty, not only on the games where both appear
 function dutyPool(){
   const pool=Object.values(beerByDate);
-  Object.values(awardsByDate).forEach(a=>{ if(a.third) pool.push(a.third); if(a.daddy) pool.push(a.daddy); });
+  Object.values(awardsByDate).forEach(a=>[a.third,a.daddy].forEach(n=>{ if(n && n!==NOT_AWARDED) pool.push(n); }));
   return pool;
 }
 // Duty columns show first names, with a last initial when two players share one (JP, Sep 18, 2026)
@@ -1384,8 +1388,9 @@ function dutyCells(g,entry,ds,played){
   }
   const aw=(ds&&awardsByDate[ds])||{};
   const awards=[["third","3rd Beer",aw.third],["daddy","Scrub Daddy",aw.daddy]].map(([kind,label,who])=>{
-    const c=el("span","sg-award "+kind,dutyName(who,entry));
-    if(who) c.title=who;
+    const none=who===NOT_AWARDED;
+    const c=el("span","sg-award "+kind+(none?" none":""),none?NOT_AWARDED:dutyName(who,entry));
+    if(who && !none) c.title=who;
     if(!who && played && canAssignAward(ds,entry)){
       const b=el("button","sg-req","Assign");
       b.type="button";
@@ -1856,7 +1861,9 @@ function openBeerRequest(g,entry,ds,kind){
   const sel=document.getElementById("br-name");
   const prompt=new Option("Pick a teammate","");
   prompt.disabled=true;
-  sel.replaceChildren(prompt,...names.map(n=>new Option(n,n)));
+  // An award can go to nobody; beer duty always has someone
+  const none=kind==="beer"?[]:[new Option(NOT_AWARDED,NOT_AWARDED)];
+  sel.replaceChildren(prompt,...none,...names.map(n=>new Option(n,n)));
   sel.value="";
   beerReqMessage("");
   beerReqBusy(false);
@@ -1891,7 +1898,7 @@ async function sendBeerRequest(ev){
   const {entry,ds,names,kind}=beerReq;
   const what=ASSIGN_KINDS[kind].what;
   const name=document.getElementById("br-name").value;
-  if(!names.includes(name)){ beerReqMessage("Pick a teammate from the list."); return; }
+  if(!names.includes(name) && !(kind!=="beer" && name===NOT_AWARDED)){ beerReqMessage("Pick a teammate from the list."); return; }
   beerReqBusy(true);
   let res=null;
   // A request is sent up to three times until a real answer comes back: a refusal with a reason,
@@ -1939,7 +1946,7 @@ async function sendBeerRequest(ev){
   if(saved){
     noteAssigned(ds,kind,saved);
     renderSchedule();
-    beerReqMessage(`${saved} already has ${what} for this game.`);
+    beerReqMessage(saved===NOT_AWARDED ? `${what[0].toUpperCase()+what.slice(1)} for this game is already marked Not awarded.` : `${saved} already has ${what} for this game.`);
     return;
   }
   beerReqMessage("Couldn't reach the team sheet. Try again.");

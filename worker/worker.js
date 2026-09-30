@@ -21,7 +21,8 @@
  *                                          the old sheet (row arrays) so the site reads them as before
  *   POST /assign            {date, name, season, seasonHeader, seasonKey, award?}
  *                                          puts a teammate on Beer Duty (or gives Third Beer /
- *                                          Scrub Daddy, award: "third" | "daddy") for a game
+ *                                          Scrub Daddy, award: "third" | "daddy") for a game;
+ *                                          name "Not awarded" marks an award nobody got
  *   GET  /rsvp?season=W      Bearer          -> {games: {"Sep 22, 2026": {"JP Coakley": {a, t}}}}
  *                                          401 when signed out (JP, Sep 21, 2026: who's In/Out
  *                                          is for the roster only, not anyone who finds the site)
@@ -79,6 +80,7 @@ const F = {
   outcome: "Outcome", beer: "Beer Duty", third: "Third Beer", daddy: "Scrub Daddy",
   nickname: "Nickname", phone: "Phone", venmo: "Venmo", jerseySize: "Jersey Size",
   captain: "Captain", drinks: "Drinks",
+  thirdNone: "Third Beer Not Awarded", daddyNone: "Scrub Daddy Not Awarded",
 };
 // A game's lines: four forward lines, three defense pairs and the goalie. Keep in step with
 // LINE_GROUPS in index.html.
@@ -94,6 +96,10 @@ const SEASON_NAMES = ["Winter", "Spring", "Summer", "Fall"];
 const ON_TEAM = ["in", "paid", "half", "goalie"];
 // What the site may fill in on a Games row, by the site's kind name
 const ASSIGN_FIELDS = { beer: F.beer, third: F.third, daddy: F.daddy };
+// An award nobody got (JP, Sep 30, 2026) is a checkbox on the Games row, since the award fields
+// only link to players. The site sends and reads it as this name; keep in step with index.html.
+const NOT_AWARDED = "Not awarded";
+const NONE_FIELDS = { third: F.thirdNone, daddy: F.daddyNone };
 // Where the site's column fallbacks expect the roster columns (0-based, from the old sheet)
 // nickname (column Q) is new with the Airtable move (JP, Sep 22, 2026): the site shows it in place of a first name
 const GRID = { usahEnd: 9, jersey: 11, first: 14, last: 15, nickname: 16, seasonsFrom: 20, headerRow: 6 };
@@ -644,6 +650,8 @@ function scheduleGrid(players, games) {
   const nameOf = {};
   for (const p of players) nameOf[p.id] = playerName(p);
   const linked = (v) => Array.isArray(v) && v.length ? (nameOf[v[0]] || "") : "";
+  // A player wins over the Not Awarded box if JP later fills the award in by hand
+  const award = (f, kind) => linked(f[F[kind]]) || (f[NONE_FIELDS[kind]] === true ? NOT_AWARDED : "");
   const head = ["Season", "Type", "Month", "Year", "Date", "Beer Duty", "Opponent", "Us", "Them", "Outcome", "Third Beer", "Scrub Daddy"];
   const rows = games.filter((g) => /^\d{4}-\d{2}-\d{2}$/.test(String((g.fields || {})[F.date] || "")))
     .sort((a, b) => a.fields[F.date] < b.fields[F.date] ? -1 : a.fields[F.date] > b.fields[F.date] ? 1 : 0)
@@ -652,7 +660,7 @@ function scheduleGrid(players, games) {
       const [y, mo, d] = f[F.date].split("-").map(Number);
       return [str(f[F.season]), str(f[F.type]), String(mo), String(y), `${MONTHS[mo - 1]} ${d}, ${y}`,
         linked(f[F.beer]), str(f[F.opponent]), str(f[F.us]), str(f[F.them]), str(f[F.outcome]),
-        linked(f[F.third]), linked(f[F.daddy])];
+        award(f, "third"), award(f, "daddy")];
     });
   return [head].concat(rows);
 }
@@ -870,13 +878,16 @@ async function listAll(env, prefix) {
 // An assignment goes through only when the name is on that season's team (status In, Paid, Half
 // or Goalie in the seasonHeader field), the date is a game on schedule.json (beer: unplayed and
 // today or later; an award: today or earlier), and that field on the game's row is still empty.
-// It fills the row for that date, adding one if there isn't one. Changing or clearing a name is
-// done by hand in Airtable.
+// It fills the row for that date, adding one if there isn't one. An award can instead be marked
+// marked Not awarded (name "Not awarded": no team check, ticks the award's Not Awarded box). Changing or
+// clearing a name or the box is done by hand in Airtable.
 async function assign(env, req) {
   const kind = req.award ? String(req.award) : "beer";
   const field = ASSIGN_FIELDS[kind];
   if (!field) return { ok: false, error: "Bad request." };
   const what = kind === "beer" ? "beer" : field;
+  // An award can be left to nobody; beer duty can't
+  const none = kind !== "beer" && String(req.name || "") === NOT_AWARDED;
 
   const m = String(req.date || "").match(/^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/);
   const mon = m ? MONTHS.indexOf(m[1]) : -1;
@@ -901,8 +912,9 @@ async function assign(env, req) {
   if (!seasonHeader || !players.some((p) => seasonHeader in (p.fields || {}))) {
     return { ok: false, error: "There's no team list for that season yet." };
   }
-  const player = players.find((p) => ON_TEAM.includes(norm((p.fields || {})[seasonHeader])) && norm(playerName(p)) === norm(req.name));
-  if (!player) return { ok: false, error: "Only players on this season's team can be assigned beer." };
+  const player = none ? null : players.find((p) => ON_TEAM.includes(norm((p.fields || {})[seasonHeader])) && norm(playerName(p)) === norm(req.name));
+  if (!none && !player) return { ok: false, error: "Only players on this season's team can be assigned beer." };
+  const value = none ? { [NONE_FIELDS[kind]]: true } : { [field]: [player.id] };
   const nameOf = {};
   for (const p of players) nameOf[p.id] = playerName(p);
 
@@ -914,16 +926,19 @@ async function assign(env, req) {
     const existing = await atList(env, AT_GAMES, { filterByFormula: `DATETIME_FORMAT({${F.date}},'YYYY-MM-DD')='${ymd}'` });
     if (existing.length) {
       const row = existing[0];
-      const current = ((row.fields || {})[field] || []).map((id) => nameOf[id] || "").join(", ");
+      const rf = row.fields || {};
+      const current = (rf[field] || []).map((id) => nameOf[id] || "").join(", ")
+        || (NONE_FIELDS[kind] && rf[NONE_FIELDS[kind]] === true ? NOT_AWARDED : "");
+      if (current === NOT_AWARDED) return { ok: false, taken: current, error: `${what} for this game is already marked Not awarded.` };
       if (current) return { ok: false, taken: current, error: `${current} already has ${what} for this game.` };
       await at(env, `${AT_BASE}/${AT_GAMES}`, { method: "PATCH",
-        body: JSON.stringify({ records: [{ id: row.id, fields: { [field]: [player.id] } }] }) });
+        body: JSON.stringify({ records: [{ id: row.id, fields: value }] }) });
     } else {
       const fields = {
         [F.date]: ymd,
         [F.type]: game.opponent === "TBD" ? "Playoffs" : "Regular Season",
         [F.opponent]: game.opponent === "TBD" ? "" : String(game.opponent || ""),
-        [field]: [player.id],
+        ...value,
       };
       if (SEASON_NAMES.includes(req.season)) fields[F.season] = req.season;
       await at(env, `${AT_BASE}/${AT_GAMES}`, { method: "POST", body: JSON.stringify({ records: [{ fields }] }) });
@@ -931,7 +946,7 @@ async function assign(env, req) {
   } finally {
     await env.SC_KV.delete(lockKey);
   }
-  return { ok: true, name: playerName(player), date: req.date, award: kind === "beer" ? undefined : kind };
+  return { ok: true, name: none ? NOT_AWARDED : playerName(player), date: req.date, award: kind === "beer" ? undefined : kind };
 }
 
 /* ---------------- the cached copies ---------------- */
