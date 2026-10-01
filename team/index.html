@@ -2615,21 +2615,27 @@ async function ioSubmit(ev){
   if(p) answer(p.entry,p.ds,p.a,p.who); else renderSchedule();
   renderTeam();
 }
-// Opening webcal:// straight up did nothing on a desktop with no calendar app registered for it
-// (JP, Sep 22, 2026), no error and no sign the click even landed. The link now opens the feed in a
-// new tab (whatever the browser makes of the .ics response) and, either way, copies the plain URL
-// so pasting it into "Subscribe from URL" always works, with the button's own label confirming it.
+// Add to Calendar always subscribes (the feed keeps itself up to date), and the way in depends on
+// the device (tested on JP's iPhone, Sep 30, 2026):
+// - iPhone and iPad, in every browser there and in the Home Screen app: webcal://, which iOS hands
+//   to Calendar's Add Subscription screen. The plain https feed got only Safari's one-time "Add All"
+//   import, and in the Home Screen app its new tab was a blank in-app browser with no way out, so
+//   webcal opens in the same tab.
+// - Safari on a Mac: webcal:// too, for Calendar.
+// - Everything else (Chrome on a computer, Android): Google Calendar's own subscribe page in a new
+//   tab, since a bare webcal:// did nothing at all in desktop Chrome (JP, Sep 22, 2026).
+const CAL_FEED="api.scrubclubhockeyteam.com/schedule.ics";
+function calHref(){
+  const ua=navigator.userAgent;
+  const ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
+  const macSafari=/Macintosh/.test(ua)&&/Safari\//.test(ua)&&!/Chrome|Chromium|Edg|OPR|Firefox/.test(ua);
+  if(ios||macSafari) return "webcal://"+CAL_FEED;
+  return "https://calendar.google.com/calendar/render?cid="+encodeURIComponent("webcal://"+CAL_FEED);
+}
 function wireCalLink(){
   const a=document.getElementById("cal-link");
-  const label=a.textContent;
-  a.addEventListener("click",async ()=>{
-    try{
-      await navigator.clipboard.writeText(a.href);
-      a.textContent="Link copied";
-      clearTimeout(a._calTimer);
-      a._calTimer=setTimeout(()=>{ a.textContent=label; },2500);
-    }catch(e){}
-  });
+  a.href=calHref();
+  if(a.href.startsWith("webcal:")){ a.removeAttribute("target"); a.removeAttribute("rel"); }
 }
 function wireSignIn(){
   const dlg=document.getElementById("io-dlg");

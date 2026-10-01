@@ -460,7 +460,8 @@ async function route(request, env, ctx) {
   }
 
   // ---- the schedule as a calendar feed, for a person to subscribe to (not a one-time import) ----
-  if (m === "GET" && p === "/schedule.ics") {
+  // HEAD too: some calendar apps check a feed's headers before they fetch it
+  if ((m === "GET" || m === "HEAD") && p === "/schedule.ics") {
     const sched = await schedule();
     let beerMap = {};
     try {
@@ -1197,6 +1198,10 @@ function buildScheduleIcs(sched, beerMap) {
   const seasons = sched.seasons || {};
   for (const seasonKey of Object.keys(seasons)) {
     for (const g of (seasons[seasonKey] || {}).games || []) {
+      // GameSheet lists every playoff slot in the league as a game against TBD until it's set; the
+      // site leaves them off (loadSched in index.html) and so does the feed. Two shared a date, so
+      // they also shared a UID, and an iPhone import quietly dropped one of each pair (Sep 30, 2026).
+      if (String(g.opponent || "").trim().toUpperCase() === "TBD") continue;
       const year = seasonYear(seasonKey, g.date);
       const m = String(g.date || "").match(/^([A-Z][a-z]{2}) (\d{1,2})$/);
       if (!year || !m) continue; // an unrecognized season key or a date we can't parse: skip it
