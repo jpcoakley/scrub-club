@@ -2617,19 +2617,23 @@ async function ioSubmit(ev){
 }
 // Add to Calendar always subscribes (the feed keeps itself up to date), and the way in depends on
 // the device (tested on JP's iPhone, Sep 30, 2026):
-// - iPhone and iPad, in every browser there and in the Home Screen app: webcal://, which iOS hands
-//   to Calendar's Add Subscription screen. The plain https feed got only Safari's one-time "Add All"
-//   import, and in the Home Screen app its new tab was a blank in-app browser with no way out, so
-//   webcal opens in the same tab.
+// - Safari on an iPhone or iPad, and the Home Screen app: webcal://, which iOS hands to Calendar's
+//   Add Subscription screen. The plain https feed got only Safari's one-time "Add All" import, and
+//   in the Home Screen app its new tab was a blank in-app browser with no way out, so webcal opens
+//   in the same tab.
 // - Safari on a Mac: webcal:// too, for Calendar.
-// - Everything else (Chrome on a computer, Android): Google Calendar's own subscribe page in a new
-//   tab, since a bare webcal:// did nothing at all in desktop Chrome (JP, Sep 22, 2026).
+// - Everything else, Chrome above all (JP's browser, on his iPhone and his Mac): Google Calendar's
+//   own subscribe page in a new tab. Chrome on an iPhone ignores webcal:// links outright (and
+//   x-safari-https:// ones too, so it can't be bounced to Safari either), and a bare webcal:// did
+//   nothing in desktop Chrome (JP, Sep 22, 2026). Google's page works in both, as an "Add calendar"
+//   box. Firefox, Edge and Opera on an iPhone are untested and take the same Google route.
 const CAL_FEED="api.scrubclubhockeyteam.com/schedule.ics";
 function calHref(){
   const ua=navigator.userAgent;
   const ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
-  const macSafari=/Macintosh/.test(ua)&&/Safari\//.test(ua)&&!/Chrome|Chromium|Edg|OPR|Firefox/.test(ua);
-  if(ios||macSafari) return "webcal://"+CAL_FEED;
+  const iosSafari=ios&&!/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  const macSafari=!ios&&/Macintosh/.test(ua)&&/Safari\//.test(ua)&&!/Chrome|Chromium|Edg|OPR|Firefox/.test(ua);
+  if(iosSafari||macSafari) return "webcal://"+CAL_FEED;
   return "https://calendar.google.com/calendar/render?cid="+encodeURIComponent("webcal://"+CAL_FEED);
 }
 function wireCalLink(){
