@@ -356,6 +356,7 @@ button.nx-chip:focus-visible{outline:2px solid var(--burgundy-600);outline-offse
 .sg-names .grp b+b{margin-left:10px}
 .sg-acts{display:flex;gap:16px}
 .cap-set{display:flex;flex-wrap:wrap;gap:8px}
+.cap-set[hidden]{display:none}
 .cap-opt{flex:1 1 0;min-width:92px;font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.1em;text-transform:uppercase;padding:11px 12px;border-radius:999px;cursor:pointer;border:1.5px solid transparent}
 .cap-opt.in{background:var(--status-win);color:var(--white)}
 .cap-opt.out{background:var(--penalty-500);color:var(--white)}
@@ -2322,15 +2323,19 @@ function openCaptain(entry,ds,g,name){
     const now=answers[name]?.a||"";
     set.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.a===now)));
   }else{
-    // Everyone on the roster who isn't already In, with their status this season when they aren't on the team
+    // Only people with a status in this game's season: the team (In, Paid, Half, Goalie), subs, the
+    // unsure and those sitting out (JP, Oct 7, 2026: no one from past seasons), not already In.
+    // Off-team statuses are named after the name.
     const inNow=new Set(Object.keys(answers).filter(n=>answers[n].a==="in"));
     const seen=new Set();
-    const people=sheetPlayers(entry).filter(p=>p.name && !inNow.has(p.name) && !seen.has(p.name) && seen.add(p.name))
+    const ADDABLE=ON_TEAM.concat(["sub","unsure","out"]);
+    const people=sheetPlayers(entry).filter(p=>p.name && ADDABLE.includes(p.status) && !inNow.has(p.name) && !seen.has(p.name) && seen.add(p.name))
       .sort((a,b)=>a.name.localeCompare(b.name));
+    const STATUS_WORD={sub:"Sub",unsure:"Unsure",out:"Sitting out"};
     const sel=document.getElementById("cap-name");
     const prompt=new Option("Pick a player","");
     prompt.disabled=true;
-    sel.replaceChildren(prompt,...people.map(p=>new Option(p.status && !ON_TEAM.includes(p.status)?`${p.name} (${p.status[0].toUpperCase()+p.status.slice(1)})`:p.name,p.name)));
+    sel.replaceChildren(prompt,...people.map(p=>new Option(STATUS_WORD[p.status]?`${p.name} (${STATUS_WORD[p.status]})`:p.name,p.name)));
     sel.value="";
   }
   dlg.showModal();
