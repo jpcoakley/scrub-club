@@ -36,6 +36,9 @@
  *                                          each game's notes carry the result once played and who
  *                                          has Beer Duty, from the same Games table the site reads.
  *                                          No sign-in: it carries nothing that /rsvp now gates.
+ *   POST /goalie {season, date, name}      -> the game's goalie, anyone signed in; a roster goalie or
+ *                                          a typed name for a sub; empty clears it. GET /rsvp
+ *                                          carries them as goalies: {"Sep 29, 2026": name}
  *   GET  /lines?season=W&date=Sep 29, 2026 -> {ok, slots: {F1LW: name, ...}} (signed in)
  *   POST /lines {season, date, slots}      -> captains only: the game's whole lineup at once
  *   GET  /names                            -> {ok, names: [{id, name, by, t, up, down, score, mine}]}
@@ -53,6 +56,7 @@
  *   cache:public            {data: {roster, schedule}, at}       no expiry
  *   rsvp:<season>:<ymd>:<name>   value "in" | "out", metadata {a, t, d}
  *   lines:<season>:<ymd>[#slug]  {slots: {F1LW: name, ...}, by, t}   a game's lines, no expiry
+ *   goalie:<season>:<ymd>[#slug]  "1", metadata {n: name, by, t, d: game label}   a game's goalie
  *   tn:<id>                 "1", metadata {n: team name, by, t}   a suggested team name
  *   tnv:<id>:<voter>        "1", metadata {v: 1 | -1}              one vote per player per name
  *
@@ -352,7 +356,8 @@ async function route(request, env, ctx) {
     if (!me) return json({ ok: false, error: "Sign in to see who's playing." }, 401);
     const season = String(url.searchParams.get("season") || "").trim();
     if (!/^[A-Za-z0-9_-]{1,12}$/.test(season)) return json({ ok: false, error: "Bad season." }, 400);
-    return json({ ok: true, season, games: await answersFor(env, season) });
+    const [games, goalies] = await Promise.all([answersFor(env, season), goaliesFor(env, season)]);
+    return json({ ok: true, season, games, goalies });
   }
 
   if (m === "POST" && p === "/rsvp") {
@@ -381,6 +386,24 @@ async function route(request, env, ctx) {
       await env.SC_KV.delete(key);
     }
     return json({ ok: true, season, date: game.date, name, answer });
+  }
+
+  // ---- a game's goalie (JP, Oct 7, 2026): anyone signed in sets it, Ron or a typed-in sub ----
+  if (m === "POST" && p === "/goalie") {
+    const me = await whoami(request, env);
+    if (!me) return json({ ok: false, error: "Not signed in." }, 401);
+    const body = await readJson(request);
+    const season = String(body.season || "").trim();
+    const game = await gameCheck(season, String(body.date || "").trim());
+    if (game.error) return json({ ok: false, error: game.error }, 400);
+    const name = String(body.name || "").replace(/\s+/g, " ").trim();
+    if (name && !/^[\p{L}\p{N}][\p{L}\p{N} .'-]{0,39}$/u.test(name)) {
+      return json({ ok: false, error: "A goalie's name is up to 40 letters and spaces." }, 400);
+    }
+    const key = `goalie:${season}:${game.ymd}${game.slug ? "#" + game.slug : ""}`;
+    if (name) await env.SC_KV.put(key, "1", { metadata: { n: name, by: me.name, t: Date.now(), d: game.date } });
+    else await env.SC_KV.delete(key);
+    return json({ ok: true, season, date: game.date, name });
   }
 
   // ---- a game's lines: anyone signed in reads them, captains set them ----
@@ -723,6 +746,10 @@ async function renameInKv(env, from, to) {
     }
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);
+  // Games they're set to play goalie in
+  for (const k of await listAll(env, "goalie:")) {
+    if ((k.metadata || {}).n === from) await env.SC_KV.put(k.name, "1", { metadata: Object.assign({}, k.metadata, { n: to }) });
+  }
   // Team names they added, and their votes
   for (const k of await listAll(env, "tn:")) {
     if ((k.metadata || {}).by === from) await env.SC_KV.put(k.name, "1", { metadata: Object.assign({}, k.metadata, { by: to }) });
@@ -1259,6 +1286,16 @@ function icsResponse(text) {
 }
 
 /* ---------------- answers ---------------- */
+
+// {"Sep 29, 2026": "Ron Huskey"}: each game's goalie, when someone set one
+async function goaliesFor(env, season) {
+  const out = {};
+  for (const k of await listAll(env, `goalie:${season}:`)) {
+    const md = k.metadata || {};
+    if (md.d && md.n) out[md.d] = md.n;
+  }
+  return out;
+}
 
 async function answersFor(env, season) {
   const games = {};

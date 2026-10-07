@@ -435,6 +435,22 @@ button.nx-chip:focus-visible{outline:2px solid var(--burgundy-600);outline-offse
   .ln-row{min-height:36px}
   .ln-row.empty .ln-name{color:transparent}
 }
+.nx-goalie .gl-icon{display:flex}
+.nx-goalie svg{width:26px;height:26px;flex:none;color:var(--oatmeal-300)}
+.nx-goalie .nx-who.gl-change{background:none;border:none;padding:0;cursor:pointer;text-align:left}
+.nx-goalie .nx-who.gl-change:hover{text-decoration:underline;text-underline-offset:4px}
+.nx-goalie .nx-who.gl-change:focus-visible{outline:2px solid var(--whistle-500);outline-offset:3px}
+.sg-goalie{display:flex;align-items:center;gap:6px}
+.sg-goalie .gl-icon{display:flex;color:var(--ink-500)}
+.sg-goalie svg{width:18px;height:18px}
+.sg-gname{font-family:var(--font-condensed);font-weight:700;font-size:15px;color:var(--ink-900);background:none;border:none;padding:0}
+button.sg-gname{cursor:pointer}
+button.sg-gname:hover{text-decoration:underline;text-underline-offset:3px}
+.gl-other{display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-2)}
+.gl-other[hidden]{display:none}
+.gl-clear{margin-right:auto;color:var(--penalty-500)}
+.ln-tag.sub{background:var(--ink-500)}
+.ln-hit{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;background:none}
 .nx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* The puck: a CSS 3D cylinder (two faces and a ring of wall strips) seen from just above */
 .pk-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -926,6 +942,24 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
   </div>
 </div>
 
+<dialog id="gl-dlg" class="br" aria-labelledby="gl-title">
+  <form id="gl-form" class="br-card" novalidate>
+    <h2 id="gl-title" class="br-game">Goalie</h2>
+    <p class="io-help" id="gl-game"></p>
+    <label class="br-label" for="gl-pick">Who's in net?</label>
+    <select id="gl-pick" class="br-input"></select>
+    <div id="gl-other" class="gl-other" hidden>
+      <label class="br-label" for="gl-name">Sub goalie's name</label>
+      <input id="gl-name" class="br-input" type="text" autocomplete="off" maxlength="40" spellcheck="false">
+    </div>
+    <div id="gl-msg" class="br-msg" role="alert" hidden></div>
+    <div class="br-actions">
+      <button type="button" id="gl-clear" class="br-cancel gl-clear" hidden>Clear</button>
+      <button type="button" id="gl-cancel" class="br-cancel">Cancel</button>
+      <button type="submit" id="gl-send" class="br-send">Save</button>
+    </div>
+  </form>
+</dialog>
 <div id="view-names" hidden>
   <div class="container">
     <div id="tn-body" class="tn"></div>
@@ -1451,16 +1485,31 @@ function rsvpSplit(entry,ds){
   // sitting out) who says In joins the In count as a sub; their Out doesn't count (JP, Sep 22, 2026).
   // Before the roster loads the team is unknown, so every answer counts as it comes.
   const team=teamNames(entry), onTeam=new Set(team), known=team.length>0;
+  // The goalie is counted apart from the skaters (JP, Oct 7, 2026): whoever someone set for the
+  // game (Ron, or a typed-in sub), else a Goalie-status player who said In. `ins` is skaters only.
+  const keepers=goalieNames(entry);
+  const setG=(goaliesBySeason[entry.key]||{})[ds]||"";
+  const inGoalie=[...keepers].find(n=>answers[n]?.a==="in")||"";
+  const goalie=setG?{name:setG,set:true,sub:!keepers.has(setG)}:(inGoalie?{name:inGoalie,set:false,sub:false}:null);
   const ins=[], outs=[], subs=[];
   // An answer a teammate gave for someone reads the same as their own (JP: no "via" tags)
   Object.entries(answers).forEach(([name,v])=>{
+    if(v.a==="in" && (keepers.has(name) || (goalie && name===goalie.name))) return;
     if(v.a==="in"){ ins.push(name); if(known && !onTeam.has(name)) subs.push(name); }
     else if(v.a==="out" && (!known || onTeam.has(name))) outs.push(name);
   });
   const said=new Set(Object.keys(answers).filter(nm=>["in","out"].includes(answers[nm].a)));
   const quiet=team.filter(nm=>!said.has(nm));
   const sortNames=a=>a.slice().sort((x,y)=>x.localeCompare(y));
-  return { ins:sortNames(ins), outs:sortNames(outs), quiet:sortNames(quiet), subs:sortNames(subs), mine:rsvpSession?(answers[rsvpSession.name]?.a||""):"" };
+  return { ins:sortNames(ins), outs:sortNames(outs), quiet:sortNames(quiet), subs:sortNames(subs), goalie, mine:rsvpSession?(answers[rsvpSession.name]?.a||""):"" };
+}
+// This season's regular goalies: the roster's Goalie status (Ron)
+function goalieNames(entry){
+  return new Set(entry.col?sheetPlayers(entry).filter(p=>p.status==="goalie").map(p=>p.name):[]);
+}
+function goalieLabel(entry,goalie){
+  if(!goalie) return "";
+  return goalie.sub ? goalie.name : (shortNames([goalie.name],entry)[0]||goalie.name);
 }
 function youCell(g,entry,ds){
   const cell=el("span","sg-you");
@@ -1745,6 +1794,7 @@ function heroCard(entry,g,num,ds){
   const rsvp=!!(RSVP_API && entry.col);
   if(!rsvp) return card;
   const split=rsvpSplit(entry,ds);
+  if(rsvpSession) text.appendChild(goalieLine(entry,ds,g,split,"nx-beer nx-goalie","nx-who","nx-btn"));
   const ask=el("div","pk-wrap");
   ask.appendChild(puckEl(entry,ds,split.mine));
   // No "See you Tuesday." under the puck once you're In (JP, Sep 22, 2026); the other states keep theirs
@@ -1767,7 +1817,7 @@ function heroCard(entry,g,num,ds){
     tally.appendChild(lock);
     return card;
   }
-  [["in","In",split.ins.length],["out","Out",split.outs.length],["quiet","No answer",split.quiet.length]].forEach(([cls,label,n])=>{
+  [["in","Skaters",split.ins.length],["out","Out",split.outs.length],["quiet","No answer",split.quiet.length]].forEach(([cls,label,n])=>{
     const c=el("div","nx-count "+cls);
     c.append(el("b",null,String(n)),el("span",null,label));
     tally.appendChild(c);
@@ -1785,11 +1835,20 @@ function benchChips(entry,ds,split,g){
   const cap=!!rsvpSession?.captain;
   const teamIns=split.ins.filter(n=>split.subs.indexOf(n)<0);
   const all=teamIns.concat(split.subs,split.outs,split.quiet);
-  if(!all.length && !cap) return null;
+  if(!all.length && !cap && !split.goalie) return null;
   const short=shortNames(all,entry);
   const kinds=teamIns.map(()=>"in").concat(split.subs.map(()=>"in"),split.outs.map(()=>"out"),split.quiet.map(()=>"quiet"));
   const words={in:"in",out:"out",quiet:"no answer"};
   const chips=el("div","nx-chips");
+  if(split.goalie){
+    // Anyone signed in can change the game's goalie, so this chip is a button for everyone
+    const c=el("button","nx-chip in",goalieLabel(entry,split.goalie));
+    c.type="button"; c.title=split.goalie.name;
+    c.appendChild(el("span","nx-sub",split.goalie.sub?"Sub goalie":"Goalie"));
+    c.setAttribute("aria-label",`Goalie: ${split.goalie.name}. Change the goalie`);
+    c.addEventListener("click",()=>openGoalie(entry,ds,g));
+    chips.appendChild(c);
+  }
   all.forEach((name,i)=>{
     const c=el(cap?"button":"span","nx-chip "+kinds[i],short[i]);
     c.title=name;
@@ -1967,6 +2026,7 @@ function wireBeerRequest(){
    stays in localStorage for a year. The names list is public, like the roster. */
 let rsvpSession=null;      // {token, name, email}
 let rsvpBySeason={};       // season key -> {"Sep 22, 2026" -> {"JP Coakley" -> {a:"in"|"out", t}}}
+let goaliesBySeason={};    // season key -> {"Sep 22, 2026" -> "Ron Huskey" or a typed sub's name}
 const rsvpOpen=new Set();  // "<season key>|<date>" of games whose names are showing
 let rsvpPending=null;      // {entry, ds, a}: a tap that waits on a sign-in
 let rsvpMsg="", rsvpMsgTimer=null;
@@ -1981,7 +2041,7 @@ function saveSession(s){
   try{ if(s) localStorage.setItem(SESSION_KEY,JSON.stringify(s)); else localStorage.removeItem(SESSION_KEY); }catch(e){}
   // Who's In/Out is roster-only (JP, Sep 21, 2026): drop any cached answers so signing in fetches
   // them fresh, and signing out drops them from memory rather than leaving them on screen
-  rsvpBySeason={};
+  rsvpBySeason={}; goaliesBySeason={};
   Object.keys(rsvpFailedAt).forEach(k=>delete rsvpFailedAt[k]);
   // Someone else's (or nobody's) details now: drop the copy and redraw if Profile is showing
   profileData=null; profileErr="";
@@ -2030,7 +2090,7 @@ function loadRsvpFor(entries){
   Promise.all(need.map(async e=>{
     try{
       const {res}=await api("/rsvp?season="+encodeURIComponent(e.key));
-      if(res?.ok){ rsvpBySeason[e.key]=res.games||{}; delete rsvpFailedAt[e.key]; loaded=true; return; }
+      if(res?.ok){ rsvpBySeason[e.key]=res.games||{}; goaliesBySeason[e.key]=res.goalies||{}; delete rsvpFailedAt[e.key]; loaded=true; return; }
     }catch(err){}
     delete rsvpBySeason[e.key];
     rsvpFailedAt[e.key]=Date.now();
@@ -2139,12 +2199,12 @@ function rsvpNamesRow(entry,ds){
     // A captain gets the same buttons as the next-game card: tap a player, or Add
     const g=(schedData?.seasons[entry.key]?.games||[]).find(x=>gameKey(entry,x)===ds);
     const counts=el("div","grp");
-    counts.innerHTML=`<b class="in-c">In ${ins.length}</b><b class="out-c">Out ${outs.length}</b><b>No answer ${quiet.length}</b>`;
+    counts.innerHTML=`<b class="in-c">Skaters ${ins.length}</b><b class="out-c">Out ${outs.length}</b><b>No answer ${quiet.length}</b>`;
     row.appendChild(counts);
     const chips=benchChips(entry,ds,split,g);
     if(chips) row.appendChild(chips);
   }else{
-    [["in","In",ins],["out","Out",outs],["quiet","No answer",quiet]].forEach(([cls,label,names])=>{
+    [["in","Skaters",ins],["out","Out",outs],["quiet","No answer",quiet]].forEach(([cls,label,names])=>{
       if(!names.length) return;
       const grp=el("div","grp "+cls);
       grp.appendChild(el("b",null,`${label} · ${names.length}`));
@@ -2153,10 +2213,99 @@ function rsvpNamesRow(entry,ds){
     });
     if(!ins.length && !outs.length) row.appendChild(el("span",null,"Nobody has answered yet."));
   }
+  {
+    const g=(schedData?.seasons[entry.key]?.games||[]).find(x=>gameKey(entry,x)===ds);
+    row.appendChild(goalieLine(entry,ds,g,split,"grp sg-goalie","sg-gname","sg-req"));
+  }
   const acts=el("div","sg-acts");
   acts.appendChild(linesButton(entry,ds,"sg-lines"));
   row.appendChild(acts);
   return row;
+}
+const GOALIE_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.8c-4.2 0-6.8 2.6-6.8 7.2 0 5.2 2.9 9.6 6.8 11.2 3.9-1.6 6.8-6 6.8-11.2 0-4.6-2.6-7.2-6.8-7.2z"/><path d="M8.6 11.6h6.8M8.6 14.8h6.8M10.6 10.2v7.4M13.4 10.2v7.4"/></svg>';
+// "Goalie: Ron" with a way to change it, or an Assign button when nobody's in net
+function goalieLine(entry,ds,g,split,cls,nameCls,btnCls){
+  const line=el("div",cls);
+  const icon=el("span","gl-icon");
+  icon.innerHTML=GOALIE_ICON;
+  line.append(icon,el("span","nx-sr","Goalie:"));
+  if(cls.includes("grp")) line.appendChild(el("b",null,"Goalie"));
+  const upcoming=isUpcoming(ds);
+  if(split.goalie){
+    const v=el(upcoming?"button":"span",nameCls+(upcoming?" gl-change":""),goalieLabel(entry,split.goalie)+(split.goalie.sub?" (Sub)":""));
+    v.title=split.goalie.name;
+    if(upcoming){
+      v.type="button";
+      v.setAttribute("aria-label",`Goalie: ${split.goalie.name}. Change the goalie`);
+      v.addEventListener("click",()=>openGoalie(entry,ds,g));
+    }
+    line.appendChild(v);
+  }else if(upcoming){
+    const b=el("button",btnCls,"Assign");
+    b.type="button";
+    b.setAttribute("aria-label","Assign a goalie");
+    b.addEventListener("click",()=>openGoalie(entry,ds,g));
+    line.appendChild(b);
+  }else line.appendChild(el("span",nameCls,"None"));
+  return line;
+}
+/* ---------- The game's goalie (JP, Oct 7, 2026) ----------
+   Anyone signed in picks the goalie for a game, like Beer: the season's Goalie-status players
+   (Ron) from the list, or Someone else with a typed name for a sub. Saved by the Worker's
+   /goalie and read back with each season's answers. Clear goes back to Ron when he's In. */
+let glCtx=null;
+function openGoalie(entry,ds,g){
+  if(!rsvpSession){ openSignIn(); return; }
+  glCtx={entry,ds};
+  const dlg=document.getElementById("gl-dlg"), sel=document.getElementById("gl-pick"), inp=document.getElementById("gl-name");
+  const keepers=[...goalieNames(entry)].sort();
+  const now=(goaliesBySeason[entry.key]||{})[ds]||"";
+  const cur=rsvpSplit(entry,ds).goalie;
+  document.getElementById("gl-game").textContent=g?(g.event?`${g.date} · ${g.opponent}`:`${g.date} · ${g.opponent}`):dsDatePart(ds);
+  const prompt=new Option("Pick a goalie","");
+  prompt.disabled=true;
+  sel.replaceChildren(prompt,...keepers.map(n=>new Option(n,n)),new Option("Someone else","__other"));
+  if(cur && !cur.sub) sel.value=cur.name;
+  else if(cur && cur.sub){ sel.value="__other"; inp.value=cur.name; }
+  else sel.value="";
+  if(!(cur && cur.sub)) inp.value="";
+  document.getElementById("gl-other").hidden=sel.value!=="__other";
+  document.getElementById("gl-clear").hidden=!now;
+  glMsg("");
+  dlg.showModal();
+  (sel.value==="__other"?inp:sel).focus();
+}
+function glMsg(t){ const m=document.getElementById("gl-msg"); m.textContent=t||""; m.hidden=!t; }
+async function saveGoalie(name){
+  const {entry,ds}=glCtx;
+  const map=goaliesBySeason[entry.key]=goaliesBySeason[entry.key]||{};
+  const before=map[ds];
+  if(name) map[ds]=name; else delete map[ds];
+  document.getElementById("gl-dlg").close();
+  renderSchedule();
+  if(activeView==="lines") renderLines();
+  let status=0, res=null;
+  try{ ({status,res}=await api("/goalie",{season:entry.key,date:ds,name})); }catch(e){}
+  if(res?.ok) return;
+  if(status===401){ saveSession(null); return; }
+  if(before) map[ds]=before; else delete map[ds];
+  rsvpNote(res?.error||"Couldn't save the goalie. Try again.");
+  if(activeView==="lines") renderLines();
+}
+function wireGoalie(){
+  const dlg=document.getElementById("gl-dlg"), sel=document.getElementById("gl-pick"), inp=document.getElementById("gl-name");
+  sel.addEventListener("change",()=>{ const other=sel.value==="__other"; document.getElementById("gl-other").hidden=!other; if(other) inp.focus(); glMsg(""); });
+  document.getElementById("gl-form").addEventListener("submit",e=>{
+    e.preventDefault();
+    if(!glCtx) return;
+    const name=(sel.value==="__other"?inp.value:sel.value).replace(/\s+/g," ").trim();
+    if(!name){ glMsg(sel.value==="__other"?"Type the goalie's name.":"Pick a goalie."); return; }
+    if(name.length>40){ glMsg("A goalie's name is up to 40 letters."); return; }
+    saveGoalie(name);
+  });
+  document.getElementById("gl-clear").addEventListener("click",()=>{ if(glCtx) saveGoalie(""); });
+  document.getElementById("gl-cancel").addEventListener("click",()=>dlg.close());
+  dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
 }
 /* ---------- Team Names (JP, Sep 23, 2026) ----------
    Ideas for a team name: anyone signed in adds one and votes each name up or down (one vote per
@@ -2478,7 +2627,8 @@ async function renderLines(){
     if(free.length) f.append(free.map(n=>shortOf[n]||n).join(", "));
     box.appendChild(f);
   }
-  const pool=[...new Set([...split.ins])], rest=teamNames(entry).filter(n=>!pool.includes(n));
+  const keepers=goalieNames(entry);
+  const pool=[...new Set([...split.ins])], rest=teamNames(entry).filter(n=>!pool.includes(n) && !keepers.has(n));
   LINE_GROUPS.forEach(gr=>{
     const sec=el("section","ln-group");
     const h=el("h3","ln-h",gr.kind);
@@ -2486,6 +2636,24 @@ async function renderLines(){
     sec.appendChild(h);
     const card=el("div","ln-card");
     gr.slots.forEach(([key,pos])=>{
+      if(key==="G"){
+        // The goalie is the game's goalie (set on the schedule by anyone), not a captain's pick
+        const gk=split.goalie;
+        const row=el("div","ln-row"+(gk?"":" empty")+(upcoming?" edit":""));
+        row.appendChild(el("span","ln-pos",pos));
+        row.appendChild(el("span","ln-name",gk?goalieLabel(entry,gk):(upcoming?"Assign a goalie":"")));
+        if(gk && gk.sub) row.appendChild(el("span","ln-tag sub","Sub"));
+        if(upcoming){
+          row.insertAdjacentHTML("beforeend",'<svg class="ln-chev" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>');
+          const b=el("button","ln-hit");
+          b.type="button"; b.id="ln-G";
+          b.setAttribute("aria-label",gk?`Goalie: ${gk.name}. Change the goalie`:"Assign a goalie");
+          b.addEventListener("click",()=>openGoalie(entry,ds,g));
+          row.appendChild(b);
+        }
+        card.appendChild(row);
+        return;
+      }
       const who=slots[key]||"";
       const row=el("div","ln-row"+(who?"":" empty")+(cap?" edit":""));
       row.appendChild(el("span","ln-pos",pos));
@@ -3304,6 +3472,7 @@ wireCalLink();
 wireSignIn();
 wireUsah();
 wireCaptain();
+wireGoalie();
 wireNames();
 loadSession();
 renderAccount();
