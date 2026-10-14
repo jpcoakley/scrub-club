@@ -9,7 +9,7 @@
    section folders: after landing on / and tapping a tab, the address becomes /swag/ without a reload,
    and a page with no <base> then resolved beer-review.html to /swag/beer-review.html, a 404 (Sep 25, 2026). */
 (function(){
-  var root=location.pathname.replace(/index\.html$/,"").replace(/(about|team|schedule|stats|swag|join|profile|lines|names|rontoberfest)\/?$/,"").replace(/[^\/]*$/,"")||"/";
+  var root=location.pathname.replace(/index\.html$/,"").replace(/(about|team|schedule|stats|swag|join|profile|lines|names|rontoberfest|injuries)\/?$/,"").replace(/[^\/]*$/,"")||"/";
   var b=document.createElement("base"); b.href=root; document.head.appendChild(b);
 })();
 </script>
@@ -145,6 +145,19 @@ header.site{position:relative}
 /* One underline for the whole nav that rides to whatever the pointer is over and springs
    back to the active tab on the way out. It only takes over the active tab's own border
    once JS has measured it (.has-ink), so with no JS the static underline still shows. */
+/* Eight tabs plus the account fit one line only on a wide screen; between the phone drawer and
+   about 1180 px they get a little tighter instead of wrapping the account onto a second row */
+@media (min-width:861px) and (max-width:1180px){
+  .bar{gap:var(--space-4)}
+  .tabs{gap:var(--space-4)}
+  .tab{font-size:15px;letter-spacing:.06em}
+  .acct-btn{font-size:15px;letter-spacing:.06em}
+}
+@media (min-width:861px) and (max-width:960px){
+  .tabs{gap:12px}
+  .tab{font-size:14px;letter-spacing:.04em}
+  .logo{height:48px}
+}
 .tab-ink{position:absolute;left:0;bottom:0;width:0;height:3px;border-radius:2px;background:var(--whistle-500,#E8B93E);opacity:0;pointer-events:none;
   transition:transform 420ms var(--ease-spring),width 420ms var(--ease-spring),opacity 180ms linear}
 .tabs.has-ink .tab-ink{opacity:1}
@@ -363,6 +376,45 @@ button.nx-chip:focus-visible{outline:2px solid var(--burgundy-600);outline-offse
 .cap-opt.quiet{background:transparent;border:1.5px dashed var(--ink-300);color:var(--ink-500)}
 .cap-opt[aria-pressed="true"]{box-shadow:0 0 0 3px var(--surface-card),0 0 0 5px var(--ink-900)}
 .cap-opt:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:4px}
+/* Injuries: the 3D player and the panel beside it (under it on a phone) */
+.ij{padding:var(--space-6) 0 var(--space-12)}
+.ij-wrap{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:var(--space-8);align-items:start}
+.ij-stage{position:relative;background:radial-gradient(ellipse 46% 7% at 50% 91%,rgba(63,21,35,.18),transparent 70%),radial-gradient(circle at 50% 42%,#FAF7EE 0%,#F1E9D2 62%);clip-path:var(--clip-patch)}
+.ij-canvas{display:block;width:100%;height:clamp(420px,62vh,600px);touch-action:none;cursor:grab}
+.ij-canvas:active{cursor:grabbing}
+.ij-hint{position:absolute;left:14px;top:12px;font-family:var(--font-condensed);font-weight:700;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500);background:rgba(250,247,238,.85);padding:6px 10px;border-radius:999px;pointer-events:none}
+.ij-panel{background:var(--surface-card);border-top:3px solid var(--burgundy-600);padding:var(--space-6);display:flex;flex-direction:column;gap:12px}
+.ij-count{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-500)}
+.ij-lead{margin:0;font-family:var(--font-display);font-size:21px;line-height:1.25;color:var(--text-strong)}
+.ij-sub{margin:0;font-size:15px;color:var(--ink-500)}
+.ij-step{font-family:var(--font-condensed);font-weight:700;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--penalty-500)}
+.ij-card{display:flex;gap:14px;align-items:flex-start}
+.ij-photo{flex:none;width:112px;height:112px;background:var(--oatmeal-500);display:grid;place-items:center;font-family:var(--font-condensed);font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);overflow:hidden}
+.ij-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.ij-text{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ij-part{font-family:var(--font-condensed);font-weight:700;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--penalty-500)}
+.ij-what{font-family:var(--font-display);font-size:21px;line-height:1.15;color:var(--text-strong);overflow-wrap:anywhere}
+.ij-who{font-size:15px;color:var(--ink-700)}
+.ij-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+.ij-actions .br-send{margin-left:auto}
+.ij-ghost{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-700);background:transparent;border:1.5px solid var(--oatmeal-600);padding:10px 16px;cursor:pointer;min-height:44px}
+.ij-ghost:hover{border-color:var(--ink-500)}
+.ij-add{align-self:flex-start}
+.ij-rm{align-self:flex-start}
+.ij-row{display:flex;gap:10px}
+.ij-row .ij-field{flex:1 1 0;min-width:0}
+.ij-field{display:flex;flex-direction:column;gap:4px}
+.ij-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.ij-photo-btn{display:flex;align-items:center;justify-content:center;min-height:44px;border:1.5px dashed var(--burgundy-600);color:var(--burgundy-600);font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;padding:0 12px;text-align:center;overflow-wrap:anywhere}
+.ij-file:focus-visible+.ij-photo-btn{outline:2px solid var(--burgundy-600);outline-offset:2px}
+.ij-ghost:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
+@media (max-width:860px){
+  .ij{padding-top:0}
+  .ij-wrap{grid-template-columns:minmax(0,1fr);gap:0}
+  .ij-stage{clip-path:none;margin-inline:calc(-1*var(--gutter-inline))}
+  .ij-canvas{height:min(474px,58vh)}
+  .ij-panel{margin-inline:calc(-1*var(--gutter-inline));padding:16px var(--gutter-inline) 22px}
+}
 /* Rontoberfest: the bring list, in the Team Names table style */
 .fx-item{font-family:var(--font-condensed);font-weight:700;font-size:19px;letter-spacing:.02em;color:var(--text-strong);overflow-wrap:anywhere}
 .fx-item span{margin-right:10px}
@@ -740,6 +792,7 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
       <button class="tab" data-view="swag" type="button">Swag</button>
       <button class="tab" data-view="join" type="button">Join</button>
       <button class="tab" data-view="names" type="button">Team Names</button>
+      <button class="tab" data-view="injuries" type="button">Injuries</button>
       <div class="acct" id="acct" hidden></div>
     </nav>
   </div>
@@ -959,6 +1012,11 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
   </div>
 </div>
 
+<div id="view-injuries" hidden>
+  <div class="container">
+    <div id="ij-body" class="ij"></div>
+  </div>
+</div>
 <div id="view-fest" hidden>
   <div class="container">
     <div id="fx-body" class="tn fx"></div>
@@ -1331,7 +1389,7 @@ async function load(){
   }
 }
 // Tabs: About, Team (sheet + GameSheet stats), Schedule (GameSheet snapshot), Swag, Join
-const VIEWS=["about","schedule","swag","join","profile","lines","names","fest"];
+const VIEWS=["about","schedule","swag","join","profile","lines","names","fest","injuries"];
 let activeView="about";
 function gamesheetSrc(){
   const gs=seasonEntry().gs;
@@ -2090,6 +2148,7 @@ function saveSession(s){
   Object.keys(linesBy).forEach(k=>delete linesBy[k]);
   namesList=null; namesErr="";
   festItems=null; festErr="";
+  ijItems=null; ijErr=""; ijMode="view"; ijSel=null;
   renderAccount();
   const pv=document.getElementById("view-profile");
   if(pv && !pv.hidden) renderProfile();
@@ -2099,6 +2158,8 @@ function saveSession(s){
   if(nv && !nv.hidden) renderNames();
   const fv=document.getElementById("view-fest");
   if(fv && !fv.hidden) renderFest();
+  const iv=document.getElementById("view-injuries");
+  if(iv && !iv.hidden) renderInjuries();
 }
 // {status, res}; res is null when the reply wasn't JSON
 async function api(path,body){
@@ -2357,6 +2418,350 @@ function wireGoalie(){
   document.getElementById("gl-clear").addEventListener("click",()=>{ if(glCtx) saveGoalie(""); });
   document.getElementById("gl-cancel").addEventListener("click",()=>dlg.close());
   dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
+}
+/* ---------- Injuries (JP, Oct 14, 2026; mockup A, "Clay Mannequin") ----------
+   A 3D player (three.js, vendor/three.min.js, loaded only when this page opens) that anyone
+   signed in can spin by dragging. Each injury is a red sticker printed onto the body where it
+   was tapped, so it stays on that spot as he turns; tapping one turns him to face it and shows
+   the photo, part, what, who and when. "+ Add an injury": tap the spot, then who, what, when and
+   an optional photo (shrunk to 1000 px JPEG on the device). Whoever added it, or a captain, can
+   remove it. Signed in only: it's health information. The Worker keeps each injury as KV inj:<id>
+   and its photo as injphoto:<id> (/injuries). Positions are in the body's own frame, so changing
+   the body's shape here would move existing stickers: keep buildBody as it is. */
+let ijStageReady=null;
+let ijItems=null, ijErr="", ijLoading=false, ijMode="view", ijSel=null, ijDraft=null, ijStage=null, ijStageEl=null, ijForm={who:"",what:"",when:"",file:null}, ijSaving=false;
+const ijPhotos={};   // id -> object URL
+function loadThree(){
+  if(window.THREE) return Promise.resolve();
+  if(loadThree.p) return loadThree.p;
+  loadThree.p=new Promise((ok,fail)=>{ const sc=document.createElement("script"); sc.src="vendor/three.min.js?v=149"; sc.onload=ok; sc.onerror=()=>{ loadThree.p=null; fail(); }; document.head.appendChild(sc); });
+  return loadThree.p;
+}
+function ijPartName(p){
+  const side=p.x>0?"Left":"Right", ax=Math.abs(p.x), back=p.z<-0.02;
+  if(p.x<-0.2 && p.z>0.08 && p.y>1.02 && p.y<1.24) return p.z>0.25?"Right hand":"Right forearm";
+  if(p.y>1.56) return back?"Back of the head":"Head";
+  if(p.y>1.47) return "Neck";
+  if(ax>0.2 && p.y>0.78 && p.y<1.47){
+    if(p.y>1.36) return side+" shoulder";
+    if(p.y>1.18) return side+" upper arm";
+    if(p.y>1.09) return side+" elbow";
+    if(p.y>0.92) return side+" forearm";
+    return side+" hand";
+  }
+  if(p.y>1.12) return back?"Upper back":(p.y>1.3?"Chest":(ax>0.09?side+" ribs":"Stomach"));
+  if(p.y>0.86) return back?"Lower back":side+" hip";
+  if(p.y>0.52) return side+" thigh";
+  if(p.y>0.4) return side+" knee";
+  if(p.y>0.13) return side+" shin";
+  return side+" ankle";
+}
+class InjuryStage{
+  constructor(canvas,{onPick,onPlace}){
+    const T=window.THREE; this.T=T; this.canvas=canvas; this.onPick=onPick; this.onPlace=onPlace;
+    this.r=new T.WebGLRenderer({canvas,antialias:true,alpha:true});
+    this.r.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+    this.scene=new T.Scene(); this.cam=new T.PerspectiveCamera(30,1,0.1,20);
+    this.cam.position.set(0,1.0,3.35); this.cam.lookAt(0,0.92,0);
+    this.scene.add(new T.HemisphereLight(0xFFF8EC,0x8A6E5E,0.75));
+    const key=new T.DirectionalLight(0xFFFFFF,0.85); key.position.set(1.6,2.6,2.4); this.scene.add(key);
+    const rim=new T.DirectionalLight(0xF4E5EA,0.35); rim.position.set(-2,1.5,-2); this.scene.add(rim);
+    this.buildBody(); this.scene.add(this.body); this.body.updateMatrixWorld(true);
+    this.mats=this.stickerMats(); this.stickers={}; this.sel=null; this.placing=false;
+    this.yaw=0.35; this.vel=0.004; this.touched=false; this.target=null;
+    this.ray=new T.Raycaster(); this.ray.camera=this.cam;
+    this.resize();
+    if(window.ResizeObserver){ this.ro=new ResizeObserver(()=>this.resize()); this.ro.observe(canvas); }
+    let down=null;
+    canvas.addEventListener("pointerdown",e=>{ down={x:e.clientX,y:e.clientY,yaw:this.yaw,moved:0,lx:e.clientX}; try{canvas.setPointerCapture(e.pointerId);}catch(_){} this.touched=true; this.target=null; this.vel=0; });
+    canvas.addEventListener("pointermove",e=>{ if(!down) return; const dx=e.clientX-down.x; down.moved=Math.max(down.moved,Math.abs(dx),Math.abs(e.clientY-down.y)); this.yaw=down.yaw+dx*0.011; this.vel=(e.clientX-down.lx)*0.011; down.lx=e.clientX; });
+    canvas.addEventListener("pointerup",e=>{ if(!down) return; const tap=down.moved<6; down=null; if(tap){ this.vel=0; this.tap(e); } });
+    canvas.addEventListener("pointercancel",()=>{ down=null; });
+    this.isDown=()=>!!down;
+    const loop=t=>{
+      this.raf=requestAnimationFrame(loop);
+      if(activeView!=="injuries" || !canvas.isConnected) return;   // asleep while the page is elsewhere
+      if(!this.isDown()){
+        if(this.target!=null){ const d=this.target-this.yaw; this.yaw+=d*0.12; if(Math.abs(d)<0.002) this.target=null; }
+        else{ this.yaw+=this.vel; this.vel*=0.94; if(!this.touched) this.vel=Math.max(this.vel,0.004); }
+      }
+      this.body.rotation.y=this.yaw;
+      this.mats.sel.opacity=0.78+0.22*Math.sin(t/220);
+      Object.keys(this.stickers).forEach(id=>{ this.stickers[id].material=(id===this.sel||id==="draft")?this.mats.sel:this.mats.dot; });
+      this.r.render(this.scene,this.cam);
+    };
+    this.raf=requestAnimationFrame(loop);
+  }
+  resize(){
+    const w=this.canvas.clientWidth||390, h=this.canvas.clientHeight||474;
+    this.r.setSize(w,h,false); this.cam.aspect=w/h; this.cam.updateProjectionMatrix();
+  }
+  buildBody(){
+    const T=this.T, g=new T.Group(), meshes=[];
+    const mat=()=>new T.MeshStandardMaterial({color:0xEEE4CE,roughness:0.78,metalness:0});
+    const add=(geo,pos,rot,scale)=>{ const m=new T.Mesh(geo,mat()); m.position.set(...pos); if(rot) m.rotation.set(...rot); if(scale) m.scale.set(...scale); g.add(m); meshes.push(m); };
+    const cap=(r,l)=>new T.CapsuleGeometry(r,l,10,24), sph=r=>new T.SphereGeometry(r,36,28);
+    add(sph(0.115),[0,1.67,0],null,[0.86,1.2,0.98]);
+    add(new T.CylinderGeometry(0.048,0.058,0.12,24),[0,1.53,0]);
+    add(cap(0.17,0.30),[0,1.27,0],null,[1.18,1,0.64]);
+    add(cap(0.15,0.08),[0,0.98,0],null,[1.12,1,0.72]);
+    [1,-1].forEach(s=>{
+      add(cap(0.052,0.22),[0.265*s,1.29,0],[0,0,0.12*s]);
+      if(s===1){ add(cap(0.043,0.21),[0.3,1.02,0.01],[0,0,0.05]); add(sph(0.052),[0.315,0.85,0.02],null,[0.85,1.25,0.7]); }
+      else{ add(cap(0.043,0.21),[-0.29,1.125,0.15],[Math.PI/2,0,0]); add(sph(0.052),[-0.29,1.13,0.3],null,[0.9,0.9,1.1]); }
+      add(cap(0.076,0.32),[0.1*s,0.69,0],[0,0,-0.03*s]);
+      add(cap(0.058,0.32),[0.11*s,0.31,0]);
+      add(cap(0.046,0.13),[0.11*s,0.075,0.04],[Math.PI/2,0,0]);
+    });
+    // The beer he's holding out for a cheers; not in `meshes`, so nothing lands on it
+    const can=new T.Group(), cm=(c,ro,me)=>new T.MeshStandardMaterial({color:c,roughness:ro,metalness:me});
+    const b=new T.Mesh(new T.CylinderGeometry(0.034,0.034,0.124,36),cm(0xD9A03A,0.35,0.45));
+    const band=new T.Mesh(new T.CylinderGeometry(0.0345,0.0345,0.03,36,1,true),cm(0xF1E9D2,0.6,0));
+    const top=new T.Mesh(new T.CylinderGeometry(0.029,0.034,0.01,36),cm(0xC9C6C0,0.3,0.8));
+    const tab=new T.Mesh(new T.BoxGeometry(0.014,0.003,0.008),cm(0xB8B5AE,0.3,0.8));
+    band.position.y=0.01; top.position.y=0.067; tab.position.set(0.006,0.073,0);
+    can.add(b,band,top,tab); can.position.set(-0.29,1.165,0.315); g.add(can);
+    this.body=g; this.meshes=meshes;
+  }
+  stickerMats(){
+    const T=this.T;
+    const draw=sel=>{
+      const c=document.createElement("canvas"); c.width=c.height=256; const x=c.getContext("2d");
+      if(sel){ x.fillStyle="rgba(179,52,31,.18)"; x.beginPath(); x.arc(128,128,124,0,Math.PI*2); x.fill(); }
+      x.strokeStyle=sel?"rgba(179,52,31,1)":"rgba(179,52,31,.75)"; x.lineWidth=sel?18:12;
+      x.beginPath(); x.arc(128,128,sel?92:84,0,Math.PI*2); x.stroke();
+      x.fillStyle="#B3341F"; x.beginPath(); x.arc(128,128,sel?52:46,0,Math.PI*2); x.fill();
+      x.fillStyle="rgba(255,255,255,.35)"; x.beginPath(); x.arc(112,112,sel?14:12,0,Math.PI*2); x.fill();
+      const t=new T.CanvasTexture(c); t.anisotropy=4; return t;
+    };
+    const mk=sel=>new T.MeshBasicMaterial({map:draw(sel),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+    return {dot:mk(false),sel:mk(true)};
+  }
+  // A square sticker projected onto the body at local point p facing local normal n, clipped
+  // to the projector's box and UV-mapped from it, built with the body unrotated so it's in
+  // the body's own frame
+  stickerGeometry(p,n,s){
+    const T=this.T, g=this.body, saved=g.rotation.y;
+    g.rotation.y=0; g.updateMatrixWorld(true);
+    const q=new T.Quaternion().setFromUnitVectors(new T.Vector3(0,0,1),n.clone().normalize());
+    const proj=new T.Matrix4().compose(p,q,new T.Vector3(1,1,1)), inv=proj.clone().invert();
+    const half={x:s/2,y:s/2,z:s*0.55}, out=[], uv=[], nm=new T.Matrix3();
+    const clip=(poly,axis,sign)=>{ const res=[]; for(let i=0;i<poly.length;i++){ const a=poly[i], b=poly[(i+1)%poly.length]; const da=sign*a[axis]-half[axis], db=sign*b[axis]-half[axis]; if(da<=0) res.push(a); if((da<=0)!==(db<=0)){ res.push(a.clone().lerp(b,da/(da-db))); } } return res; };
+    this.meshes.forEach(mesh=>{
+      const geo=mesh.geometry, pos=geo.attributes.position, nor=geo.attributes.normal, idx=geo.index;
+      nm.getNormalMatrix(mesh.matrixWorld);
+      const count=idx?idx.count:pos.count;
+      for(let i=0;i<count;i+=3){
+        const vs=[], ns=new T.Vector3();
+        for(let k=0;k<3;k++){ const vi=idx?idx.getX(i+k):i+k; vs.push(new T.Vector3().fromBufferAttribute(pos,vi).applyMatrix4(mesh.matrixWorld).applyMatrix4(inv)); ns.add(new T.Vector3().fromBufferAttribute(nor,vi).applyMatrix3(nm)); }
+        if(ns.normalize().dot(n)<0.25) continue;
+        if(vs.every(v=>v.x>half.x)||vs.every(v=>v.x<-half.x)||vs.every(v=>v.y>half.y)||vs.every(v=>v.y<-half.y)||vs.every(v=>v.z>half.z)||vs.every(v=>v.z<-half.z)) continue;
+        let poly=vs;
+        for(const [ax,sg] of [["x",1],["x",-1],["y",1],["y",-1],["z",1],["z",-1]]){ poly=clip(poly,ax,sg); if(poly.length<3) break; }
+        if(poly.length<3) continue;
+        for(let k=1;k<poly.length-1;k++) [poly[0],poly[k],poly[k+1]].forEach(v=>{ uv.push(v.x/s+0.5,v.y/s+0.5); const w=v.clone().applyMatrix4(proj); out.push(w.x,w.y,w.z); });
+      }
+    });
+    g.rotation.y=saved; g.updateMatrixWorld(true);
+    const geo=new T.BufferGeometry();
+    geo.setAttribute("position",new T.Float32BufferAttribute(out,3));
+    geo.setAttribute("uv",new T.Float32BufferAttribute(uv,2));
+    return geo;
+  }
+  addSticker(id,p,n){
+    const T=this.T;
+    this.removeSticker(id);
+    const m=new T.Mesh(this.stickerGeometry(new T.Vector3(...p),new T.Vector3(...n),0.075),this.mats.dot);
+    m.renderOrder=2; m.userData.id=id; this.body.add(m); this.stickers[id]=m;
+  }
+  removeSticker(id){ const m=this.stickers[id]; if(!m) return; this.body.remove(m); m.geometry.dispose(); delete this.stickers[id]; }
+  setItems(items){
+    const keep=new Set(items.map(x=>x.id));
+    Object.keys(this.stickers).forEach(id=>{ if(id!=="draft" && !keep.has(id)) this.removeSticker(id); });
+    items.forEach(x=>{ if(!this.stickers[x.id]) this.addSticker(x.id,x.p,x.n); });
+  }
+  // Turn him so the sticker's surface faces the camera (its normal, not its position: a knee or
+  // a shoulder sits off his center, and turning by position would show it side-on)
+  select(id,n){ this.sel=id; if(n) this.faceTo(n); }
+  faceTo(n){ let t=Math.atan2(-n[0],n[2]); while(t-this.yaw>Math.PI) t-=Math.PI*2; while(t-this.yaw<-Math.PI) t+=Math.PI*2; this.target=t; this.touched=true; }
+  tap(e){
+    const T=this.T, rect=this.canvas.getBoundingClientRect();
+    this.ray.setFromCamera(new T.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1),this.cam);
+    if(this.placing){
+      const hit=this.ray.intersectObjects(this.meshes,false)[0];
+      if(!hit) return;
+      const wn=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+      const ln=wn.applyQuaternion(this.body.quaternion.clone().invert()).normalize();
+      const lp=this.body.worldToLocal(hit.point.clone());
+      const p=[lp.x,lp.y,lp.z], n=[ln.x,ln.y,ln.z];
+      this.addSticker("draft",p,n);
+      this.onPlace({p,n,part:ijPartName(lp)});
+      return;
+    }
+    const ms=Object.keys(this.stickers).filter(k=>k!=="draft").map(k=>this.stickers[k]);
+    const h=this.ray.intersectObjects(ms,false)[0];
+    if(h && h.object.userData.id) this.onPick(h.object.userData.id);
+  }
+}
+async function loadInjuries(){
+  ijLoading=true; ijErr="";
+  let status=0, res=null;
+  try{ ({status,res}=await api("/injuries")); }catch(e){}
+  ijLoading=false;
+  if(status===401){ saveSession(null); return; }
+  if(res?.ok) ijItems=res.items||[]; else ijErr=res?.error||"Couldn't load the injuries. Check your connection and try again.";
+  if(activeView==="injuries") renderInjuries();
+}
+function ijWhenLabel(d){ const t=new Date(d+"T12:00:00"); return isNaN(t)?d:t.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); }
+function ijToday(){ const t=new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`; }
+async function ijPhotoURL(id){
+  if(ijPhotos[id]) return ijPhotos[id];
+  const headers={}; if(rsvpSession?.token) headers.Authorization="Bearer "+rsvpSession.token;
+  const r=await fetch(RSVP_API+"/injuries/photo?id="+encodeURIComponent(id),{headers,credentials:"include"});
+  if(!r.ok) throw new Error("photo "+r.status);
+  return (ijPhotos[id]=URL.createObjectURL(await r.blob()));
+}
+// Shrink a picked photo to at most 1000 px on its long side, as JPEG, before it's sent
+function ijShrink(file){
+  return new Promise((ok,fail)=>{
+    const img=new Image(), u=URL.createObjectURL(file);
+    img.onload=()=>{ const k=Math.min(1,1000/Math.max(img.width,img.height)); const c=document.createElement("canvas"); c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext("2d").drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(u); ok(c.toDataURL("image/jpeg",0.82).split(",")[1]); };
+    img.onerror=()=>{ URL.revokeObjectURL(u); fail(new Error("not an image")); };
+    img.src=u;
+  });
+}
+function ijPick(id){
+  const it=(ijItems||[]).find(x=>x.id===id); if(!it) return;
+  ijSel=id; ijMode="view";
+  if(ijStage){ ijStage.removeSticker("draft"); ijStage.placing=false; ijStage.select(id,it.n); }
+  renderInjuries();
+}
+async function renderInjuries(){
+  const box=document.getElementById("ij-body");
+  if(!box) return;
+  if(!rsvpSession){
+    box.replaceChildren();
+    const p=el("p","pf-note","Sign in to see and add injuries.");
+    const b=el("button","br-send","Sign in");
+    b.type="button";
+    b.addEventListener("click",()=>{ rsvpPending=null; openSignIn(); });
+    p.appendChild(b);
+    box.appendChild(p);
+    return;
+  }
+  if(!ijItems){
+    box.replaceChildren(el("p","pf-note",ijErr||"Loading the injuries…"));
+    if(ijErr){ const b=el("button","sg-req","Try again"); b.type="button"; b.addEventListener("click",()=>{ ijErr=""; renderInjuries(); }); box.firstChild.appendChild(b); }
+    else if(!ijLoading) loadInjuries();
+    return;
+  }
+  // The stage is built once and kept, so the 3D player isn't rebuilt on every redraw
+  if(!ijStage){
+    // One build at a time, however many redraws ask while three.js is still loading
+    if(!ijStageReady) ijStageReady=(async()=>{
+      await loadThree();
+      const st=el("div","ij-stage"), cv=el("canvas","ij-canvas");
+      cv.setAttribute("aria-label","3D player. Drag to spin. Red stickers mark injuries; tap one to see it.");
+      st.append(cv,el("span","ij-hint",""));
+      ijStageEl=st;
+      ijStage=new InjuryStage(cv,{onPick:ijPick,onPlace:d=>{ ijDraft=d; ijMode="form"; renderInjuries(); }});
+    })();
+    if(!ijStageEl) box.replaceChildren(el("p","pf-note","Loading the 3D player…"));
+    try{ await ijStageReady; }catch(e){ ijStageReady=null; box.replaceChildren(el("p","pf-note","Couldn't load the 3D player. Try refreshing.")); return; }
+  }
+  ijStage.setItems(ijItems);
+  ijStage.placing=ijMode==="place";
+  ijStageEl.querySelector(".ij-hint").textContent=ijMode==="place"||ijMode==="form"?"Tap where it hurt":"Drag to spin";
+  const focusId=document.activeElement?.id||"";
+  const wrap=el("div","ij-wrap");
+  const stageBox=el("div","ij-stage-box");
+  stageBox.appendChild(ijStageEl);
+  const panel=el("div","ij-panel");
+  wrap.append(stageBox,panel);
+  box.replaceChildren(wrap);
+  ijStage.resize();
+  const entry=SEASONS.find(s=>s.col);
+  const n=ijItems.length;
+  const count=el("div","ij-count",n?`${n} ${n===1?"injury":"injuries"}`:"No injuries yet");
+  const btn=(cls,text,fn,id)=>{ const b=el("button",cls,text); b.type="button"; if(id) b.id=id; b.addEventListener("click",fn); return b; };
+  const startAdd=()=>{ ijSel=null; ijMode="place"; ijDraft=null; if(ijStage){ ijStage.removeSticker("draft"); ijStage.select(null); } renderInjuries(); };
+  const cancel=()=>{ ijMode="view"; ijDraft=null; if(ijStage) ijStage.removeSticker("draft"); renderInjuries(); };
+  const cur=ijItems.find(x=>x.id===ijSel);
+  if(ijMode==="view" && !cur){
+    panel.append(count,el("p","ij-lead",n?"Spin him around. Tap a red sticker to see who got hurt there.":"Nobody's hurt. Spin him around, and if that changes, put a sticker where it happened."));
+    if(n) panel.appendChild(el("p","ij-sub","Every sticker stays on the spot it was added, front or back."));
+    panel.appendChild(btn("br-send ij-add","+ Add an injury",startAdd,"ij-add"));
+  }else if(ijMode==="view"){
+    const idx=ijItems.indexOf(cur);
+    const card=el("div","ij-card");
+    const ph=el("div","ij-photo");
+    if(cur.photo){
+      ph.textContent="…";
+      ijPhotoURL(cur.id).then(u=>{ const im=el("img"); im.src=u; im.alt=`Photo: ${cur.what}`; ph.replaceChildren(im); }).catch(()=>{ ph.textContent="No photo"; });
+    }else ph.textContent="No photo";
+    const who=entry?shortNames([cur.who],entry)[0]:cur.who;
+    const txt=el("div","ij-text");
+    txt.append(el("div","ij-part",cur.part),el("div","ij-what",cur.what),el("div","ij-who",`${who} · ${ijWhenLabel(cur.when)}`));
+    card.append(ph,txt);
+    panel.append(count,card);
+    const nav=el("div","ij-actions");
+    if(n>1){
+      nav.append(btn("ij-ghost","‹ Prev",()=>ijPick(ijItems[(idx-1+n)%n].id),"ij-prev"),btn("ij-ghost","Next ›",()=>ijPick(ijItems[(idx+1)%n].id),"ij-next"));
+    }
+    nav.appendChild(btn("br-send","+ Add",startAdd,"ij-add"));
+    panel.appendChild(nav);
+    if(cur.by===rsvpSession.name || rsvpSession.captain){
+      panel.appendChild(btn("tn-rm ij-rm","Remove this injury",async()=>{
+        if(!confirm(`Remove "${cur.what}"?`)) return;
+        let status=0,res=null; try{ ({status,res}=await api("/injuries/remove",{id:cur.id})); }catch(e){}
+        if(status===401){ saveSession(null); return; }
+        if(!res?.ok){ alert(res?.error||"Couldn't remove it. Try again."); return; }
+        ijItems=ijItems.filter(x=>x.id!==cur.id); ijSel=null; renderInjuries();
+      }));
+    }
+  }else if(ijMode==="place"){
+    panel.append(el("div","ij-step","Step 1 of 2"),el("p","ij-lead","Tap the spot on the player where it hurt."),el("p","ij-sub","Spin him first if it's on his back."));
+    panel.appendChild(btn("ij-ghost","Cancel",cancel,"ij-cancel"));
+  }else if(ijMode==="form"){
+    panel.appendChild(el("div","ij-step",`Step 2 of 2 · ${ijDraft?.part||""}`));
+    const people=entry?festPeople(entry):[];
+    if(!ijForm.who || !people.includes(ijForm.who)) ijForm.who=people.includes(rsvpSession.name)?rsvpSession.name:(people[0]||"");
+    if(!ijForm.when) ijForm.when=ijToday();
+    const field=(label,input)=>{ const f=el("div","ij-field"); const l=el("label","br-label",label); l.htmlFor=input.id; f.append(l,input); return f; };
+    const sel=el("select","br-input"); sel.id="ij-who";
+    people.forEach(nm=>sel.appendChild(new Option(nm,nm))); sel.value=ijForm.who;
+    sel.addEventListener("change",()=>{ ijForm.who=sel.value; });
+    const what=el("input","br-input"); what.id="ij-what"; what.type="text"; what.maxLength=80; what.placeholder="Slash on the hands"; what.value=ijForm.what;
+    what.addEventListener("input",()=>{ ijForm.what=what.value; });
+    const when=el("input","br-input"); when.id="ij-when"; when.type="date"; when.value=ijForm.when; when.max=ijToday();
+    when.addEventListener("change",()=>{ ijForm.when=when.value; });
+    const file=el("input"); file.type="file"; file.accept="image/*"; file.id="ij-file"; file.className="ij-file";
+    const fl=el("label","ij-photo-btn",ijForm.file?`Photo: ${ijForm.file.name}`:"Add a photo (optional)"); fl.htmlFor="ij-file";
+    file.addEventListener("change",()=>{ ijForm.file=file.files[0]||null; fl.textContent=ijForm.file?`Photo: ${ijForm.file.name}`:"Add a photo (optional)"; });
+    const row=el("div","ij-row"); row.append(field("Who",sel),field("When",when));
+    const msg=el("div","br-msg"); msg.setAttribute("role","alert"); msg.hidden=true;
+    const actions=el("div","ij-actions");
+    const save=btn("br-send",ijSaving?"Saving…":"Save",async()=>{
+      if(!ijDraft) return;
+      if(!ijForm.what.trim()){ msg.textContent="Say what happened."; msg.hidden=false; what.focus(); return; }
+      ijSaving=true; save.disabled=true; save.textContent="Saving…";
+      let photo=null;
+      if(ijForm.file){ try{ photo=await ijShrink(ijForm.file); }catch(e){ msg.textContent="That photo didn't open. Try another."; msg.hidden=false; ijSaving=false; save.disabled=false; save.textContent="Save"; return; } }
+      let status=0,res=null;
+      try{ ({status,res}=await api("/injuries",{who:ijForm.who,what:ijForm.what.trim(),when:ijForm.when,part:ijDraft.part,p:ijDraft.p,n:ijDraft.n,photo})); }catch(e){}
+      ijSaving=false;
+      if(status===401){ saveSession(null); return; }
+      if(!res?.ok){ msg.textContent=res?.error||"Couldn't save. Check your connection and try again."; msg.hidden=false; save.disabled=false; save.textContent="Save"; return; }
+      ijItems=[res.item].concat(ijItems).sort((a,b)=>b.when.localeCompare(a.when)||b.t-a.t);
+      ijForm={who:ijForm.who,what:"",when:"",file:null};
+      if(ijStage) ijStage.removeSticker("draft");
+      ijMode="view"; ijDraft=null;
+      ijPick(res.item.id);
+    },"ij-save");
+    actions.append(btn("ij-ghost","Cancel",cancel,"ij-cancel2"),save);
+    panel.append(row,field("What happened",what),file,fl,msg,actions);
+  }
+  if(focusId){ const f=document.getElementById(focusId); if(f) f.focus(); }
 }
 /* ---------- Rontoberfest (JP, Oct 14, 2026) ----------
    The party's own page (rontoberfest/, a nav tab): when and where from schedule.json, and the
@@ -3590,12 +3995,12 @@ async function renderTeam(){
   setFreezeH();
 }
 // URL routing: each view lives at its own path (…/about/, …/team/, …/schedule/, …)
-const VIEW_PATHS={about:"about",roster:"team",schedule:"schedule",swag:"swag",join:"join",profile:"profile",lines:"lines",names:"names",fest:"rontoberfest"};
-const PAGE_TITLES={about:"About",roster:"Team",schedule:"Schedule",swag:"Swag",join:"Join",profile:"Profile",lines:"Lines",names:"Team Names",fest:"Rontoberfest"};
+const VIEW_PATHS={about:"about",roster:"team",schedule:"schedule",swag:"swag",join:"join",profile:"profile",lines:"lines",names:"names",fest:"rontoberfest",injuries:"injuries"};
+const PAGE_TITLES={about:"About",roster:"Team",schedule:"Schedule",swag:"Swag",join:"Join",profile:"Profile",lines:"Lines",names:"Team Names",fest:"Rontoberfest",injuries:"Injuries"};
 const SITE_TITLE=document.title;
 // Stats folded into Team; old /stats/ links still land there
 const PATH_VIEWS=Object.assign(Object.fromEntries(Object.entries(VIEW_PATHS).map(([v,p])=>[p,v])),{stats:"roster"});
-const ROUTE_RE=/(about|team|schedule|stats|swag|join|profile|lines|names|rontoberfest)\/?$/;
+const ROUTE_RE=/(about|team|schedule|stats|swag|join|profile|lines|names|rontoberfest|injuries)\/?$/;
 function viewFromPath(){
   const m=location.pathname.match(ROUTE_RE);
   return m?PATH_VIEWS[m[1]]:"schedule";   // the site opens on the Schedule (JP, Oct 14, 2026)
@@ -3634,6 +4039,7 @@ function showTab(which,push=true){
   if(which==="lines") renderLines();
   if(which==="names") renderNames();
   if(which==="fest") renderFest();
+  if(which==="injuries") renderInjuries();
   window.scrollTo(0,0);
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{

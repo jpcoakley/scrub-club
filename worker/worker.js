@@ -45,6 +45,10 @@
  *   POST /names {name}                     -> suggest a team name (signed in)
  *   POST /names/vote {id, v: 1 | -1 | 0}   -> your one vote on a name; 0 takes it back
  *   POST /names/remove {id}                -> whoever added it, or a captain
+ *   GET  /injuries                         -> {ok, items: [{id, who, what, when, part, p, n, by, t, photo}]}
+ *   POST /injuries {who, what, when, part, p:[x,y,z], n:[x,y,z], photo?}  photo: base64 JPEG
+ *   GET  /injuries/photo?id=…              -> the photo (image/jpeg), signed in
+ *   POST /injuries/remove {id}             -> whoever added it, or a captain
  *   GET  /fest?event=rontoberfest          -> {ok, items: [{id, item, who, by, t}]} what people bring
  *   POST /fest {event, item, who}          -> add an item; who (optional) is bringing it
  *   POST /fest/assign {event, id, who}     -> anyone signed in: who's bringing it ("" = nobody yet)
@@ -62,6 +66,8 @@
  *   lines:<season>:<ymd>[#slug]  {slots: {F1LW: name, ...}, by, t}   a game's lines, no expiry
  *   goalie:<season>:<ymd>[#slug]  "1", metadata {n: name, by, t, d: game label}   a game's goalie
  *   fest:<event>:<id>       "1", metadata {i: item, w: who, by, t}  an item for an event (Rontoberfest)
+ *   inj:<id>                "1", metadata {w: who, x: what, d: yyyy-mm-dd, pt: part, p, n, by, t, ph}
+ *   injphoto:<id>           the injury's photo, JPEG bytes (no expiry)
  *   tn:<id>                 "1", metadata {n: team name, by, t}   a suggested team name
  *   tnv:<id>:<voter>        "1", metadata {v: 1 | -1}              one vote per player per name
  *
@@ -446,6 +452,64 @@ async function route(request, env, ctx) {
     return json({ ok: true, season, date: game.date, slots });
   }
 
+  // ---- injuries on the 3D player (JP, Oct 14, 2026): signed in only, it's health info ----
+  if (p === "/injuries" || p.startsWith("/injuries/")) {
+    const me = await whoami(request, env);
+    if (!me) return json({ ok: false, error: "Sign in to see injuries." }, 401);
+    if (m === "GET" && p === "/injuries") {
+      const items = (await listAll(env, "inj:")).map((k) => {
+        const md = k.metadata || {};
+        return { id: k.name.slice(4), who: md.w || "", what: md.x || "", when: md.d || "", part: md.pt || "",
+          p: md.p || [0, 1, 0], n: md.n || [0, 0, 1], by: md.by || "", t: md.t || 0, photo: !!md.ph };
+      }).sort((a, b) => (b.when.localeCompare(a.when)) || (b.t - a.t));
+      return json({ ok: true, items });
+    }
+    if (m === "GET" && p === "/injuries/photo") {
+      const id = String(url.searchParams.get("id") || "");
+      if (!/^[A-Za-z0-9_-]{6,16}$/.test(id)) return json({ ok: false, error: "Bad photo." }, 400);
+      const img = await env.SC_KV.get("injphoto:" + id, "arrayBuffer");
+      if (!img) return json({ ok: false, error: "No photo." }, 404);
+      return new Response(img, { headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=86400" } });
+    }
+    if (m !== "POST") return json({ ok: false, error: "No such endpoint." }, 404);
+    const body = await readJson(request);
+    if (p === "/injuries") {
+      const who = String(body.who || "").replace(/\s+/g, " ").trim();
+      const what = String(body.what || "").replace(/\s+/g, " ").trim();
+      const when = String(body.when || "").trim();
+      const part = String(body.part || "").replace(/\s+/g, " ").trim().slice(0, 40);
+      const vec = (v, lo, hi) => Array.isArray(v) && v.length === 3 && v.every((x, i) => typeof x === "number" && isFinite(x) && x >= lo[i] && x <= hi[i]) ? v.map((x) => Math.round(x * 10000) / 10000) : null;
+      const pt = vec(body.p, [-1, -0.2, -1], [1, 2.2, 1]), nr = vec(body.n, [-1.01, -1.01, -1.01], [1.01, 1.01, 1.01]);
+      if (!who || !(await isRosterName(env, who))) return json({ ok: false, error: "Pick who got hurt." }, 400);
+      if (!what || what.length > 80) return json({ ok: false, error: "Say what happened, up to 80 characters." }, 400);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(when)) return json({ ok: false, error: "Pick a date." }, 400);
+      if (!pt || !nr) return json({ ok: false, error: "Tap where it hurt on the player." }, 400);
+      let photo = null;
+      if (body.photo) {
+        try { photo = Uint8Array.from(atob(String(body.photo).replace(/^data:image\/jpeg;base64,/, "")), (c) => c.charCodeAt(0)); }
+        catch (_) { return json({ ok: false, error: "That photo didn't come through. Try another." }, 400); }
+        if (photo.length > 1500000 || photo[0] !== 0xFF || photo[1] !== 0xD8) return json({ ok: false, error: "That photo didn't come through. Try another." }, 400);
+      }
+      if (await overLimit(env, "inj:" + me.name, 20, 86400)) return json({ ok: false, error: "That's plenty for today." }, 429);
+      const id = randomToken().slice(0, 10), t = Date.now();
+      if (photo) await env.SC_KV.put("injphoto:" + id, photo);
+      const md = { w: who, x: what, d: when, pt: part, p: pt, n: nr, by: me.name, t, ph: photo ? 1 : 0 };
+      await env.SC_KV.put("inj:" + id, "1", { metadata: md });
+      return json({ ok: true, item: { id, who, what, when, part, p: pt, n: nr, by: me.name, t, photo: !!photo } });
+    }
+    if (p === "/injuries/remove") {
+      const id = String(body.id || "");
+      if (!/^[A-Za-z0-9_-]{6,16}$/.test(id)) return json({ ok: false, error: "Bad injury." }, 400);
+      const doc = await env.SC_KV.getWithMetadata("inj:" + id);
+      if (doc.value == null) return json({ ok: true, id });
+      if (!me.captain && (doc.metadata || {}).by !== me.name) return json({ ok: false, error: "Only whoever added it, or a captain, can remove it." }, 403);
+      await env.SC_KV.delete("inj:" + id);
+      await env.SC_KV.delete("injphoto:" + id);
+      return json({ ok: true, id });
+    }
+    return json({ ok: false, error: "No such endpoint." }, 404);
+  }
+
   // ---- what people bring to a team event (Rontoberfest; JP, Oct 14, 2026), signed in ----
   if (p === "/fest" || p.startsWith("/fest/")) {
     const me = await whoami(request, env);
@@ -801,6 +865,13 @@ async function renameInKv(env, from, to) {
   // Games they're set to play goalie in
   for (const k of await listAll(env, "goalie:")) {
     if ((k.metadata || {}).n === from) await env.SC_KV.put(k.name, "1", { metadata: Object.assign({}, k.metadata, { n: to }) });
+  }
+  // Injuries: who got hurt and who added it
+  for (const k of await listAll(env, "inj:")) {
+    const md = k.metadata || {};
+    if (md.w === from || md.by === from) {
+      await env.SC_KV.put(k.name, "1", { metadata: Object.assign({}, md, md.w === from ? { w: to } : {}, md.by === from ? { by: to } : {}) });
+    }
   }
   // Event items they added or are bringing
   for (const k of await listAll(env, "fest:")) {
