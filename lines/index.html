@@ -9,7 +9,7 @@
    section folders: after landing on / and tapping a tab, the address becomes /swag/ without a reload,
    and a page with no <base> then resolved beer-review.html to /swag/beer-review.html, a 404 (Sep 25, 2026). */
 (function(){
-  var root=location.pathname.replace(/index\.html$/,"").replace(/(about|team|schedule|stats|swag|join|profile|lines|names)\/?$/,"").replace(/[^\/]*$/,"")||"/";
+  var root=location.pathname.replace(/index\.html$/,"").replace(/(about|team|schedule|stats|swag|join|profile|lines|names|rontoberfest)\/?$/,"").replace(/[^\/]*$/,"")||"/";
   var b=document.createElement("base"); b.href=root; document.head.appendChild(b);
 })();
 </script>
@@ -363,6 +363,22 @@ button.nx-chip:focus-visible{outline:2px solid var(--burgundy-600);outline-offse
 .cap-opt.quiet{background:transparent;border:1.5px dashed var(--ink-300);color:var(--ink-500)}
 .cap-opt[aria-pressed="true"]{box-shadow:0 0 0 3px var(--surface-card),0 0 0 5px var(--ink-900)}
 .cap-opt:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:4px}
+/* Rontoberfest: the bring list, in the Team Names table style */
+.fx-item{font-family:var(--font-condensed);font-weight:700;font-size:19px;letter-spacing:.02em;color:var(--text-strong);overflow-wrap:anywhere}
+.fx-item span{margin-right:10px}
+.fx-bring{white-space:nowrap}
+.fx-who{font-family:var(--font-condensed);font-weight:700;font-size:18px;color:var(--ink-900);background:none;border:none;padding:2px 0;cursor:pointer}
+.fx-who:hover{text-decoration:underline;text-underline-offset:3px}
+.fx-claim{font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--oatmeal-100);background:var(--status-win);border:none;border-radius:999px;padding:7px 14px;cursor:pointer}
+.fx-claim:hover{filter:brightness(1.1)}
+.fx-other{font-family:var(--font-condensed);font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);background:none;border:none;padding:4px 0 4px 12px;cursor:pointer}
+.fx-other:hover{color:var(--ink-900)}
+.fx-who:focus-visible,.fx-claim:focus-visible,.fx-other:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
+.fx-head{margin-top:0}
+.fx-head .ln-when{font-size:19px;color:var(--ink-700)}
+#fx-item-wrap{display:flex;flex-direction:column;gap:var(--space-2)}
+#fx-item-wrap[hidden]{display:none}
+@media (max-width:640px){ .fx-bring{white-space:normal} .fx-other{display:block;padding:6px 0 0} .fx-item{font-size:17px} }
 /* Team Names: a table of ideas with up and down votes */
 .tn{padding:var(--space-6) 0 var(--space-12);max-width:760px}
 .tn-top{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);margin-bottom:var(--space-4)}
@@ -720,6 +736,7 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
       <button class="tab active" data-view="about" type="button">About</button>
       <button class="tab" data-view="roster" type="button">Team</button>
       <button class="tab" data-view="schedule" type="button">Schedule</button>
+      <button class="tab" data-view="fest" type="button">Rontoberfest</button>
       <button class="tab" data-view="swag" type="button">Swag</button>
       <button class="tab" data-view="join" type="button">Join</button>
       <button class="tab" data-view="names" type="button">Team Names</button>
@@ -942,6 +959,31 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
   </div>
 </div>
 
+<div id="view-fest" hidden>
+  <div class="container">
+    <div id="fx-body" class="tn fx"></div>
+  </div>
+</div>
+<dialog id="fx-dlg" class="br" aria-labelledby="fx-title">
+  <form id="fx-form" class="br-card" novalidate>
+    <h2 id="fx-title" class="br-game">Add an item</h2>
+    <div id="fx-item-wrap">
+      <label class="br-label" for="fx-item">Item</label>
+      <input id="fx-item" class="br-input" type="text" autocomplete="off" maxlength="60">
+    </div>
+    <label class="br-label" for="fx-who">Who's bringing it?</label>
+    <select id="fx-who" class="br-input"></select>
+    <div id="fx-other" class="gl-other" hidden>
+      <label class="br-label" for="fx-name">Name</label>
+      <input id="fx-name" class="br-input" type="text" autocomplete="off" maxlength="40" spellcheck="false">
+    </div>
+    <div id="fx-msg" class="br-msg" role="alert" hidden></div>
+    <div class="br-actions">
+      <button type="button" id="fx-cancel" class="br-cancel">Cancel</button>
+      <button type="submit" id="fx-send" class="br-send">Add</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="gl-dlg" class="br" aria-labelledby="gl-title">
   <form id="gl-form" class="br-card" novalidate>
     <h2 id="gl-title" class="br-game">Goalie</h2>
@@ -1289,7 +1331,7 @@ async function load(){
   }
 }
 // Tabs: About, Team (sheet + GameSheet stats), Schedule (GameSheet snapshot), Swag, Join
-const VIEWS=["about","schedule","swag","join","profile","lines","names"];
+const VIEWS=["about","schedule","swag","join","profile","lines","names","fest"];
 let activeView="about";
 function gamesheetSrc(){
   const gs=seasonEntry().gs;
@@ -2047,6 +2089,7 @@ function saveSession(s){
   profileData=null; profileErr="";
   Object.keys(linesBy).forEach(k=>delete linesBy[k]);
   namesList=null; namesErr="";
+  festItems=null; festErr="";
   renderAccount();
   const pv=document.getElementById("view-profile");
   if(pv && !pv.hidden) renderProfile();
@@ -2054,6 +2097,8 @@ function saveSession(s){
   if(lv && !lv.hidden) renderLines();
   const nv=document.getElementById("view-names");
   if(nv && !nv.hidden) renderNames();
+  const fv=document.getElementById("view-fest");
+  if(fv && !fv.hidden) renderFest();
 }
 // {status, res}; res is null when the reply wasn't JSON
 async function api(path,body){
@@ -2218,10 +2263,16 @@ function rsvpNamesRow(entry,ds){
     row.appendChild(goalieLine(entry,ds,g,split,"grp sg-goalie","sg-gname","sg-req"));
   }
   const acts=el("div","sg-acts");
-  acts.appendChild(linesButton(entry,ds,"sg-lines"));
+  if(dsSlug(ds)===FEST.slug){
+    const b=el("button","sg-lines");
+    b.type="button"; b.innerHTML=BRING_ICON; b.append("What we're bringing");
+    b.addEventListener("click",()=>showTab("fest"));
+    acts.appendChild(b);
+  }else acts.appendChild(linesButton(entry,ds,"sg-lines"));
   row.appendChild(acts);
   return row;
 }
+function dsSlug(ds){ const m=String(ds).match(/ \u00b7 (.+)$/); return m?m[1]:""; }
 const GOALIE_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 5.5v13M12 5.5v13M16.5 5.5v13M3.4 10h17.2M3.2 14.4h17.6" stroke-width="1" opacity=".7"/><path d="M3 19V8.5a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3V19" stroke-width="2"/><path d="M1.5 19h21" stroke-width="1.8"/></svg>';
 // "Goalie: Ron" with a way to change it, or an Assign button when nobody's in net
 function goalieLine(entry,ds,g,split,cls,nameCls,btnCls){
@@ -2305,6 +2356,195 @@ function wireGoalie(){
   });
   document.getElementById("gl-clear").addEventListener("click",()=>{ if(glCtx) saveGoalie(""); });
   document.getElementById("gl-cancel").addEventListener("click",()=>dlg.close());
+  dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
+}
+/* ---------- Rontoberfest (JP, Oct 14, 2026) ----------
+   The party's own page (rontoberfest/, a nav tab): when and where from schedule.json, and the
+   list of what people are bringing. Anyone signed in adds an item and says who's bringing it (me,
+   anyone with a status this season, or a typed name), claims an open item with "I'll bring it", or
+   changes who's bringing anything. Whoever added an item, or a captain, can remove it. The Worker
+   keeps each item as KV fest:<event>:<id> (/fest). */
+const FEST={slug:"rontoberfest", name:"Rontoberfest"};
+const BRING_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16l-1.4 11.2a2 2 0 0 1-2 1.8H7.4a2 2 0 0 1-2-1.8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>';
+let festItems=null, festErr="", festLoading=false, fxCtx=null;
+function festGame(){
+  if(!schedData) return null;
+  for(const s of SEASONS){
+    const g=(schedData.seasons[s.key]?.games||[]).find(x=>x.slug===FEST.slug);
+    if(g) return {entry:s,g,ds:gameKey(s,g)};
+  }
+  return null;
+}
+function festPeople(entry){
+  const ADDABLE=ON_TEAM.concat(["sub","unsure","out"]);
+  return [...new Set(sheetPlayers(entry).filter(p=>p.name && ADDABLE.includes(p.status)).map(p=>p.name))].sort((a,b)=>a.localeCompare(b));
+}
+async function loadFest(){
+  festLoading=true; festErr="";
+  let status=0, res=null;
+  try{ ({status,res}=await api("/fest?event="+FEST.slug)); }catch(e){}
+  festLoading=false;
+  if(status===401){ saveSession(null); return; }
+  if(res?.ok) festItems=res.items||[]; else festErr=res?.error||"Couldn't load the list. Check your connection and try again.";
+  if(activeView==="fest") renderFest();
+}
+async function renderFest(){
+  const box=document.getElementById("fx-body");
+  if(!box) return;
+  if(!schedData){ try{ schedData=await loadSched(); }catch(e){} }
+  const fg=festGame();
+  const focusId=document.activeElement?.id||"";
+  box.replaceChildren();
+  // The band above already says Rontoberfest; this line is just when and where
+  const head=el("div","ln-head fx-head");
+  if(fg){
+    const d=new Date(Date.parse(dsDatePart(fg.ds)));
+    head.appendChild(el("div","ln-when",[(isNaN(d)?"":WEEKDAYS[d.getDay()]+" ")+fg.g.date,fg.g.time,fg.g.rink].filter(Boolean).join(" · ")));
+  }
+  box.appendChild(head);
+  if(!rsvpSession){
+    const p=el("p","pf-note","Sign in to see and add to what we're bringing.");
+    const b=el("button","br-send","Sign in");
+    b.type="button";
+    b.addEventListener("click",()=>{ rsvpPending=null; openSignIn(); });
+    p.appendChild(b);
+    box.appendChild(p);
+    return;
+  }
+  if(!festItems){
+    if(festErr){
+      const p=el("p","pf-note",festErr);
+      const b=el("button","sg-req","Try again");
+      b.type="button";
+      b.addEventListener("click",()=>{ festErr=""; renderFest(); });
+      p.appendChild(b);
+      box.appendChild(p);
+    }else{
+      box.appendChild(el("p","pf-note","Loading the list…"));
+      if(!festLoading) loadFest();
+    }
+    return;
+  }
+  const entry=fg?.entry||SEASONS.find(s=>s.col);
+  const open=festItems.filter(x=>!x.who).length;
+  const top=el("div","tn-top");
+  top.appendChild(el("span","tn-count",festItems.length?`${festItems.length} ${festItems.length===1?"item":"items"}${open?` · ${open} still open`:""}`:"What we're bringing"));
+  const add=el("button","br-send","+ Add item");
+  add.type="button"; add.id="fx-add";
+  add.addEventListener("click",()=>openFest(null));
+  top.appendChild(add);
+  box.appendChild(top);
+  if(!festItems.length){ box.appendChild(el("p","pf-note","Nothing on the list yet. Add the first thing.")); return; }
+  const roster=new Set(entry?festPeople(entry):[]);
+  const names=[...new Set(festItems.map(x=>x.who).filter(n=>n && roster.has(n)))];
+  const shortOf={};
+  if(entry) shortNames(names,entry).forEach((sn,i)=>{ shortOf[names[i]]=sn; });
+  const table=el("table","tn-table fx-table");
+  table.innerHTML='<thead><tr><th scope="col">Item</th><th scope="col">Bringing</th></tr></thead>';
+  const body=el("tbody");
+  festItems.forEach(x=>{
+    const tr=el("tr");
+    const tdI=el("td","fx-item");
+    tdI.appendChild(el("span",null,x.item));
+    if(x.by===rsvpSession.name || rsvpSession.captain){
+      const rm=el("button","tn-rm","Remove");
+      rm.type="button"; rm.setAttribute("aria-label",`Remove ${x.item}`);
+      rm.addEventListener("click",()=>removeFest(x));
+      tdI.appendChild(rm);
+    }
+    const tdW=el("td","fx-bring");
+    if(x.who){
+      const w=el("button","fx-who",shortOf[x.who]||x.who);
+      w.type="button"; w.id=`fx-${x.id}-who`; w.title=x.who;
+      w.setAttribute("aria-label",`${x.who} is bringing ${x.item}. Change who's bringing it`);
+      w.addEventListener("click",()=>openFest(x));
+      tdW.appendChild(w);
+    }else{
+      const mine=el("button","fx-claim","I'll bring it");
+      mine.type="button"; mine.id=`fx-${x.id}-mine`;
+      mine.setAttribute("aria-label",`I'll bring ${x.item}`);
+      mine.addEventListener("click",()=>assignFest(x,rsvpSession.name));
+      const other=el("button","fx-other","Someone else");
+      other.type="button";
+      other.setAttribute("aria-label",`Pick who's bringing ${x.item}`);
+      other.addEventListener("click",()=>openFest(x));
+      tdW.append(mine,other);
+    }
+    tr.append(tdI,tdW);
+    body.appendChild(tr);
+  });
+  table.appendChild(body);
+  const wrap=el("div","tn-wrap");
+  wrap.appendChild(table);
+  box.appendChild(wrap);
+  if(focusId){ const f=document.getElementById(focusId); if(f) f.focus(); }
+}
+// One box adds an item (x null) or changes who's bringing one
+function openFest(x){
+  if(!rsvpSession){ openSignIn(); return; }
+  fxCtx=x;
+  const fg=festGame(), entry=fg?.entry||SEASONS.find(s=>s.col);
+  const sel=document.getElementById("fx-who"), inp=document.getElementById("fx-name"), item=document.getElementById("fx-item");
+  document.getElementById("fx-title").textContent=x?x.item:"Add an item";
+  document.getElementById("fx-item-wrap").hidden=!!x;
+  document.getElementById("fx-send").textContent=x?"Save":"Add";
+  item.value="";
+  const people=(entry?festPeople(entry):[]).filter(n=>n!==rsvpSession.name);
+  sel.replaceChildren(new Option(x?"Nobody":"Nobody yet",""),new Option(`Me (${rsvpSession.name})`,rsvpSession.name),...people.map(n=>new Option(n,n)),new Option("Someone else","__other"));
+  const cur=x?.who||"";
+  const listed=cur===""||cur===rsvpSession.name||people.includes(cur);
+  sel.value=listed?cur:"__other";
+  inp.value=listed?"":cur;
+  if(!x) sel.value=rsvpSession.name;
+  document.getElementById("fx-other").hidden=sel.value!=="__other";
+  fxMsg("");
+  document.getElementById("fx-dlg").showModal();
+  (x?sel:item).focus();
+}
+function fxMsg(t){ const m=document.getElementById("fx-msg"); m.textContent=t||""; m.hidden=!t; }
+async function assignFest(x,who){
+  const before=x.who;
+  x.who=who;
+  renderFest();
+  let status=0, res=null;
+  try{ ({status,res}=await api("/fest/assign",{event:FEST.slug,id:x.id,who})); }catch(e){}
+  if(res?.ok) return;
+  if(status===401){ saveSession(null); return; }
+  x.who=before;
+  if(status===404) festItems=festItems.filter(i=>i.id!==x.id);
+  renderFest();
+  alert(res?.error||"Couldn't save that. Try again.");
+}
+async function removeFest(x){
+  if(!confirm(`Remove "${x.item}" from the list?`)) return;
+  let status=0, res=null;
+  try{ ({status,res}=await api("/fest/remove",{event:FEST.slug,id:x.id})); }catch(e){}
+  if(status===401){ saveSession(null); return; }
+  if(res?.ok || status===404){ festItems=festItems.filter(i=>i.id!==x.id); renderFest(); return; }
+  alert(res?.error||"Couldn't remove it. Try again.");
+}
+function wireFest(){
+  const dlg=document.getElementById("fx-dlg"), sel=document.getElementById("fx-who"), inp=document.getElementById("fx-name");
+  sel.addEventListener("change",()=>{ const o=sel.value==="__other"; document.getElementById("fx-other").hidden=!o; if(o) inp.focus(); fxMsg(""); });
+  document.getElementById("fx-form").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const who=(sel.value==="__other"?inp.value:sel.value).replace(/\s+/g," ").trim();
+    if(sel.value==="__other" && !who){ fxMsg("Type who's bringing it."); return; }
+    if(fxCtx){ dlg.close(); assignFest(fxCtx,who); return; }
+    const item=document.getElementById("fx-item").value.replace(/\s+/g," ").trim();
+    if(!item){ fxMsg("Type what's being brought."); return; }
+    const send=document.getElementById("fx-send");
+    send.disabled=true; send.textContent="Adding…";
+    let status=0, res=null;
+    try{ ({status,res}=await api("/fest",{event:FEST.slug,item,who})); }catch(err){}
+    send.disabled=false; send.textContent="Add";
+    if(status===401){ dlg.close(); saveSession(null); return; }
+    if(!res?.ok){ fxMsg(res?.error||"Couldn't add it. Try again."); return; }
+    if(festItems) festItems.push(res.item);
+    dlg.close();
+    renderFest();
+  });
+  document.getElementById("fx-cancel").addEventListener("click",()=>dlg.close());
   dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
 }
 /* ---------- Team Names (JP, Sep 23, 2026) ----------
@@ -3350,15 +3590,15 @@ async function renderTeam(){
   setFreezeH();
 }
 // URL routing: each view lives at its own path (…/about/, …/team/, …/schedule/, …)
-const VIEW_PATHS={about:"about",roster:"team",schedule:"schedule",swag:"swag",join:"join",profile:"profile",lines:"lines",names:"names"};
-const PAGE_TITLES={about:"About",roster:"Team",schedule:"Schedule",swag:"Swag",join:"Join",profile:"Profile",lines:"Lines",names:"Team Names"};
+const VIEW_PATHS={about:"about",roster:"team",schedule:"schedule",swag:"swag",join:"join",profile:"profile",lines:"lines",names:"names",fest:"rontoberfest"};
+const PAGE_TITLES={about:"About",roster:"Team",schedule:"Schedule",swag:"Swag",join:"Join",profile:"Profile",lines:"Lines",names:"Team Names",fest:"Rontoberfest"};
 const SITE_TITLE=document.title;
 // Stats folded into Team; old /stats/ links still land there
 const PATH_VIEWS=Object.assign(Object.fromEntries(Object.entries(VIEW_PATHS).map(([v,p])=>[p,v])),{stats:"roster"});
-const ROUTE_RE=/(about|team|schedule|stats|swag|join|profile|lines|names)\/?$/;
+const ROUTE_RE=/(about|team|schedule|stats|swag|join|profile|lines|names|rontoberfest)\/?$/;
 function viewFromPath(){
   const m=location.pathname.match(ROUTE_RE);
-  return m?PATH_VIEWS[m[1]]:"about";
+  return m?PATH_VIEWS[m[1]]:"schedule";   // the site opens on the Schedule (JP, Oct 14, 2026)
 }
 function routeURL(view){
   const root=location.pathname.replace(ROUTE_RE,"");
@@ -3393,20 +3633,21 @@ function showTab(which,push=true){
   if(which==="profile") renderProfile();
   if(which==="lines") renderLines();
   if(which==="names") renderNames();
+  if(which==="fest") renderFest();
   window.scrollTo(0,0);
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
   showTab(b.dataset.view);
   closeMenu();
 }));
-// The soap logo goes home: the site's root, which shows About (a new tab gets the real link)
+// The soap logo goes home: the site's root, which shows the Schedule (a new tab gets the real link)
 document.querySelector(".logo-link").addEventListener("click",e=>{
   if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0) return;
   e.preventDefault();
   closeMenu();
   const root=location.pathname.replace(ROUTE_RE,"")||"/";
   if(location.pathname!==root || location.search){ try{ history.pushState(null,"",root); }catch(err){} }
-  showTab("about",false);
+  showTab("schedule",false);
 });
 // In-page buttons that jump to another view (e.g. Join → Team)
 document.querySelectorAll("[data-view]:not(.tab)").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.view)));
@@ -3473,6 +3714,7 @@ wireSignIn();
 wireUsah();
 wireCaptain();
 wireGoalie();
+wireFest();
 wireNames();
 loadSession();
 renderAccount();

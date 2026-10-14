@@ -45,6 +45,10 @@
  *   POST /names {name}                     -> suggest a team name (signed in)
  *   POST /names/vote {id, v: 1 | -1 | 0}   -> your one vote on a name; 0 takes it back
  *   POST /names/remove {id}                -> whoever added it, or a captain
+ *   GET  /fest?event=rontoberfest          -> {ok, items: [{id, item, who, by, t}]} what people bring
+ *   POST /fest {event, item, who}          -> add an item; who (optional) is bringing it
+ *   POST /fest/assign {event, id, who}     -> anyone signed in: who's bringing it ("" = nobody yet)
+ *   POST /fest/remove {event, id}          -> whoever added it, or a captain
  *
  * Storage (KV):
  *   sess:<token>            {email, at, renewed}              a year, renewed weekly by /me
@@ -57,6 +61,7 @@
  *   rsvp:<season>:<ymd>:<name>   value "in" | "out", metadata {a, t, d}
  *   lines:<season>:<ymd>[#slug]  {slots: {F1LW: name, ...}, by, t}   a game's lines, no expiry
  *   goalie:<season>:<ymd>[#slug]  "1", metadata {n: name, by, t, d: game label}   a game's goalie
+ *   fest:<event>:<id>       "1", metadata {i: item, w: who, by, t}  an item for an event (Rontoberfest)
  *   tn:<id>                 "1", metadata {n: team name, by, t}   a suggested team name
  *   tnv:<id>:<voter>        "1", metadata {v: 1 | -1}              one vote per player per name
  *
@@ -441,6 +446,53 @@ async function route(request, env, ctx) {
     return json({ ok: true, season, date: game.date, slots });
   }
 
+  // ---- what people bring to a team event (Rontoberfest; JP, Oct 14, 2026), signed in ----
+  if (p === "/fest" || p.startsWith("/fest/")) {
+    const me = await whoami(request, env);
+    if (!me) return json({ ok: false, error: "Sign in to see the list." }, 401);
+    const body = m === "POST" ? await readJson(request) : {};
+    const event = String((m === "GET" ? url.searchParams.get("event") : body.event) || "").trim();
+    if (!/^[a-z0-9-]{1,40}$/.test(event)) return json({ ok: false, error: "Bad event." }, 400);
+    const pre = `fest:${event}:`;
+    const cleanWho = (v) => String(v || "").replace(/\s+/g, " ").trim();
+    const whoOk = (w) => !w || /^[\p{L}\p{N}][\p{L}\p{N} .'&-]{0,39}$/u.test(w);
+    if (m === "GET" && p === "/fest") {
+      const items = (await listAll(env, pre)).map((k) => {
+        const md = k.metadata || {};
+        return { id: k.name.slice(pre.length), item: md.i || "", who: md.w || "", by: md.by || "", t: md.t || 0 };
+      }).sort((a, b) => a.t - b.t);
+      return json({ ok: true, event, items });
+    }
+    if (m !== "POST") return json({ ok: false, error: "No such endpoint." }, 404);
+    if (p === "/fest") {
+      const item = String(body.item || "").replace(/\s+/g, " ").trim();
+      const who = cleanWho(body.who);
+      if (!item || item.length > 60) return json({ ok: false, error: "An item is 1 to 60 characters." }, 400);
+      if (!whoOk(who)) return json({ ok: false, error: "A name is up to 40 letters and spaces." }, 400);
+      if (await overLimit(env, "fest:" + me.name, 40, 86400)) return json({ ok: false, error: "That's plenty for today." }, 429);
+      const id = randomToken().slice(0, 10), t = Date.now();
+      await env.SC_KV.put(pre + id, "1", { metadata: { i: item, w: who, by: me.name, t } });
+      return json({ ok: true, item: { id, item, who, by: me.name, t } });
+    }
+    const id = String(body.id || "");
+    if (!/^[A-Za-z0-9_-]{6,16}$/.test(id)) return json({ ok: false, error: "Bad item." }, 400);
+    const doc = await env.SC_KV.getWithMetadata(pre + id);
+    if (doc.value == null) return json({ ok: false, error: "That item was removed." }, 404);
+    const md = doc.metadata || {};
+    if (p === "/fest/assign") {
+      const who = cleanWho(body.who);
+      if (!whoOk(who)) return json({ ok: false, error: "A name is up to 40 letters and spaces." }, 400);
+      await env.SC_KV.put(pre + id, "1", { metadata: Object.assign({}, md, { w: who }) });
+      return json({ ok: true, id, who });
+    }
+    if (p === "/fest/remove") {
+      if (!me.captain && md.by !== me.name) return json({ ok: false, error: "Only whoever added it, or a captain, can remove it." }, 403);
+      await env.SC_KV.delete(pre + id);
+      return json({ ok: true, id });
+    }
+    return json({ ok: false, error: "No such endpoint." }, 404);
+  }
+
   // ---- team name ideas: suggest, vote up or down, remove (signed in; JP, Sep 23, 2026) ----
   if (p === "/names" || p.startsWith("/names/")) {
     const me = await whoami(request, env);
@@ -749,6 +801,13 @@ async function renameInKv(env, from, to) {
   // Games they're set to play goalie in
   for (const k of await listAll(env, "goalie:")) {
     if ((k.metadata || {}).n === from) await env.SC_KV.put(k.name, "1", { metadata: Object.assign({}, k.metadata, { n: to }) });
+  }
+  // Event items they added or are bringing
+  for (const k of await listAll(env, "fest:")) {
+    const md = k.metadata || {};
+    if (md.by === from || md.w === from) {
+      await env.SC_KV.put(k.name, "1", { metadata: Object.assign({}, md, md.by === from ? { by: to } : {}, md.w === from ? { w: to } : {}) });
+    }
   }
   // Team names they added, and their votes
   for (const k of await listAll(env, "tn:")) {
