@@ -2769,7 +2769,10 @@ async function renderInjuries(){
    anyone with a status this season, or a typed name), claims an open item with "I'll bring it", or
    changes who's bringing anything. Whoever added an item, or a captain, can remove it. The Worker
    keeps each item as KV fest:<event>:<id> (/fest). */
-const FEST={slug:"rontoberfest", name:"Rontoberfest"};
+// `until`: the morning after the party (JP, Oct 14, 2026: "remove the Rontoberfest tab after the
+// party"). From then the nav tab hides itself; the page and its list stay at rontoberfest/.
+const FEST={slug:"rontoberfest", name:"Rontoberfest", until:"2026-10-23T06:00:00-04:00"};
+function festOver(){ return Date.now()>=Date.parse(FEST.until); }
 const BRING_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16l-1.4 11.2a2 2 0 0 1-2 1.8H7.4a2 2 0 0 1-2-1.8z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>';
 let festItems=null, festErr="", festLoading=false, fxCtx=null;
 function festGame(){
@@ -2929,6 +2932,8 @@ async function removeFest(x){
   alert(res?.error||"Couldn't remove it. Try again.");
 }
 function wireFest(){
+  const tab=document.querySelector('.tab[data-view="fest"]');
+  if(tab && festOver()){ tab.hidden=true; requestAnimationFrame(()=>settleInk(false)); }
   const dlg=document.getElementById("fx-dlg"), sel=document.getElementById("fx-who"), inp=document.getElementById("fx-name");
   sel.addEventListener("change",()=>{ const o=sel.value==="__other"; document.getElementById("fx-other").hidden=!o; if(o) inp.focus(); fxMsg(""); });
   document.getElementById("fx-form").addEventListener("submit",async e=>{
