@@ -209,6 +209,18 @@ header.site{position:relative}
   .st th,.st td{padding-inline:4px}
   .st td.st-name{max-width:120px}
 }
+/* Goalies has the widest numbers (W-L-T, GAA, SV%), so below 860px its columns sit closer and the
+   USA Hockey line under a name wraps instead of holding the name column at full width. Phones also
+   drop GP, which W-L-T adds up to. No scrolling wrapper: it would unpin the sticky headers. */
+@media (max-width:860px){
+  #st-goalies th,#st-goalies td{padding-inline:5px}
+  #st-goalies th:first-child,#st-goalies td:first-child{padding-left:0}
+  #st-goalies th:last-child,#st-goalies td:last-child{padding-right:0}
+  #st-goalies .st-usah-sm{white-space:normal}
+}
+@media (max-width:560px){
+  #st-goalies td.st-name{max-width:120px}
+}
 .gs-foot{padding-block:var(--space-3) var(--space-6);font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase}
 .gs-foot a{color:var(--burgundy-600);text-decoration:none}
 .gs-foot a:hover{text-decoration:underline}
@@ -4023,15 +4035,15 @@ async function renderTeam(){
         statCell(l.pts,"st-pts"), statCell(l.pim,"st-hide-sm"), beerCell(p)])
     : statsRow([numCell(p), nameCell(p.name,p), usahCell(p), ...dashes(["","","","st-pts","st-hide-sm"]), beerCell(p)],season?"st-off":""));
   const goRows=goList.filter(inView).map(({l,p})=>l
-    ? statsRow([numCell(p,l), nameCell(label(l),p), usahCell(p), statCell(l.gp),
+    ? statsRow([numCell(p,l), nameCell(label(l),p), usahCell(p), statCell(l.gp,"st-hide-sm"),
         statCell([l.w,l.l,l.t].map(v=>v==null?0:v).join("-")+(l.otl?"-"+l.otl:"")), statCell(l.ga,"st-hide-sm"),
         statCell(gaaText(l.gaa)), statCell(svpText(l.svp)), statCell(l.so,"st-hide-sm"), beerCell(p)])
-    : statsRow([numCell(p), nameCell(p.name,p), usahCell(p), ...dashes(["","","st-hide-sm","","","st-hide-sm"]), beerCell(p)],season?"st-off":""));
+    : statsRow([numCell(p), nameCell(p.name,p), usahCell(p), ...dashes(["st-hide-sm","","st-hide-sm","","","st-hide-sm"]), beerCell(p)],season?"st-off":""));
 
   statsTable(skT,[["#","st-num","num"],["Player","st-name","name"],["USA Hockey #","st-hide-sm","usah"],["GP","","gp"],["G","","g"],["A","","a"],["PTS","","pts"],["PIM","st-hide-sm","pim"],["Beer","","beer"]],skRows,"sk");
   document.getElementById("st-skaters-count").textContent=skRows.length+(skRows.length===1?" skater":" skaters");
   skSec.hidden=!skRows.length;
-  statsTable(goT,[["#","st-num","num"],["Goalie","st-name","name"],["USA Hockey #","st-hide-sm","usah"],["GP","","gp"],["W-L-T","","w"],["GA","st-hide-sm","ga"],["GAA","","gaa"],["SV%","","svp"],["SO","st-hide-sm","so"],["Beer","","beer"]],goRows,"go");
+  statsTable(goT,[["#","st-num","num"],["Goalie","st-name","name"],["USA Hockey #","st-hide-sm","usah"],["GP","st-hide-sm","gp"],["W-L-T","","w"],["GA","st-hide-sm","ga"],["GAA","","gaa"],["SV%","","svp"],["SO","st-hide-sm","so"],["Beer","","beer"]],goRows,"go");
   document.getElementById("st-goalies-count").textContent=goRows.length+(goRows.length===1?" goalie":" goalies");
   goSec.hidden=!goRows.length;
 
