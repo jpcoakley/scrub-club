@@ -45,6 +45,8 @@
  *   POST /names {name}                     -> suggest a team name (signed in)
  *   POST /names/vote {id, v: 1 | -1 | 0}   -> your one vote on a name; 0 takes it back
  *   POST /names/remove {id}                -> whoever added it, or a captain
+ *   GET  /emails                           -> {ok, season, people: [{name, emails, status}]} signed in only:
+ *                                          everyone with a status in the newest staffed season
  *   GET  /injuries                         -> {ok, items: [{id, who, what, when, part, p, n, by, t, photo}]}
  *   POST /injuries {who, what, when, part, p:[x,y,z], n:[x,y,z], photo?}  photo: base64 JPEG
  *   GET  /injuries/photo?id=…              -> the photo (image/jpeg), signed in
@@ -450,6 +452,32 @@ async function route(request, env, ctx) {
     if (Object.keys(slots).length) await env.SC_KV.put(key, JSON.stringify({ slots, by: me.name, t: Date.now() }));
     else await env.SC_KV.delete(key);
     return json({ ok: true, season, date: game.date, slots });
+  }
+
+  // ---- the team's email addresses, to paste into a To field (JP, Oct 21, 2026): signed in only ----
+  if (m === "GET" && p === "/emails") {
+    const me = await whoami(request, env);
+    if (!me) return json({ ok: false, error: "Sign in to see the team's emails." }, 401);
+    const [r, pub] = await Promise.all([roster(env, false), publicData(env, ctx, false)]);
+    const rows = pub.roster || [], head = rows[GRID.headerRow] || [];
+    const iF = head.indexOf(F.first), iL = head.indexOf(F.last);
+    const rank = (h) => { const mm = h.match(/^(\w+),\s*(\d{2})/); return mm ? +mm[2] * 10 + ["Spring", "Summer", "Fall", "Winter"].indexOf(mm[1]) : -1; };
+    const staffed = (i) => rows.slice(GRID.headerRow + 1).some((row) => ON_TEAM.includes(norm((row || [])[i])));
+    const col = head.map((h, i) => [h, i]).filter(([h, i]) => SEASON_RE.test(h) && staffed(i)).sort((a, b) => rank(b[0]) - rank(a[0]))[0];
+    if (!col) return json({ ok: false, error: "There's no team list for this season yet." }, 404);
+    const status = {};
+    for (const row of rows.slice(GRID.headerRow + 1)) {
+      const name = `${(row || [])[iF] || ""} ${(row || [])[iL] || ""}`.replace(/\s+/g, " ").trim();
+      const st = norm((row || [])[col[1]]);
+      if (name && st) status[name] = st;
+    }
+    const byName = {};
+    for (const [email, name] of Object.entries(r.emails)) {
+      if (!status[name]) continue;
+      (byName[name] = byName[name] || []).push(email);
+    }
+    const people = Object.keys(byName).sort((a, b) => a.localeCompare(b)).map((name) => ({ name, emails: byName[name], status: status[name] }));
+    return json({ ok: true, season: col[0], people });
   }
 
   // ---- injuries on the 3D player (JP, Oct 14, 2026): signed in only, it's health info ----
