@@ -198,28 +198,35 @@ header.site{position:relative}
 .st td.st-none{color:var(--ink-300);font-weight:600}
 .st tr.st-off td{color:var(--ink-300)}
 .st tr.st-off td.st-name{color:var(--ink-500)}
+/* Both tables have to fit the column without scrolling sideways (a scrolling wrapper would unpin the
+   sticky headers), so below 860px the columns sit closer and a USA Hockey number, in its own column or
+   under a name on phones, wraps its "USA Hockey" label or Edit button onto a second line instead of
+   widening the table. The first and last cells keep their flush edges: those rules outrank these. */
+@media (max-width:860px){
+  .st th,.st td{padding-inline:5px}
+  .st td.st-usah,.st .st-usah-sm{white-space:normal}
+}
+/* Between phone and desktop every column is back, so a long name may break onto two lines; the table
+   only takes that up when it's short of room. Phones keep one line and trim it instead. */
+@media (min-width:561px) and (max-width:860px){
+  .st td.st-name{white-space:normal}
+}
 @media (max-width:560px){
-  .st th,.st td{padding-inline:6px}
   .st td{font-size:16px}
   .st td.st-name{font-size:14px;max-width:150px}
   .st td.st-pts,.st td.st-beer{font-size:19px}
   .st .st-hide-sm{display:none}
+  /* Goalies has the widest numbers (W-L-T, GAA, SV%), so phones also drop its GP, which W-L-T adds up to */
+  #st-goalies td.st-name{max-width:120px}
 }
 @media (max-width:360px){
   .st th,.st td{padding-inline:4px}
   .st td.st-name{max-width:120px}
 }
-/* Goalies has the widest numbers (W-L-T, GAA, SV%), so below 860px its columns sit closer and the
-   USA Hockey line under a name wraps instead of holding the name column at full width. Phones also
-   drop GP, which W-L-T adds up to. No scrolling wrapper: it would unpin the sticky headers. */
-@media (max-width:860px){
-  #st-goalies th,#st-goalies td{padding-inline:5px}
-  #st-goalies th:first-child,#st-goalies td:first-child{padding-left:0}
-  #st-goalies th:last-child,#st-goalies td:last-child{padding-right:0}
-  #st-goalies .st-usah-sm{white-space:normal}
-}
-@media (max-width:560px){
-  #st-goalies td.st-name{max-width:120px}
+/* The smallest phones (320px) need a few more pixels: names trim a little sooner */
+@media (max-width:340px){
+  .st td.st-name{max-width:110px}
+  #st-goalies td.st-name{max-width:100px}
 }
 .gs-foot{padding-block:var(--space-3) var(--space-6);font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase}
 .gs-foot a{color:var(--burgundy-600);text-decoration:none}
