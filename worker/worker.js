@@ -65,6 +65,8 @@
  *   cache:roster3           {emails: {email: name}, names, captains, at}   no expiry
  *   cache:public            {data: {roster, schedule}, at}       no expiry
  *   rsvp:<season>:<ymd>:<name>   value "in" | "out", metadata {a, t, d}
+ *   rsvplog:<season>:<ymd>[#slug]:<ms>:<rand>  "1", metadata {n: name, f: from, a: to, t, by, d}
+ *                           one per change of an answer ("" = no answer), since Oct 27, 2026
  *   lines:<season>:<ymd>[#slug]  {slots: {F1LW: name, ...}, by, t}   a game's lines, no expiry
  *   goalie:<season>:<ymd>[#slug]  "1", metadata {n: name, by, t, d: game label}   a game's goalie
  *   fest:<event>:<id>       "1", metadata {i: item, w: who, by, t}  an item for an event (Rontoberfest)
@@ -391,12 +393,21 @@ async function route(request, env, ctx) {
     }
     // A slug (an event sharing its date with a game) gets its own KV key segment, so a plain
     // date never collides with a slugged one on the same day
-    const key = `rsvp:${season}:${game.ymd}${game.slug ? "#" + game.slug : ""}:${name}`;
+    const gk = `${season}:${game.ymd}${game.slug ? "#" + game.slug : ""}`;
+    const key = `rsvp:${gk}:${name}`;
+    const before = (await env.SC_KV.get(key)) || "";
+    const now = Date.now();
     if (answer) {
-      // Who answered isn't kept: an answer given for a teammate reads the same as their own
-      await env.SC_KV.put(key, answer, { metadata: { a: answer, t: Date.now(), d: game.date } });
+      // Who answered isn't shown: an answer given for a teammate reads the same as their own
+      await env.SC_KV.put(key, answer, { metadata: { a: answer, t: now, d: game.date } });
     } else {
       await env.SC_KV.delete(key);
+    }
+    // The answer history (JP, Oct 27, 2026): one record per change, kept so the team can later see
+    // how far ahead people answer and how often an In turns into an Out. Nothing reads it yet.
+    if (before !== answer) {
+      await env.SC_KV.put(`rsvplog:${gk}:${now}:${randomToken().slice(0, 6)}`, "1",
+        { metadata: { n: name, f: before, a: answer, t: now, by: me.name, d: game.date } });
     }
     return json({ ok: true, season, date: game.date, name, answer });
   }
@@ -890,6 +901,13 @@ async function renameInKv(env, from, to) {
     }
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);
+  // Their answer history: who it's for and who made the change
+  for (const k of await listAll(env, "rsvplog:")) {
+    const md = k.metadata || {};
+    if (md.n === from || md.by === from) {
+      await env.SC_KV.put(k.name, "1", { metadata: Object.assign({}, md, md.n === from ? { n: to } : {}, md.by === from ? { by: to } : {}) });
+    }
+  }
   // Games they're set to play goalie in
   for (const k of await listAll(env, "goalie:")) {
     if ((k.metadata || {}).n === from) await env.SC_KV.put(k.name, "1", { metadata: Object.assign({}, k.metadata, { n: to }) });
