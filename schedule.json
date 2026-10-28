@@ -1,5 +1,5 @@
 {
- "updated": "Oct 24, 2026",
+ "updated": "Oct 28, 2026",
  "teamAliases": [
   "Washington Hockey Team",
   "Scrub Club",
@@ -72,20 +72,13 @@
      "them": 1
     },
     {
-     "gm": 32,
-     "date": "Oct 22",
-     "time": "11:00 PM",
-     "rink": "Parking Lot",
-     "opponent": "Rontoberfest",
-     "event": true,
-     "slug": "rontoberfest"
-    },
-    {
      "gm": 34,
      "date": "Oct 27",
      "time": "10:10 PM",
      "rink": "Rink 1",
-     "opponent": "Collision Experts"
+     "opponent": "Collision Experts",
+     "us": 6,
+     "them": 1
     },
     {
      "gm": 39,
