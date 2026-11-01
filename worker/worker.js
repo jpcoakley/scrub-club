@@ -75,11 +75,13 @@
  *   tn:<id>                 "1", metadata {n: team name, by, t}   a suggested team name
  *   tnv:<id>:<voter>        "1", metadata {v: 1 | -1}              one vote per player per name
  *
- * Airtable's free plan allows about 1,000 API calls a month per workspace, so the copies in
- * KV are the normal source and Airtable is read only when a copy is older than PUBLIC_MAX_AGE_MS
- * (in the background, after answering from the copy), right after the site writes something,
- * for ?fresh=1 at most once a minute, and when an unknown email tries to sign in (at most once
- * a minute). A failed read falls back to the last good copy.
+ * Airtable's free plan allows 1,000 API calls a month per workspace (by calendar month, UTC), so
+ * the copies in KV are the normal source. One read of the Roster fills both the public copy and
+ * sign-in's roster copy (refreshTeam), and Airtable is read only when they are older than
+ * PUBLIC_MAX_AGE_MS (a day; in the background, after answering from the copy), right after the
+ * site writes something, for ?fresh=1 at most once a minute, and when an unknown email tries to
+ * sign in (at most once a minute). The calendar feed never refreshes them. A failed read falls
+ * back to the last good copy.
  *
  * One rsvp key per player per game means two people tapping at once can't overwrite each
  * other, and a season's answers come back from one list() call because the answer rides in
@@ -123,8 +125,9 @@ const NONE_FIELDS = { third: F.thirdNone, daddy: F.daddyNone };
 // nickname (column Q) is new with the Airtable move (JP, Sep 22, 2026): the site shows it in place of a first name
 const GRID = { usahEnd: 9, jersey: 11, first: 14, last: 15, nickname: 16, seasonsFrom: 20, headerRow: 6 };
 
-// A public copy older than this is refreshed behind the response
-const PUBLIC_MAX_AGE_MS = 4 * 60 * 60 * 1000;
+// A public copy older than this is refreshed behind the response. A day since Nov 1, 2026 (JP):
+// at four hours October used over 800 of the month's 1,000 Airtable calls
+const PUBLIC_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 // The roster copy (sign-in) refreshes on the same schedule
 const ROSTER_MAX_AGE_MS = PUBLIC_MAX_AGE_MS;
 // ?fresh=1, or an email that isn't on the copy, re-reads Airtable at most this often
@@ -305,7 +308,7 @@ async function route(request, env, ctx) {
     const me = await whoami(request, env);
     if (!me) return json({ ok: false, error: "Not signed in." }, 401);
     const body = await readJson(request);
-    let out;
+    let out, changed = false, refreshed = false;
     try {
       const { rec, usahField, players } = await myRecord(env, me);
       if (!rec) return json({ ok: false, error: "That name isn't on the roster." }, 404);
@@ -316,17 +319,20 @@ async function route(request, env, ctx) {
       if (Object.keys(fields).length) {
         await at(env, `${AT_BASE}/${AT_ROSTER}`, { method: "PATCH",
           body: JSON.stringify({ records: [{ id: rec.id, fields }], typecast: true }) });
+        changed = true;
       }
       if (check.rename) {
         // Answers and lines are kept by full name: move them to the new one, and re-read the
         // roster now so this session's email resolves to the new name on the very next request
-        await refreshRoster(env);
+        await refreshTeam(env);
+        refreshed = true;
         await renameInKv(env, check.rename.from, check.rename.to);
       }
       if (check.email && check.email !== me.email) {
         // Sign-in goes by email: this session moves to the new address, and the roster copy is
         // re-read now (not in the background) so the very next request still knows who this is
-        await refreshRoster(env);
+        if (!refreshed) await refreshTeam(env);
+        refreshed = true;
         await env.SC_KV.put("sess:" + me.token,
           JSON.stringify({ email: check.email, at: me.at, renewed: me.renewed || 0 }),
           { expirationTtl: SESSION_TTL });
@@ -337,8 +343,11 @@ async function route(request, env, ctx) {
       console.error("profile write", me.name, String(e));
       return json({ ok: false, error: "Couldn't save to the team roster. Try again." }, 502);
     }
-    // Jersey and USA Hockey numbers show on the Team page once the site's copy catches up
-    ctx.waitUntil(refreshPublic(env).catch((e) => console.error("public refresh after profile", String(e))));
+    // Jersey and USA Hockey numbers show on the Team page once the site's copy catches up; a save
+    // that changed nothing doesn't re-read anything
+    if (changed && !refreshed) {
+      ctx.waitUntil(refreshPublic(env).catch((e) => console.error("public refresh after profile", String(e))));
+    }
     return json(out);
   }
 
@@ -643,7 +652,10 @@ async function route(request, env, ctx) {
     const sched = await schedule();
     let beerMap = {};
     try {
-      const pub = await publicData(env, ctx, false);
+      // The copy as it is, never a refresh: calendar apps check the feed around the clock, and
+      // until Nov 1, 2026 those checks alone had the Worker reading Airtable every four hours
+      const copy = await env.SC_KV.get("cache:public", "json");
+      const pub = copy ? copy.data : await publicData(env, ctx, false);
       beerMap = beerByDate(pub.schedule, beerNamer(pub.roster));
     }
     catch (e) { console.error("schedule.ics beer lookup", String(e)); } // the feed still works without it
@@ -766,9 +778,13 @@ function playerName(rec) {
   return String(f[F.name] || `${f[F.first] || ""} ${f[F.last] || ""}`).replace(/\s+/g, " ").trim();
 }
 
-// {emails: {email: "First Last"}, names} from the Roster
+// Just the sign-in fields of the Roster, for a recheck of one email
 async function fetchRoster(env) {
-  const recs = await atList(env, AT_ROSTER, { "fields[]": [F.name, F.first, F.last, F.email, F.captain] });
+  return rosterCopy(await atList(env, AT_ROSTER, { "fields[]": [F.name, F.first, F.last, F.email, F.captain] }));
+}
+
+// {emails: {email: "First Last"}, names, captains} from Roster records
+function rosterCopy(recs) {
   const emails = {}, names = [], captains = [];
   for (const r of recs) {
     const name = playerName(r);
@@ -787,13 +803,14 @@ async function fetchRoster(env) {
   return { emails, names, captains };
 }
 
-// {roster, schedule}: row arrays shaped like the old sheet. The roster keeps the header row where
-// the site expects it (HEADER_ROW 7) with only names, jersey numbers, USA Hockey numbers and
-// season statuses filled in: no emails, phones, Venmo or dues. The schedule is the Games table.
+// {data: {roster, schedule}, players}: row arrays shaped like the old sheet, plus the Roster
+// records they came from. The roster keeps the header row where the site expects it (HEADER_ROW 7)
+// with only names, jersey numbers, USA Hockey numbers and season statuses filled in: no emails,
+// phones, Venmo or dues. The schedule is the Games table.
 async function fetchPublic(env, force) {
   const schema = await schemaFields(env, force);
   const [players, games] = await Promise.all([atList(env, AT_ROSTER), atList(env, AT_GAMES)]);
-  return { roster: rosterGrid(schema, players), schedule: scheduleGrid(players, games) };
+  return { data: { roster: rosterGrid(schema, players), schedule: scheduleGrid(players, games) }, players };
 }
 
 function rosterGrid(schema, players) {
@@ -1169,27 +1186,50 @@ async function refreshRoster(env) {
   return saveCopy(env, "cache:roster3", await fetchRoster(env));
 }
 
-// force re-reads the field list too, so ?fresh=1 picks up a season or year JP just added
-async function refreshPublic(env, force) {
-  const data = await fetchPublic(env, force);
+// The public copy and sign-in's roster copy from one read of the Roster (the public one reads
+// every field anyway), so a day's refresh is two calls, three with the field list. force re-reads
+// the field list too, so ?fresh=1 picks up a season or year JP just added.
+async function refreshTeam(env, force) {
+  const { data, players } = await fetchPublic(env, force);
   // Never cache an empty roster, whatever Airtable answered
   if (data.roster.length <= GRID.headerRow + 1) throw new Error("airtable returned no players");
-  return saveCopy(env, "cache:public", { data });
+  const [pub, rost] = await Promise.all([
+    saveCopy(env, "cache:public", { data }),
+    saveCopy(env, "cache:roster3", rosterCopy(players)),
+  ]);
+  return { pub, roster: rost };
 }
+
+async function refreshPublic(env, force) {
+  return (await refreshTeam(env, force)).pub;
+}
+
+// When a request in this Worker instance started refreshing a group of copies. A page load sends
+// /public, /me and /rsvp at once; while one of them refreshes a stale copy, the others answer with
+// the copy they have instead of reading the same tables again. An entry older than REFRESH_WAIT_MS
+// is ignored, in case its request was cut off before it could clear it.
+const refreshing = new Map();
+const REFRESH_WAIT_MS = 30 * 1000;
 
 // Read a cache copy, refreshing it first when `stale(age)` says so. A copy past its age is answered
 // with straight away and refreshed behind the response (needs ctx). A failed refresh falls back to
-// the copy we have; only a cold cache with Airtable down is an error.
-async function cached(env, key, refresh, stale, maxAge, ctx) {
+// the copy we have; only a cold cache with Airtable down is an error. Copies refreshed by the same
+// read share a group.
+async function cached(env, key, refresh, stale, maxAge, ctx, group = key) {
   const copy = await env.SC_KV.get(key, "json");
   const age = copy ? Date.now() - (copy.at || 0) : Infinity;
   if (copy && !stale(age)) return { copy, fresh: false };
+  const since = refreshing.get(group);
+  if (copy && age > maxAge && since && Date.now() - since < REFRESH_WAIT_MS) return { copy, fresh: false };
+  const started = Date.now();
+  refreshing.set(group, started);
+  const run = refresh(env).finally(() => { if (refreshing.get(group) === started) refreshing.delete(group); });
   if (copy && ctx && age > maxAge) {
-    ctx.waitUntil(refresh(env).catch((e) => console.error(key, "refresh", String(e))));
+    ctx.waitUntil(run.catch((e) => console.error(key, "refresh", String(e))));
     return { copy, fresh: false };
   }
   try {
-    return { copy: await refresh(env), fresh: true };
+    return { copy: await run, fresh: true };
   } catch (e) {
     if (!copy) throw e;
     console.error(key, "refresh failed, using the copy from", Math.round(age / 1000), "s ago:", String(e));
@@ -1201,7 +1241,7 @@ async function cached(env, key, refresh, stale, maxAge, ctx) {
 // assignment landed, or JP nudging the site after editing the base) re-reads at most once a minute.
 async function publicData(env, ctx, fresh) {
   const { copy } = await cached(env, "cache:public", fresh ? (e) => refreshPublic(e, true) : refreshPublic,
-    (age) => (fresh ? age > RECHECK_MS : age > PUBLIC_MAX_AGE_MS), PUBLIC_MAX_AGE_MS, fresh ? null : ctx);
+    (age) => (fresh ? age > RECHECK_MS : age > PUBLIC_MAX_AGE_MS), PUBLIC_MAX_AGE_MS, fresh ? null : ctx, "team");
   return copy.data;
 }
 
@@ -1214,8 +1254,12 @@ async function roster(env, recheck) {
     const old = await env.SC_KV.get("cache:roster2", "json");
     if (old) await env.SC_KV.put("cache:roster3", JSON.stringify(Object.assign({}, old, { captains: old.captains || [], at: 0 })));
   }
-  const { copy, fresh } = await cached(env, "cache:roster3", refreshRoster,
-    (age) => (recheck ? age > RECHECK_MS : age > ROSTER_MAX_AGE_MS), ROSTER_MAX_AGE_MS, null);
+  // A day-old copy is refreshed along with the public one, from the same Roster read; a recheck
+  // reads only the sign-in fields
+  const { copy, fresh } = await cached(env, "cache:roster3",
+    recheck ? refreshRoster : async (e) => (await refreshTeam(e)).roster,
+    (age) => (recheck ? age > RECHECK_MS : age > ROSTER_MAX_AGE_MS), ROSTER_MAX_AGE_MS, null,
+    recheck ? "cache:roster3" : "team");
   return { emails: copy.emails || {}, names: copy.names || [], captains: copy.captains || [], fresh };
 }
 
