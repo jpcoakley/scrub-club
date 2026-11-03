@@ -364,8 +364,15 @@ async function route(request, env, ctx) {
     if (await overLimit(env, "assign:" + ip, 30, 3600)) {
       return json({ ok: false, error: "Too many requests. Try again in an hour." }, 429);
     }
+    // Changing or clearing a name that's already there (beer only, upcoming games; JP, Nov 3, 2026)
+    // takes a signed-in teammate, the way the goalie does; filling an empty slot doesn't
+    let me = null;
+    if (body.change === true) {
+      me = await whoami(request, env);
+      if (!me) return json({ ok: false, error: "Sign in to change who's bringing beer." }, 401);
+    }
     let out;
-    try { out = await assign(env, body); }
+    try { out = await assign(env, body, me); }
     catch (e) {
       console.error("assign", String(e));
       return json({ ok: false, error: "Couldn't reach the team roster. Try again." }, 502);
@@ -1102,10 +1109,13 @@ async function listAll(env, prefix) {
 // It fills the row for that date, adding one if there isn't one. An award can instead be marked
 // marked Not awarded (name "Not awarded": no team check, ticks the award's Not Awarded box). Changing or
 // clearing a name or the box is done by hand in Airtable.
-async function assign(env, req) {
+async function assign(env, req, me) {
   const kind = req.award ? String(req.award) : "beer";
   const field = ASSIGN_FIELDS[kind];
   if (!field) return { ok: false, error: "Bad request." };
+  // change: replace (or, with no name, clear) whoever has beer; only for a signed-in caller
+  const change = kind === "beer" && req.change === true && !!me;
+  const clear = change && !String(req.name || "").trim();
   const what = kind === "beer" ? "beer" : field;
   // An award can be left to nobody; beer duty can't
   const none = kind !== "beer" && String(req.name || "") === NOT_AWARDED;
@@ -1133,9 +1143,9 @@ async function assign(env, req) {
   if (!seasonHeader || !players.some((p) => seasonHeader in (p.fields || {}))) {
     return { ok: false, error: "There's no team list for that season yet." };
   }
-  const player = none ? null : players.find((p) => ON_TEAM.includes(norm((p.fields || {})[seasonHeader])) && norm(playerName(p)) === norm(req.name));
-  if (!none && !player) return { ok: false, error: "Only players on this season's team can be assigned beer." };
-  const value = none ? { [NONE_FIELDS[kind]]: true } : { [field]: [player.id] };
+  const player = none || clear ? null : players.find((p) => ON_TEAM.includes(norm((p.fields || {})[seasonHeader])) && norm(playerName(p)) === norm(req.name));
+  if (!none && !clear && !player) return { ok: false, error: "Only players on this season's team can be assigned beer." };
+  const value = none ? { [NONE_FIELDS[kind]]: true } : (clear ? { [field]: [] } : { [field]: [player.id] });
   const nameOf = {};
   for (const p of players) nameOf[p.id] = playerName(p);
 
@@ -1150,10 +1160,12 @@ async function assign(env, req) {
       const rf = row.fields || {};
       const current = (rf[field] || []).map((id) => nameOf[id] || "").join(", ")
         || (NONE_FIELDS[kind] && rf[NONE_FIELDS[kind]] === true ? NOT_AWARDED : "");
-      if (current === NOT_AWARDED) return { ok: false, taken: current, error: `${what} for this game is already marked Not awarded.` };
-      if (current) return { ok: false, taken: current, error: `${current} already has ${what} for this game.` };
+      if (!change && current === NOT_AWARDED) return { ok: false, taken: current, error: `${what} for this game is already marked Not awarded.` };
+      if (!change && current) return { ok: false, taken: current, error: `${current} already has ${what} for this game.` };
       await at(env, `${AT_BASE}/${AT_GAMES}`, { method: "PATCH",
         body: JSON.stringify({ records: [{ id: row.id, fields: value }] }) });
+    } else if (clear) {
+      // no row for this game, so nobody had beer: nothing to clear
     } else {
       const fields = {
         [F.date]: ymd,
@@ -1167,7 +1179,7 @@ async function assign(env, req) {
   } finally {
     await env.SC_KV.delete(lockKey);
   }
-  return { ok: true, name: none ? NOT_AWARDED : playerName(player), date: req.date, award: kind === "beer" ? undefined : kind };
+  return { ok: true, name: none ? NOT_AWARDED : (clear ? "" : playerName(player)), date: req.date, award: kind === "beer" ? undefined : kind, change: change || undefined };
 }
 
 /* ---------------- the cached copies ---------------- */

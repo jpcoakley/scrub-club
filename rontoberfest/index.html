@@ -529,6 +529,12 @@ button.nx-chip:focus-visible{outline:2px solid var(--burgundy-600);outline-offse
 }
 .nx-goalie .gl-icon{display:flex}
 .nx-goalie svg{width:26px;height:26px;flex:none;color:var(--oatmeal-300)}
+.nx-beer .nx-who.gl-change{background:none;border:none;padding:0;cursor:pointer;text-align:left}
+.nx-beer .nx-who.gl-change:hover{text-decoration:underline;text-underline-offset:4px}
+.nx-beer .nx-who.gl-change:focus-visible{outline:2px solid var(--whistle-500);outline-offset:3px}
+.sg-beer-who{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;text-align:left}
+.sg-beer-who:hover{text-decoration:underline;text-underline-offset:3px}
+.sg-beer-who:focus-visible{outline:2px solid var(--burgundy-600);outline-offset:2px}
 .nx-goalie .nx-who.gl-change{background:none;border:none;padding:0;cursor:pointer;text-align:left}
 .nx-goalie .nx-who.gl-change:hover{text-decoration:underline;text-underline-offset:4px}
 .nx-goalie .nx-who.gl-change:focus-visible{outline:2px solid var(--whistle-500);outline-offset:3px}
@@ -1538,8 +1544,15 @@ function dutyCells(g,entry,ds,played){
   // A social event (Rontoberfest) has none of these; leave the three columns blank
   if(g.event) return [el("span","sg-beer"),el("span","sg-award third"),el("span","sg-award daddy")];
   const beerWho=(ds&&beerByDate[ds])||"";
-  const beer=el("span","sg-beer",dutyName(beerWho,entry));
+  const canChange=!!(ds && !played && beerWho && canRequestBeer(ds,entry));
+  const beer=el("span","sg-beer",canChange?"":dutyName(beerWho,entry));
   if(beerWho) beer.title=beerWho;
+  if(canChange){
+    const b=el("button","sg-beer-who",dutyName(beerWho,entry)); b.type="button";
+    b.setAttribute("aria-label",`Beer for ${g.date}: ${beerWho}. Change who's bringing beer`);
+    b.addEventListener("click",()=>openBeerRequest(g,entry,ds,"beer",beerWho));
+    beer.appendChild(b);
+  }
   if(ds && !played && !beerByDate[ds] && canRequestBeer(ds,entry)){
     const b=el("button","sg-req","Assign");
     b.type="button";
@@ -1907,7 +1920,13 @@ function heroCard(entry,g,num,ds){
     icon.style.display="flex";
     icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h10v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M15 12h2.5a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H15"/><path d="M5 9V7a2 2 0 0 1 2.5-1.9A2.6 2.6 0 0 1 12 5a2 2 0 0 1 3 1.7V9"/></svg>';
     beer.append(icon,el("span","nx-sr","Beer:"));
-    if(who){ const v=el("span","nx-who",dutyName(who,entry)); v.title=who; beer.appendChild(v); }
+    if(who && canRequestBeer(ds,entry)){
+      const v=el("button","nx-who gl-change",dutyName(who,entry)); v.type="button"; v.title=who;
+      v.setAttribute("aria-label",`Beer: ${who}. Change who's bringing beer`);
+      v.addEventListener("click",()=>openBeerRequest(g,entry,ds,"beer",who));
+      beer.appendChild(v);
+    }
+    else if(who){ const v=el("span","nx-who",dutyName(who,entry)); v.title=who; beer.appendChild(v); }
     else{
       const b=el("button","nx-btn","Assign");
       b.type="button";
@@ -2034,11 +2053,14 @@ const ASSIGN_KINDS={
   daddy: {title:"Scrub Daddy", question:"Who earned it?",       what:"the Scrub Daddy award"}
 };
 let beerReq=null;
-function openBeerRequest(g,entry,ds,kind){
+function openBeerRequest(g,entry,ds,kind,current){
   kind=ASSIGN_KINDS[kind]?kind:"beer";
+  // Changing a beer name that's already set (JP, Nov 3, 2026) takes a sign-in, like the goalie
+  const change=kind==="beer" && !!current;
+  if(change && !rsvpSession){ rsvpPending=null; openSignIn(); return; }
   const dlg=document.getElementById("beer-req");
   const names=teamNames(entry);
-  beerReq={g,entry,ds,names,kind};
+  beerReq={g,entry,ds,names,kind,change};
   document.getElementById("br-kind").textContent=ASSIGN_KINDS[kind].title;
   document.getElementById("br-q").textContent=ASSIGN_KINDS[kind].question;
   // Each piece stays whole so a narrow pop-up breaks between them, never inside "Screaming Eagles"
@@ -2049,8 +2071,10 @@ function openBeerRequest(g,entry,ds,kind){
   prompt.disabled=true;
   // An award can go to nobody; beer duty always has someone
   const none=kind==="beer"?[]:[new Option(NOT_AWARDED,NOT_AWARDED)];
-  sel.replaceChildren(prompt,...none,...names.map(n=>new Option(n,n)));
-  sel.value="";
+  const nobody=change?[new Option("Nobody yet","__none")]:[];
+  const extra=change && !names.includes(current)?[new Option(current,current)]:[];
+  sel.replaceChildren(prompt,...nobody,...none,...extra,...names.map(n=>new Option(n,n)));
+  sel.value=change?current:"";
   beerReqMessage("");
   beerReqBusy(false);
   dlg.showModal();
@@ -2059,13 +2083,30 @@ function openBeerRequest(g,entry,ds,kind){
 function beerReqBusy(on){
   const btn=document.getElementById("br-send");
   btn.disabled=on;
-  btn.textContent=on?"Assigning…":"Assign";
+  btn.textContent=beerReq?.change?(on?"Saving…":"Save"):(on?"Assigning…":"Assign");
   document.getElementById("br-name").disabled=on;
 }
 function beerReqMessage(text){
   const msg=document.getElementById("br-msg");
   msg.textContent=text||"";
   msg.hidden=!text;
+}
+// Change or clear the beer name on an upcoming game: signed in, through the session (api)
+async function changeBeer(){
+  const {entry,ds,names}=beerReq;
+  const pick=document.getElementById("br-name").value;
+  const name=pick==="__none"?"":pick;
+  if(name && !names.includes(name)){ beerReqMessage("Pick a teammate from the list."); return; }
+  if(name===(beerByDate[ds]||"")){ document.getElementById("beer-req").close(); return; }
+  beerReqBusy(true);
+  let status=0, res=null;
+  try{ ({status,res}=await api("/assign",{date:ds,name,change:true,
+    season:(entryLabel(entry,sheetHeader)||"").split(/[ ,]/)[0],seasonHeader:entry.header,seasonKey:entry.key})); }catch(e){}
+  if(status===401){ beerReqBusy(false); document.getElementById("beer-req").close(); saveSession(null); openSignIn(); return; }
+  if(!res?.ok){ beerReqBusy(false); beerReqMessage(res?.error||"Couldn't reach the team sheet. Try again."); return; }
+  if(res.name) beerByDate[ds]=res.name; else delete beerByDate[ds];
+  document.getElementById("beer-req").close();
+  renderSchedule();
 }
 // Who the Games table has for a date and kind, read fresh ("" if nobody)
 async function beerOnSheet(ds,kind){
@@ -2081,6 +2122,7 @@ function noteAssigned(ds,kind,name){
 async function sendBeerRequest(ev){
   ev.preventDefault();
   if(!beerReq) return;
+  if(beerReq.change) return changeBeer();
   const {entry,ds,names,kind}=beerReq;
   const what=ASSIGN_KINDS[kind].what;
   const name=document.getElementById("br-name").value;
