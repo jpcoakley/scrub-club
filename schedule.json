@@ -1,5 +1,5 @@
 {
- "updated": "Oct 28, 2026",
+ "updated": "Nov 4, 2026",
  "teamAliases": [
   "Washington Hockey Team",
   "Scrub Club",
@@ -85,7 +85,9 @@
      "date": "Nov 3",
      "time": "9:40 PM",
      "rink": "Rink 2",
-     "opponent": "Panthers"
+     "opponent": "Panthers",
+     "us": 4,
+     "them": 3
     },
     {
      "gm": 47,
