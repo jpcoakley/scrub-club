@@ -711,17 +711,14 @@ button.sg-gname:hover{text-decoration:underline;text-underline-offset:3px}
 .swag-icon{flex:none;display:flex}
 /* Swag store */
 .swag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--space-6);margin-top:var(--space-6)}
-.swag-card{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);clip-path:var(--clip-patch);display:flex;flex-direction:column;overflow:hidden;transition:transform var(--dur-med) var(--ease-out)}
+.swag-card{background:var(--surface-raised);box-shadow:var(--shadow-raised);border-radius:var(--radius-md);clip-path:var(--clip-patch);display:flex;flex-direction:column;overflow:hidden;transition:transform var(--dur-med) var(--ease-out);text-decoration:none;color:inherit}
 .swag-card:hover{transform:translateY(-2px)}
+.swag-card:focus-visible{outline-offset:-5px}
 .swag-photo{background:var(--white);aspect-ratio:1;position:relative;border-bottom:1px solid var(--border-hairline)}
 .swag-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .swag-body{padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-2);flex:1}
 .swag-name{font-family:var(--font-display);font-size:19px;line-height:1.15;color:var(--text-strong);text-transform:uppercase}
 .swag-desc{font-family:var(--font-condensed);font-size:15px;letter-spacing:.04em;color:var(--text-muted)}
-.swag-row{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding-top:var(--space-3)}
-.swag-price{font-family:var(--font-numeral);font-weight:800;font-size:24px;color:var(--burgundy-600)}
-.swag-buy{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--oatmeal-300);background:var(--burgundy-600);border:none;border-radius:var(--radius-sm);clip-path:var(--clip-patch-sm);padding:8px 18px;text-decoration:none;cursor:pointer}
-.swag-buy:hover{background:var(--burgundy-700)}
 .swag-soon{font-family:var(--font-condensed);font-weight:700;font-size:13px;letter-spacing:var(--tracking-eyebrow);text-transform:uppercase;color:var(--whistle-500);border:1px solid var(--whistle-500);border-radius:var(--radius-sm);padding:6px 12px}
 .swag-shop{margin-top:var(--space-6);font-family:var(--font-condensed);font-weight:700;font-size:16px;letter-spacing:.08em;text-transform:uppercase}
 .swag-shop a{color:var(--burgundy-600);text-decoration:none}
@@ -976,39 +973,27 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
       <!-- Products live in the Printful Quick Store: https://scrubclubhockeyteam.printful.me
            Copy a card below for each new product; mockups go in swag/assets/. -->
       <div class="swag-grid">
-        <div class="swag-card">
+        <a class="swag-card" href="https://scrubclubhockeyteam.printful.me/product/scrub-club-hoodie" target="_blank" rel="noopener">
           <div class="swag-photo"><img src="swag/assets/hoodie.webp" alt="Maroon pullover hoodie with SCRUB in cream varsity letters running diagonally down the front"></div>
           <div class="swag-body">
             <div class="swag-name">Scrub Club Hoodie</div>
-            <div class="swag-desc">Maroon pullover, the jersey's diagonal SCRUB down the front. Runs small, so size up. S to 3XL.</div>
-            <div class="swag-row">
-              <span class="swag-price">$27.85</span>
-              <a class="swag-buy" href="https://scrubclubhockeyteam.printful.me/product/scrub-club-hoodie" target="_blank" rel="noopener">Buy</a>
-            </div>
+            <div class="swag-desc">Hoodie. It runs small, so size up.</div>
           </div>
-        </div>
-        <div class="swag-card">
+        </a>
+        <a class="swag-card" href="https://scrubclubhockeyteam.printful.me/product/scrub-club-beanie" target="_blank" rel="noopener">
           <div class="swag-photo"><img src="swag/assets/beanie.webp" alt="Dark heather gray cuffed beanie with the Scrub Club soap bar logo embroidered on the cuff"></div>
           <div class="swag-body">
             <div class="swag-name">Scrub Club Beanie</div>
             <div class="swag-desc">Cuffed knit, soap bar embroidered on the cuff. For after the shower. One size.</div>
-            <div class="swag-row">
-              <span class="swag-price">$22</span>
-              <a class="swag-buy" href="https://scrubclubhockeyteam.printful.me/product/scrub-club-beanie" target="_blank" rel="noopener">Buy</a>
-            </div>
           </div>
-        </div>
-        <div class="swag-card">
+        </a>
+        <a class="swag-card" href="https://scrubclubhockeyteam.printful.me/product/magnet" target="_blank" rel="noopener">
           <div class="swag-photo"><img src="swag/assets/magnet.webp" alt="Die-cut magnet of the Scrub Club soap bar logo with foam suds"></div>
           <div class="swag-body">
             <div class="swag-name">Soap Bar Magnet</div>
             <div class="swag-desc">6″×6″ die-cut vinyl, matte finish. For the fridge or the locker.</div>
-            <div class="swag-row">
-              <span class="swag-price">$6.87</span>
-              <a class="swag-buy" href="https://scrubclubhockeyteam.printful.me/product/magnet" target="_blank" rel="noopener">Buy</a>
-            </div>
           </div>
-        </div>
+        </a>
       </div>
       <p class="swag-shop"><a href="https://scrubclubhockeyteam.printful.me" target="_blank" rel="noopener">Shop all Scrub Club gear →</a></p>
       <div class="grid">
