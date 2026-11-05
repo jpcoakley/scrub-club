@@ -326,9 +326,6 @@ header.site{position:relative}
   .ab-cards{grid-template-columns:1fr;margin-top:0}
 }
 .ab-score.win{color:var(--status-win)}.ab-score.loss{color:var(--status-loss)}.ab-score.tie{color:var(--ink-500)}
-.ab-links{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap;margin-top:var(--space-4)}
-.ab-link{font-family:var(--font-condensed);font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--burgundy-600);background:none;border:none;padding:0;cursor:pointer}
-.ab-link:hover{text-decoration:underline}
 /* ---------- Schedule: the next game as a card, then the season as a list ---------- */
 .sched-c{display:flex;flex-direction:column;gap:var(--space-6);padding-top:var(--space-6)}
 .sched-list{width:100%}
@@ -908,10 +905,6 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
         <div class="ab-cards">
           <div class="ab-card" id="ab-last" hidden></div>
         </div>
-      </div>
-      <div class="ab-links">
-        <button class="join-btn" type="button" data-view="schedule">Full schedule</button>
-        <button class="ab-link" type="button" data-view="roster">See the roster →</button>
       </div>
     </section>
   </div>
