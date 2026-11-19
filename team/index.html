@@ -546,6 +546,19 @@ button.sg-gname:hover{text-decoration:underline;text-underline-offset:3px}
 .gl-clear{margin-right:auto;color:var(--penalty-500)}
 .ln-tag.sub{background:var(--ink-500)}
 .ln-hit{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;background:none}
+.nx-count.jake{color:#B07A12}
+.nx-chip.jake{background:#E0A22C;border-color:#E0A22C;color:#2A1A06}
+.nx-chip.jake .nx-sub{background:rgba(42,26,6,.14)}
+.sg-names .grp.jake b{color:#9A6A10}
+.sg-names .grp .jake-c{color:#9A6A10}
+.cap-opt.jake{background:#E0A22C;color:#2A1A06}
+.pk-jake{margin-top:8px;font-family:var(--font-condensed);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:#F2C25B;background:transparent;border:1.5px solid rgba(242,194,91,.6);border-radius:999px;padding:6px 14px;cursor:pointer;min-height:36px}
+.pk-jake:hover{border-color:#F2C25B}
+.pk-jake:focus-visible{outline:2px solid #F2C25B;outline-offset:3px}
+.sg-jake{color:#9A6A10}
+.jk-row{display:flex;align-items:center;gap:14px;margin:6px 0 4px}
+.jk-range{flex:1 1 auto;accent-color:#E0A22C;height:32px}
+.jk-out{flex:none;min-width:64px;text-align:right;font-family:var(--font-numeral);font-weight:800;font-size:34px;color:#9A6A10;font-variant-numeric:tabular-nums}
 .nx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* The puck: a CSS 3D cylinder (two faces and a ring of wall strips) seen from just above */
 .pk-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -629,7 +642,7 @@ button.sg-gname:hover{text-decoration:underline;text-underline-offset:3px}
   .nx-band{padding:var(--space-6) var(--gutter-inline) 20px}
   .nx-bench{padding:18px var(--gutter-inline) 24px;gap:14px}
   /* Phones: the three counts share one row as columns */
-  .nx-tally{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .nx-tally{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:8px}
   .nx-count{flex-direction:column;gap:3px}
   .nx-count b{font-size:42px}
   .nx-count span{font-size:12px;letter-spacing:.12em}
@@ -1061,6 +1074,21 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
     </div>
   </form>
 </dialog>
+<dialog id="jk-dlg" class="br" aria-labelledby="jk-title">
+  <form id="jk-form" class="br-card" novalidate>
+    <div class="br-k">Jake</div>
+    <h2 id="jk-title" class="br-game">What are the chances?</h2>
+    <p class="io-help" id="jk-game"></p>
+    <div class="jk-row">
+      <input id="jk-pct" class="jk-range" type="range" min="0" max="100" step="5" value="50" aria-label="Chance you'll make it, in percent">
+      <output id="jk-out" class="jk-out" for="jk-pct">50%</output>
+    </div>
+    <div class="br-actions">
+      <button type="button" id="jk-cancel" class="br-cancel">Cancel</button>
+      <button type="submit" id="jk-send" class="br-send">I'm a Jake</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="gl-dlg" class="br" aria-labelledby="gl-title">
   <form id="gl-form" class="br-card" novalidate>
     <h2 id="gl-title" class="br-game">Goalie</h2>
@@ -1108,6 +1136,7 @@ footer.site a.fine:hover{color:var(--oatmeal-300);text-decoration:underline;text
     <div id="cap-set" class="cap-set">
       <button type="button" class="cap-opt in" data-a="in">In</button>
       <button type="button" class="cap-opt out" data-a="out">Out</button>
+      <button type="button" class="cap-opt jake" data-a="jake">Jake</button>
       <button type="button" class="cap-opt quiet" data-a="">No answer</button>
     </div>
     <div id="cap-add" hidden>
@@ -1617,17 +1646,21 @@ function rsvpSplit(entry,ds){
   const setG=(goaliesBySeason[entry.key]||{})[ds]||"";
   const inGoalie=[...keepers].find(n=>answers[n]?.a==="in")||"";
   const goalie=setG?{name:setG,set:true,sub:!keepers.has(setG)}:(inGoalie?{name:inGoalie,set:false,sub:false}:null);
-  const ins=[], outs=[], subs=[];
+  const ins=[], outs=[], subs=[], jakes=[];
   // An answer a teammate gave for someone reads the same as their own (JP: no "via" tags)
   Object.entries(answers).forEach(([name,v])=>{
     if(v.a==="in" && (keepers.has(name) || (goalie && name===goalie.name))) return;
     if(v.a==="in"){ ins.push(name); if(known && !onTeam.has(name)) subs.push(name); }
     else if(v.a==="out" && (!known || onTeam.has(name))) outs.push(name);
+    // Jake (JP, Nov 19, 2026): a maybe with a chance, counted apart from both In and Out
+    else if(v.a==="jake") jakes.push({name,p:Math.max(0,Math.min(100,Math.round(v.p||0)))});
   });
-  const said=new Set(Object.keys(answers).filter(nm=>["in","out"].includes(answers[nm].a)));
+  const said=new Set(Object.keys(answers).filter(nm=>["in","out","jake"].includes(answers[nm].a)));
   const quiet=team.filter(nm=>!said.has(nm));
   const sortNames=a=>a.slice().sort((x,y)=>x.localeCompare(y));
-  return { ins:sortNames(ins), outs:sortNames(outs), quiet:sortNames(quiet), subs:sortNames(subs), goalie, mine:rsvpSession?(answers[rsvpSession.name]?.a||""):"" };
+  jakes.sort((a,b)=>b.p-a.p||a.name.localeCompare(b.name));
+  const me=rsvpSession?answers[rsvpSession.name]:null;
+  return { ins:sortNames(ins), outs:sortNames(outs), quiet:sortNames(quiet), subs:sortNames(subs), jakes, goalie, mine:me?.a||"", minePct:me?.a==="jake"?(me.p||0):null };
 }
 // This season's regular goalies: the roster's Goalie status (Ron)
 function goalieNames(entry){
@@ -1640,7 +1673,7 @@ function goalieLabel(entry,goalie){
 function youCell(g,entry,ds){
   const cell=el("span","sg-you");
   const {mine}=rsvpSplit(entry,ds);
-  cell.appendChild(puckEl(entry,ds,mine,{mini:true,game:g.event?`${g.date}, ${g.opponent}`:`${g.date} against ${g.opponent}`}));
+  cell.appendChild(puckEl(entry,ds,mine==="jake"?"":mine,{mini:true,game:g.event?`${g.date}, ${g.opponent}`:`${g.date} against ${g.opponent}`}));
   return cell;
 }
 function schedRow(g,entry,isNext){
@@ -1928,10 +1961,12 @@ function heroCard(entry,g,num,ds){
   const split=rsvpSplit(entry,ds);
   if(rsvpSession) text.appendChild(goalieLine(entry,ds,g,split,"nx-beer nx-goalie","nx-who","nx-btn"));
   const ask=el("div","pk-wrap");
-  ask.appendChild(puckEl(entry,ds,split.mine));
+  ask.appendChild(puckEl(entry,ds,split.mine==="jake"?"":split.mine));
   // No "See you Tuesday." under the puck once you're In (JP, Sep 22, 2026); the other states keep theirs
-  const status=split.mine==="in"?"":puckStatus(split.mine,ds);
+  const status=split.mine==="in"||split.mine==="jake"?"":puckStatus(split.mine,ds);
   if(status) ask.appendChild(el("div","pk-status",status));
+  // Jake: neither In nor Out, with a chance (JP, Nov 19, 2026)
+  if(rsvpSession) ask.appendChild(jakeButton(entry,ds,g,split,"pk-jake"));
   band.appendChild(ask);
   // The bench: In, Out, No answer, then the team as chips
   const bench=el("div","nx-bench");
@@ -1949,7 +1984,7 @@ function heroCard(entry,g,num,ds){
     tally.appendChild(lock);
     return card;
   }
-  [["in","Skaters",split.ins.length],["out","Out",split.outs.length],["quiet","No answer",split.quiet.length]].forEach(([cls,label,n])=>{
+  [["in","Skaters",split.ins.length],["out","Out",split.outs.length]].concat(split.jakes.length?[["jake","Jake",split.jakes.length]]:[],[["quiet","No answer",split.quiet.length]]).forEach(([cls,label,n])=>{
     const c=el("div","nx-count "+cls);
     c.append(el("b",null,String(n)),el("span",null,label));
     tally.appendChild(c);
@@ -1966,11 +2001,13 @@ function heroCard(entry,g,num,ds){
 function benchChips(entry,ds,split,g){
   const cap=!!rsvpSession?.captain;
   const teamIns=split.ins.filter(n=>split.subs.indexOf(n)<0);
-  const all=teamIns.concat(split.subs,split.outs,split.quiet);
+  const jakeNames=split.jakes.map(j=>j.name), jakePct={};
+  split.jakes.forEach(j=>{ jakePct[j.name]=j.p; });
+  const all=teamIns.concat(split.subs,jakeNames,split.outs,split.quiet);
   if(!all.length && !cap && !split.goalie) return null;
   const short=shortNames(all,entry);
-  const kinds=teamIns.map(()=>"in").concat(split.subs.map(()=>"in"),split.outs.map(()=>"out"),split.quiet.map(()=>"quiet"));
-  const words={in:"in",out:"out",quiet:"no answer"};
+  const kinds=teamIns.map(()=>"in").concat(split.subs.map(()=>"in"),jakeNames.map(()=>"jake"),split.outs.map(()=>"out"),split.quiet.map(()=>"quiet"));
+  const words={in:"in",out:"out",quiet:"no answer",jake:"jake"};
   const chips=el("div","nx-chips");
   if(split.goalie){
     // Anyone signed in can change the game's goalie, so this chip is a button for everyone
@@ -1985,6 +2022,7 @@ function benchChips(entry,ds,split,g){
     const c=el(cap?"button":"span","nx-chip "+kinds[i],short[i]);
     c.title=name;
     if(i>=teamIns.length && i<teamIns.length+split.subs.length) c.appendChild(el("span","nx-sub","Sub"));
+    if(kinds[i]==="jake") c.appendChild(el("span","nx-sub",`${jakePct[name]}%`));
     c.appendChild(el("span","nx-sr",", "+words[kinds[i]]));
     if(cap){
       c.type="button";
@@ -2362,25 +2400,30 @@ function rsvpNamesRow(entry,ds){
     // A captain gets the same buttons as the next-game card: tap a player, or Add
     const g=(schedData?.seasons[entry.key]?.games||[]).find(x=>gameKey(entry,x)===ds);
     const counts=el("div","grp");
-    counts.innerHTML=`<b class="in-c">Skaters ${ins.length}</b><b class="out-c">Out ${outs.length}</b><b>No answer ${quiet.length}</b>`;
+    counts.innerHTML=`<b class="in-c">Skaters ${ins.length}</b><b class="out-c">Out ${outs.length}</b>${split.jakes.length?`<b class="jake-c">Jake ${split.jakes.length}</b>`:""}<b>No answer ${quiet.length}</b>`;
     row.appendChild(counts);
     const chips=benchChips(entry,ds,split,g);
     if(chips) row.appendChild(chips);
   }else{
-    [["in","Skaters",ins],["out","Out",outs],["quiet","No answer",quiet]].forEach(([cls,label,names])=>{
+    [["in","Skaters",ins],["out","Out",outs],["jake","Jake",split.jakes.map(j=>j.name)],["quiet","No answer",quiet]].forEach(([cls,label,names])=>{
       if(!names.length) return;
       const grp=el("div","grp "+cls);
       grp.appendChild(el("b",null,`${label} · ${names.length}`));
-      grp.append(shortNames(names,entry).join(", "));
+      const sn=shortNames(names,entry);
+      grp.append(cls==="jake"?sn.map((n,i)=>`${n} ${split.jakes[i].p}%`).join(", "):sn.join(", "));
       row.appendChild(grp);
     });
-    if(!ins.length && !outs.length) row.appendChild(el("span",null,"Nobody has answered yet."));
+    if(!ins.length && !outs.length && !split.jakes.length) row.appendChild(el("span",null,"Nobody has answered yet."));
   }
   {
     const g=(schedData?.seasons[entry.key]?.games||[]).find(x=>gameKey(entry,x)===ds);
     row.appendChild(goalieLine(entry,ds,g,split,"grp sg-goalie","sg-gname","sg-req"));
   }
   const acts=el("div","sg-acts");
+  {
+    const g=(schedData?.seasons[entry.key]?.games||[]).find(x=>gameKey(entry,x)===ds);
+    acts.appendChild(jakeButton(entry,ds,g,split,"sg-lines sg-jake"));
+  }
   if(dsSlug(ds)===FEST.slug){
     const b=el("button","sg-lines");
     b.type="button"; b.innerHTML=BRING_ICON; b.append("What we're bringing");
@@ -2417,6 +2460,47 @@ function goalieLine(entry,ds,g,split,cls,nameCls,btnCls){
     line.appendChild(b);
   }else line.appendChild(el("span",nameCls,"None"));
   return line;
+}
+/* ---------- Jake (JP, Nov 19, 2026) ----------
+   A third answer beside In and Out: you might make it, and you say how likely, 0 to 100%. Jakes
+   are counted apart (the Jake count and amber chips with the chance), never as skaters; the puck
+   stands on its edge for a Jake, like no answer. Your own from the Jake? button under the puck or
+   in an opened game; a captain's for anyone from the captain box. The Worker stores it as
+   "jake:<pct>" with the chance in the metadata (p). */
+let jkCtx=null;
+function jakeButton(entry,ds,g,split,cls){
+  const b=el("button",cls);
+  b.type="button";
+  const mine=split.mine==="jake";
+  b.textContent=mine?`Jake · ${split.minePct}%`:"Jake?";
+  b.setAttribute("aria-label",mine?`You're a Jake at ${split.minePct}%. Change it`:"Answer Jake: you might make it");
+  b.addEventListener("click",()=>openJake(entry,ds,rsvpSession?.name));
+  return b;
+}
+function openJake(entry,ds,name){
+  if(!rsvpSession){ openSignIn(); return; }
+  jkCtx={entry,ds,name:name||rsvpSession.name};
+  const cur=((rsvpBySeason[entry.key]||{})[ds]||{})[jkCtx.name];
+  const g=(schedData?.seasons[entry.key]?.games||[]).find(x=>gameKey(entry,x)===ds);
+  document.getElementById("jk-game").textContent=[jkCtx.name!==rsvpSession.name?jkCtx.name:"",g?`${g.date} · ${g.opponent}`:dsDatePart(ds)].filter(Boolean).join(" · ");
+  const r=document.getElementById("jk-pct");
+  r.value=cur?.a==="jake"?cur.p:50;
+  document.getElementById("jk-out").textContent=r.value+"%";
+  document.getElementById("jk-send").textContent=jkCtx.name===rsvpSession.name?"I'm a Jake":"Save";
+  document.getElementById("jk-dlg").showModal();
+  r.focus();
+}
+function wireJake(){
+  const dlg=document.getElementById("jk-dlg"), r=document.getElementById("jk-pct");
+  r.addEventListener("input",()=>{ document.getElementById("jk-out").textContent=r.value+"%"; });
+  document.getElementById("jk-form").addEventListener("submit",e=>{
+    e.preventDefault();
+    if(!jkCtx) return;
+    dlg.close();
+    answer(jkCtx.entry,jkCtx.ds,"jake",jkCtx.name===rsvpSession?.name?undefined:jkCtx.name,Number(r.value));
+  });
+  document.getElementById("jk-cancel").addEventListener("click",()=>dlg.close());
+  dlg.addEventListener("click",e=>{ if(e.target===dlg) dlg.close(); });
 }
 /* ---------- The game's goalie (JP, Oct 7, 2026) ----------
    Anyone signed in picks the goalie for a game, like Beer: the season's Goalie-status players
@@ -3236,6 +3320,7 @@ function wireCaptain(){
   document.getElementById("cap-set").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
     if(!capCtx) return;
     dlg.close();
+    if(b.dataset.a==="jake"){ openJake(capCtx.entry,capCtx.ds,capCtx.name); return; }
     answer(capCtx.entry,capCtx.ds,b.dataset.a,capCtx.name);
   }));
   document.getElementById("cap-form").addEventListener("submit",e=>{
@@ -3427,19 +3512,19 @@ async function renderLines(){
   });
   if(focusId){ const f=document.getElementById(focusId); if(f) f.focus(); }
 }
-async function answer(entry,ds,a,who){
+async function answer(entry,ds,a,who,pct){
   if(!rsvpSession){ rsvpPending={entry,ds,a,who}; openSignIn(); return; }
   const name=who||rsvpSession.name;
   const games=rsvpBySeason[entry.key]=rsvpBySeason[entry.key]||{};
   const before=games[ds]?.[name];
   games[ds]=games[ds]||{};
   // Show it at once; put it back if the save fails
-  if(a) games[ds][name]=Object.assign({a,t:Date.now()},name!==rsvpSession.name?{by:rsvpSession.name}:{}); else delete games[ds][name];
+  if(a) games[ds][name]=Object.assign({a,t:Date.now()},a==="jake"?{p:pct}:{},name!==rsvpSession.name?{by:rsvpSession.name}:{}); else delete games[ds][name];
   renderSchedule();
-  if(name===rsvpSession.name) schedLive(a==="out"?"You're out.":puckStatus(a,ds));
+  if(name===rsvpSession.name) schedLive(a==="out"?"You're out.":a==="jake"?`You're a Jake, ${pct}%.`:puckStatus(a,ds));
   let error="";
   try{
-    const {status,res}=await api("/rsvp",{season:entry.key,date:ds,answer:a,name});
+    const {status,res}=await api("/rsvp",Object.assign({season:entry.key,date:ds,answer:a,name},a==="jake"?{pct}:{}));
     if(res?.ok) return;
     if(status===401) saveSession(null);
     error=res?.error||"";
@@ -4218,6 +4303,7 @@ wireSignIn();
 wireUsah();
 wireCaptain();
 wireGoalie();
+wireJake();
 wireFest();
 wireNames();
 loadSession();

@@ -397,7 +397,10 @@ async function route(request, env, ctx) {
     const body = await readJson(request);
     const season = String(body.season || "").trim();
     const answer = String(body.answer || "").trim().toLowerCase();
-    if (!["in", "out", ""].includes(answer)) return json({ ok: false, error: "Answer In or Out." }, 400);
+    if (!["in", "out", "jake", ""].includes(answer)) return json({ ok: false, error: "Answer In, Out or Jake." }, 400);
+    // Jake (JP, Nov 19, 2026): a maybe, with the chance you'll make it, 0 to 100
+    const pct = answer === "jake" ? Math.round(Number(body.pct)) : null;
+    if (answer === "jake" && !(pct >= 0 && pct <= 100)) return json({ ok: false, error: "Give your Jake a percentage, 0 to 100." }, 400);
     const game = await gameCheck(season, String(body.date || "").trim());
     if (game.error) return json({ ok: false, error: game.error }, 400);
     // Your own answer, or, for a captain (JP, Sep 23, 2026), anyone's on the roster: that's how a
@@ -413,19 +416,21 @@ async function route(request, env, ctx) {
     const key = `rsvp:${gk}:${name}`;
     const before = (await env.SC_KV.get(key)) || "";
     const now = Date.now();
+    // A Jake keeps its percentage in the value too ("jake:60"), so the history logs a changed chance
+    const stored = answer === "jake" ? `jake:${pct}` : answer;
     if (answer) {
       // Who answered isn't shown: an answer given for a teammate reads the same as their own
-      await env.SC_KV.put(key, answer, { metadata: { a: answer, t: now, d: game.date } });
+      await env.SC_KV.put(key, stored, { metadata: Object.assign({ a: answer, t: now, d: game.date }, answer === "jake" ? { p: pct } : {}) });
     } else {
       await env.SC_KV.delete(key);
     }
     // The answer history (JP, Oct 27, 2026): one record per change, kept so the team can later see
     // how far ahead people answer and how often an In turns into an Out. Nothing reads it yet.
-    if (before !== answer) {
+    if (before !== stored) {
       await env.SC_KV.put(`rsvplog:${gk}:${now}:${randomToken().slice(0, 6)}`, "1",
-        { metadata: { n: name, f: before, a: answer, t: now, by: me.name, d: game.date } });
+        { metadata: { n: name, f: before, a: stored, t: now, by: me.name, d: game.date } });
     }
-    return json({ ok: true, season, date: game.date, name, answer });
+    return json({ ok: true, season, date: game.date, name, answer, pct });
   }
 
   // ---- a game's goalie (JP, Oct 7, 2026): anyone signed in sets it, Ron or a typed-in sub ----
@@ -1537,8 +1542,8 @@ async function answersFor(env, season) {
     for (const k of page.keys) {
       const md = k.metadata || {};
       const name = k.name.split(":").slice(3).join(":");
-      if (!md.d || !name || !["in", "out"].includes(md.a)) continue;
-      (games[md.d] = games[md.d] || {})[name] = { a: md.a, t: md.t || 0 };
+      if (!md.d || !name || !["in", "out", "jake"].includes(md.a)) continue;
+      (games[md.d] = games[md.d] || {})[name] = Object.assign({ a: md.a, t: md.t || 0 }, md.a === "jake" ? { p: md.p || 0 } : {});
     }
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);
